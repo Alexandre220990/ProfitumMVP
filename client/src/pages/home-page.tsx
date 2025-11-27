@@ -16,18 +16,12 @@ import {
   Star,
   Users,
   Zap,
-  Fuel,
-  Building2,
   Calculator,
-  Home,
-  Receipt,
-  Lightbulb,
-  Zap as Lightning,
-  Target,
-  Sparkles
+  Target
 } from "lucide-react";
 import ProcessSteps from "@/components/ProcessSteps";
 import PublicHeader from '@/components/PublicHeader';
+import { CATEGORIES } from "@/data/categories";
 
 // ============================================================================
 // CONSTANTES ET DONNÉES
@@ -60,104 +54,7 @@ const TESTIMONIALS = [
   }
 ];
 
-const SERVICES = [
-  { 
-    id: "ticpe", 
-    title: "TICPE", 
-    subtitle: "Taxe Intérieure de Consommation sur les Produits Énergétiques",
-    icon: Fuel,
-    description: "Récupérez la taxe sur les carburants professionnels avec notre accompagnement digitalisé.",
-    color: "blue",
-    gradient: "from-blue-500 to-cyan-500",
-    bgGradient: "from-blue-50 to-cyan-50",
-    borderColor: "border-blue-200",
-    hoverBorderColor: "hover:border-blue-300"
-  },
-  { 
-    id: "urssaf", 
-    title: "URSSAF", 
-    subtitle: "Union de Recouvrement des Cotisations de Sécurité Sociale",
-    icon: Building2,
-    description: "Sécurisez vos cotisations et détectez les trop-perçus pour des économies immédiates.",
-    color: "emerald",
-    gradient: "from-emerald-500 to-teal-500",
-    bgGradient: "from-emerald-50 to-teal-50",
-    borderColor: "border-emerald-200",
-    hoverBorderColor: "hover:border-emerald-300"
-  },
-  { 
-    id: "social", 
-    title: "SOCIAL", 
-    subtitle: "Optimisation des Charges Sociales",
-    icon: Users,
-    description: "Optimisez vos charges sociales avec un audit complet pour réduire vos coûts.",
-    color: "purple",
-    gradient: "from-purple-500 to-violet-500",
-    bgGradient: "from-purple-50 to-violet-50",
-    borderColor: "border-purple-200",
-    hoverBorderColor: "hover:border-purple-300"
-  },
-  { 
-    id: "foncier", 
-    title: "FONCIER", 
-    subtitle: "Taxes Foncières et Immobilières",
-    icon: Home,
-    description: "Analyse experte de vos taxes foncières pour identifier les économies possibles.",
-    color: "orange",
-    gradient: "from-orange-500 to-amber-500",
-    bgGradient: "from-orange-50 to-amber-50",
-    borderColor: "border-orange-200",
-    hoverBorderColor: "hover:border-orange-300"
-  },
-  { 
-    id: "dfs", 
-    title: "DFS", 
-    subtitle: "Déduction Forfaitaire Spécifique",
-    icon: Receipt,
-    description: "Accompagnement sur-mesure pour la Déduction Forfaitaire Spécifique.",
-    color: "indigo",
-    gradient: "from-indigo-500 to-blue-500",
-    bgGradient: "from-indigo-50 to-blue-50",
-    borderColor: "border-indigo-200",
-    hoverBorderColor: "hover:border-indigo-300"
-  },
-  { 
-    id: "cir", 
-    title: "CIR", 
-    subtitle: "Crédit Impôt Recherche",
-    icon: Lightbulb,
-    description: "Valorisez vos innovations avec le Crédit Impôt Recherche et boostez votre trésorerie.",
-    color: "yellow",
-    gradient: "from-yellow-500 to-orange-500",
-    bgGradient: "from-yellow-50 to-orange-50",
-    borderColor: "border-yellow-200",
-    hoverBorderColor: "hover:border-yellow-300"
-  },
-  { 
-    id: "cee", 
-    title: "CEE", 
-    subtitle: "Certificats d'Économie d'Énergie",
-    icon: Sparkles,
-    description: "Financez vos travaux d'efficacité énergétique avec les Certificats d'Économie d'Énergie.",
-    color: "green",
-    gradient: "from-green-500 to-emerald-500",
-    bgGradient: "from-green-50 to-emerald-50",
-    borderColor: "border-green-200",
-    hoverBorderColor: "hover:border-green-300"
-  },
-  { 
-    id: "energie", 
-    title: "ENERGIE", 
-    subtitle: "Optimisation Énergétique",
-    icon: Lightning,
-    description: "Réduisez vos factures d'énergie avec des offres négociées et un suivi personnalisé.",
-    color: "pink",
-    gradient: "from-pink-500 to-rose-500",
-    bgGradient: "from-pink-50 to-rose-50",
-    borderColor: "border-pink-200",
-    hoverBorderColor: "hover:border-pink-300"
-  }
-];
+// Les catégories sont maintenant importées depuis @/data/categories
 
 const PROFITUM_HIGHLIGHTS = [
   { 
@@ -459,103 +356,108 @@ const ServicesSection = () => {
   const navigate = useNavigate();
   
   return (
-  <section className="py-12 sm:py-16 md:py-20 lg:py-24 bg-gradient-to-br from-slate-50 via-white to-blue-50">
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-12 sm:mb-16 lg:mb-20">
-        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600/10 to-indigo-600/10 border border-blue-200 text-blue-700 px-4 sm:px-6 py-2 sm:py-3 rounded-full text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
-          <Target className="w-4 h-4" />
-          <span className="whitespace-nowrap">Solutions d'optimisation</span>
+  <section className="py-16 sm:py-20 md:py-24 lg:py-32 bg-white relative overflow-hidden">
+    {/* Subtle background pattern */}
+    <div className="absolute inset-0 opacity-[0.02]">
+      <div className="absolute inset-0" style={{
+        backgroundImage: `radial-gradient(circle at 2px 2px, rgb(15 23 42) 1px, transparent 0)`,
+        backgroundSize: '40px 40px'
+      }}></div>
+    </div>
+    
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="text-center mb-16 sm:mb-20 lg:mb-24">
+        <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-200/60 text-slate-700 px-5 py-2.5 rounded-full text-xs font-medium tracking-wide mb-8">
+          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+          <span className="uppercase tracking-wider">Expertise Spécialisée</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-4 sm:mb-6 lg:mb-8 px-4">
-          Une gamme complète de <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">solutions</span>
+        <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light text-slate-900 mb-6 leading-tight tracking-tight">
+          <span className="block mb-2">Solutions d'optimisation</span>
+          <span className="font-normal bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-transparent">
+            pour votre entreprise
+          </span>
         </h2>
-        <p className="text-base sm:text-lg md:text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed px-4">
-          Découvrez nos services d'optimisation financière adaptés à vos besoins spécifiques
+        <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed font-light tracking-wide">
+          Expertise pointue et accompagnement sur-mesure pour transformer vos contraintes en opportunités financières
         </p>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-        {SERVICES.map((service) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
+        {CATEGORIES.map((category, index) => (
           <div
-            key={service.id}
-            onClick={() => {
-              if (service.id === 'ticpe') {
-                navigate('/solutions/ticpe');
-              } else if (service.id === 'urssaf') {
-                navigate('/solutions/urssaf');
-              } else if (service.id === 'social') {
-                navigate('/solutions/social');
-              } else if (service.id === 'foncier') {
-                navigate('/solutions/foncier');
-              } else if (service.id === 'dfs') {
-                navigate('/solutions/dfs');
-              } else if (service.id === 'cir') {
-                navigate('/solutions/cir');
-              } else if (service.id === 'cee') {
-                navigate('/solutions/cee');
-              } else if (service.id === 'energie') {
-                navigate('/solutions/energie');
-              }
+            key={category.id}
+            onClick={() => navigate(`/categories/${category.id}`)}
+            className={`group relative bg-white rounded-2xl p-8 sm:p-10 transition-all duration-700 cursor-pointer border border-slate-200/80 hover:border-slate-300 overflow-hidden`}
+            style={{
+              animationDelay: `${index * 100}ms`
             }}
-            className={`group relative bg-gradient-to-br ${service.bgGradient} rounded-3xl p-8 transition-all duration-500 transform hover:-translate-y-3 hover:shadow-2xl cursor-pointer border ${service.borderColor} ${service.hoverBorderColor} overflow-hidden`}
           >
-            {/* Background pattern */}
-            <div className="absolute inset-0 opacity-5">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-current to-transparent rounded-full -translate-y-16 translate-x-16"></div>
-            </div>
+            {/* Subtle gradient overlay on hover */}
+            <div className={`absolute inset-0 bg-gradient-to-br ${category.bgGradient} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-700`}></div>
             
-            {/* Icon container with modern design */}
-            <div className="relative mb-6">
-              <div className={`w-16 h-16 bg-gradient-to-br ${service.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110`}>
-                <service.icon className="w-8 h-8 text-white" />
+            {/* Top accent line */}
+            <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-slate-300 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700`}></div>
+            
+            {/* Icon container - More refined */}
+            <div className="relative mb-8">
+              <div className={`relative w-14 h-14 bg-gradient-to-br ${category.gradient} rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-500 group-hover:scale-105`}>
+                <category.icon className="w-7 h-7 text-white" />
+                {/* Subtle shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-xl"></div>
               </div>
-              {/* Floating accent */}
-              <div className={`absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br ${service.gradient} rounded-full opacity-80 group-hover:opacity-100 transition-opacity duration-300`}></div>
+              {/* Small indicator dot */}
+              <div className={`absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br ${category.gradient} rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 shadow-sm`}></div>
             </div>
             
             {/* Content */}
             <div className="relative">
-              <h3 className="text-xl font-bold mb-2 text-slate-900 group-hover:text-slate-800 transition-colors">
-                {service.title}
+              <h3 className="text-xl sm:text-2xl font-semibold mb-3 text-slate-900 group-hover:text-slate-800 transition-colors duration-300 tracking-tight">
+                {category.title}
               </h3>
-              <p className="text-sm text-slate-600 mb-4 font-medium leading-tight">
-                {service.subtitle}
-              </p>
-              <p className="text-slate-600 text-sm leading-relaxed mb-6">
-                {service.description}
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed mb-6 font-light">
+                {category.description}
               </p>
               
-              {/* Action indicator */}
+              {/* Products count - More refined */}
+              <div className="mb-6 pb-6 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className={`w-1 h-4 bg-gradient-to-b ${category.gradient} rounded-full`}></div>
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    {category.products.length} {category.products.length > 1 ? 'solutions' : 'solution'}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Action indicator - More sophisticated */}
               <div className="flex items-center justify-between">
-                <div className={`w-8 h-1 bg-gradient-to-r ${service.gradient} rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300`}></div>
-                <div className={`flex items-center gap-2 text-sm font-medium text-slate-600 group-hover:text-slate-700 transition-colors`}>
-                  <span>En savoir plus</span>
+                <div className={`w-0 group-hover:w-12 h-[1px] bg-gradient-to-r ${category.gradient} rounded-full transition-all duration-500`}></div>
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+                  <span className="tracking-wide">Explorer</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
                 </div>
               </div>
             </div>
             
-            {/* Hover effect overlay */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-3xl`}></div>
-            
-            {/* Corner accent */}
-            <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300 rounded-bl-full`}></div>
+            {/* Bottom accent on hover */}
+            <div className={`absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-slate-300 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700`}></div>
           </div>
         ))}
       </div>
       
-      {/* Call to action - Responsive avec layout adaptatif */}
-      <div className="text-center mt-12 sm:mt-16">
-        <div className="inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-4 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl px-6 sm:px-8 py-4 shadow-sm max-w-full">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Calculator className="w-5 h-5 text-blue-600" />
-            <span className="text-sm sm:text-base text-slate-700 font-medium whitespace-nowrap">Besoin d'une étude individualisée ?</span>
+      {/* Call to action - More refined */}
+      <div className="text-center mt-16 sm:mt-20">
+        <div className="inline-flex flex-col sm:flex-row items-center gap-4 bg-slate-50/50 backdrop-blur-sm border border-slate-200/60 rounded-xl px-8 py-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
+              <Calculator className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-sm sm:text-base text-slate-700 font-medium">Besoin d'une étude individualisée ?</span>
           </div>
           <button 
             onClick={() => navigate('/contact')}
-            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:-translate-y-0.5 whitespace-nowrap"
+            className="w-full sm:w-auto bg-slate-900 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-slate-800 transition-all duration-300 transform hover:-translate-y-0.5 shadow-sm hover:shadow-md whitespace-nowrap"
           >
-            Contactez-nous
+            Contactez nos experts
           </button>
         </div>
       </div>
