@@ -243,18 +243,18 @@ export class EventNotificationSync {
         let creatorType: 'admin' | 'expert' | 'client' | null = null;
         let creatorName: string = '';
 
-        // Essayer de trouver le créateur dans Admin
-        const { data: admin } = await supabase
-          .from('Admin')
-          .select('auth_user_id, first_name, last_name')
-          .eq('id', rdv.created_by)
-          .single();
-        
-        if (admin?.auth_user_id) {
-          creatorAuthUserId = admin.auth_user_id;
-          creatorType = 'admin';
-          creatorName = `${admin.first_name || ''} ${admin.last_name || ''}`.trim() || 'Administrateur';
-        } else {
+          // Essayer de trouver le créateur dans Admin
+          const { data: admin } = await supabase
+            .from('Admin')
+            .select('auth_user_id, name')
+            .eq('id', rdv.created_by)
+            .single();
+          
+          if (admin?.auth_user_id) {
+            creatorAuthUserId = admin.auth_user_id;
+            creatorType = 'admin';
+            creatorName = admin.name || 'Administrateur';
+          } else {
           // Essayer Expert
           const { data: expert } = await supabase
             .from('Expert')
@@ -362,26 +362,35 @@ export class EventNotificationSync {
         console.log(`📋 Aucun destinataire trouvé, utilisation du créateur: ${rdv.created_by}`);
         
         // Essayer de trouver le créateur dans Admin
-        const { data: admin } = await supabase
+        const { data: admin, error: adminError } = await supabase
           .from('Admin')
-          .select('auth_user_id, first_name, last_name')
+          .select('auth_user_id, name')
           .eq('id', rdv.created_by)
           .single();
+        
+        if (adminError) {
+          console.warn(`⚠️ Erreur recherche admin ${rdv.created_by}:`, adminError.message);
+        }
         
         if (admin?.auth_user_id) {
           recipients.push({
             user_id: admin.auth_user_id,
             user_type: 'admin',
-            name: `${admin.first_name || ''} ${admin.last_name || ''}`.trim() || 'Administrateur',
+            name: admin.name || 'Administrateur',
           });
           console.log(`✅ Créateur (admin) ajouté comme destinataire: ${admin.auth_user_id}`);
         } else {
+          console.log(`⚠️ Admin ${rdv.created_by} non trouvé ou sans auth_user_id, essai Expert...`);
           // Essayer Expert
-          const { data: expert } = await supabase
+          const { data: expert, error: expertError } = await supabase
             .from('Expert')
             .select('auth_user_id, first_name, last_name')
             .eq('id', rdv.created_by)
             .single();
+          
+          if (expertError) {
+            console.warn(`⚠️ Erreur recherche expert ${rdv.created_by}:`, expertError.message);
+          }
           
           if (expert?.auth_user_id) {
             recipients.push({
@@ -391,12 +400,17 @@ export class EventNotificationSync {
             });
             console.log(`✅ Créateur (expert) ajouté comme destinataire: ${expert.auth_user_id}`);
           } else {
+            console.log(`⚠️ Expert ${rdv.created_by} non trouvé ou sans auth_user_id, essai Client...`);
             // Essayer Client
-            const { data: client } = await supabase
+            const { data: client, error: clientError } = await supabase
               .from('Client')
               .select('auth_user_id, first_name, last_name')
               .eq('id', rdv.created_by)
               .single();
+            
+            if (clientError) {
+              console.warn(`⚠️ Erreur recherche client ${rdv.created_by}:`, clientError.message);
+            }
             
             if (client?.auth_user_id) {
               recipients.push({
@@ -405,6 +419,8 @@ export class EventNotificationSync {
                 name: `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Client',
               });
               console.log(`✅ Créateur (client) ajouté comme destinataire: ${client.auth_user_id}`);
+            } else {
+              console.error(`❌ Impossible de trouver le créateur ${rdv.created_by} dans Admin, Expert ou Client`);
             }
           }
         }
