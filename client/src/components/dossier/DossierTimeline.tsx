@@ -7,12 +7,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, Calendar, Filter, MessageSquare, Send, Edit, Trash2 } from 'lucide-react';
+import { Loader2, RefreshCw, Calendar, Filter, MessageSquare, Send, Edit, Trash2, FileText } from 'lucide-react';
 import { config } from '@/config/env';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
+import { RDVReportModal } from '@/components/rdv/RDVReportModal';
 import {
   Select,
   SelectContent,
@@ -108,6 +109,16 @@ export default function DossierTimeline({
   const [submittingComment, setSubmittingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
+  const [rdvReportModal, setRdvReportModal] = useState<{
+    isOpen: boolean;
+    rdvId: string | null;
+    rdvTitle?: string;
+    existingReport: any | null;
+  }>({
+    isOpen: false,
+    rdvId: null,
+    existingReport: null
+  });
 
   const loadTimeline = async () => {
     try {
@@ -261,6 +272,36 @@ export default function DossierTimeline({
       });
     } finally {
       setSubmittingComment(false);
+    }
+  };
+
+  const handleOpenReportModal = async (rdvId: string, rdvTitle?: string) => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const response = await fetch(`${config.API_URL}/api/rdv/${rdvId}/report`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      const existingReport = data.success && data.data ? data.data : null;
+
+      setRdvReportModal({
+        isOpen: true,
+        rdvId,
+        rdvTitle,
+        existingReport
+      });
+    } catch (error) {
+      console.error('Erreur récupération rapport:', error);
+      // Ouvrir le modal même en cas d'erreur (pas de rapport existant)
+      setRdvReportModal({
+        isOpen: true,
+        rdvId,
+        rdvTitle,
+        existingReport: null
+      });
     }
   };
 
@@ -623,6 +664,50 @@ export default function DossierTimeline({
                     )
                   )}
 
+                  {/* Rapport de RDV */}
+                  {event.type === 'rdv' && event.metadata?.has_report && event.metadata?.report_summary && (
+                    <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-gray-600" />
+                          <span className="text-sm font-medium text-gray-700">Rapport de RDV</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenReportModal(
+                            event.metadata.rdv_id,
+                            event.title
+                          )}
+                          className="h-7 px-2 text-xs"
+                        >
+                          {event.metadata.report_id ? 'Voir/Modifier' : 'Ajouter'}
+                        </Button>
+                      </div>
+                      <p className="text-sm text-gray-700 line-clamp-3">
+                        {event.metadata.report_summary}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Bouton pour ajouter un rapport si RDV terminé sans rapport */}
+                  {event.type === 'rdv' && !event.metadata?.has_report && event.metadata?.rdv_id && (
+                    <div className="mt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenReportModal(
+                          event.metadata.rdv_id,
+                          event.title
+                        )}
+                        className="h-7 px-2 text-xs"
+                      >
+                        <FileText className="w-3 h-3 mr-1" />
+                        Ajouter un rapport
+                      </Button>
+                    </div>
+                  )}
+
                   {/* Action URL */}
                   {event.action_url && (
                     <a
@@ -647,6 +732,21 @@ export default function DossierTimeline({
           </div>
         )}
       </CardContent>
+      
+      {/* Modal de rapport RDV */}
+      {rdvReportModal.rdvId && (
+        <RDVReportModal
+          rdvId={rdvReportModal.rdvId}
+          rdvTitle={rdvReportModal.rdvTitle}
+          isOpen={rdvReportModal.isOpen}
+          onClose={() => setRdvReportModal({ isOpen: false, rdvId: null, existingReport: null })}
+          onSuccess={() => {
+            loadTimeline();
+            setRdvReportModal({ isOpen: false, rdvId: null, existingReport: null });
+          }}
+          existingReport={rdvReportModal.existingReport}
+        />
+      )}
     </Card>
   );
 }

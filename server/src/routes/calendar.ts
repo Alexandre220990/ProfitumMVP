@@ -12,6 +12,7 @@ import Joi from 'joi';
 import { NotificationService } from '../services/NotificationService';
 import { ClientTimelineService } from '../services/client-timeline-service';
 import { DossierTimelineService } from '../services/dossier-timeline-service';
+import { EventNotificationSync } from '../services/event-notification-sync';
 
 const router = express.Router();
 
@@ -768,6 +769,14 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
     } catch (timelineError) {
       console.warn('⚠️ Erreur ajout événement aux timelines:', timelineError);
       // Ne pas faire échouer la création d'événement si l'ajout aux timelines échoue
+    }
+
+    // Synchroniser les notifications d'événement
+    try {
+      await EventNotificationSync.syncEventNotifications(event);
+    } catch (syncError) {
+      console.error('⚠️ Erreur synchronisation notifications événement:', syncError);
+      // Ne pas faire échouer la création si la synchronisation échoue
     }
 
     return res.status(201).json({

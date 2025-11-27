@@ -50,6 +50,9 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
+import { RDVReportModal } from '@/components/rdv/RDVReportModal';
+import { FileText as FileTextIcon } from 'lucide-react';
+import { config } from '@/config/env';
 
 interface UniversalNotificationCenterProps {
   /** Mode d'affichage : modal plein écran ou compact intégré */
@@ -101,6 +104,16 @@ export function UniversalNotificationCenter({
   const [showAll, setShowAll] = useState(false);
   const [groupByDossier, setGroupByDossier] = useState(true);
   const expandLimit = 5; // Afficher 5 par défaut
+  const [rdvReportModal, setRdvReportModal] = useState<{
+    isOpen: boolean;
+    rdvId: string | null;
+    rdvTitle?: string;
+    existingReport: any | null;
+  }>({
+    isOpen: false,
+    rdvId: null,
+    existingReport: null
+  });
 
   const enrichedNotifications = useMemo(() => {
     const now = Date.now();
@@ -401,6 +414,36 @@ export function UniversalNotificationCenter({
     }
   };
 
+  const handleOpenReportModal = async (rdvId: string, rdvTitle?: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${config.API_URL}/api/rdv/${rdvId}/report`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      const existingReport = data.success && data.data ? data.data : null;
+
+      setRdvReportModal({
+        isOpen: true,
+        rdvId,
+        rdvTitle,
+        existingReport
+      });
+    } catch (error) {
+      console.error('Erreur récupération rapport:', error);
+      // Ouvrir le modal même en cas d'erreur (pas de rapport existant)
+      setRdvReportModal({
+        isOpen: true,
+        rdvId,
+        rdvTitle,
+        existingReport: null
+      });
+    }
+  };
+
   const renderNotificationCard = (notification: any) => {
     const metadata = notification.metadata || {};
     const slaDescription = formatSlaDescription(notification);
@@ -600,6 +643,20 @@ export function UniversalNotificationCenter({
                       className="flex items-center gap-2"
                     >
                       Ouvrir
+                    </Button>
+                  )}
+                  {isEventNotification && eventStatus === 'completed' && metadata.event_id && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleOpenReportModal(metadata.event_id, metadata.event_title || notification.message);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <FileTextIcon className="w-4 h-4" />
+                      {metadata.has_report ? 'Modifier rapport' : 'Ajouter rapport'}
                     </Button>
                   )}
                 </>
@@ -1026,6 +1083,21 @@ export function UniversalNotificationCenter({
           </div>
         </div>
       </div>
+      
+      {/* Modal de rapport RDV */}
+      {rdvReportModal.rdvId && (
+        <RDVReportModal
+          rdvId={rdvReportModal.rdvId}
+          rdvTitle={rdvReportModal.rdvTitle}
+          isOpen={rdvReportModal.isOpen}
+          onClose={() => setRdvReportModal({ isOpen: false, rdvId: null, existingReport: null })}
+          onSuccess={() => {
+            reload();
+            setRdvReportModal({ isOpen: false, rdvId: null, existingReport: null });
+          }}
+          existingReport={rdvReportModal.existingReport}
+        />
+      )}
     </div>
   );
 }

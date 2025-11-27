@@ -40,9 +40,13 @@ export class EventNotificationSync {
       
       const hoursUntilStart = (eventStart.getTime() - now.getTime()) / (1000 * 60 * 60);
       const hoursSinceEnd = (now.getTime() - eventEnd.getTime()) / (1000 * 60 * 60);
+      const isCompleted = rdv.status === 'completed' || now >= eventEnd;
 
-      // Ne créer des notifications que pour les événements dans les 24h ou terminés depuis moins d'1h
-      if (hoursUntilStart > 24 && hoursSinceEnd > 1) {
+      // Règle : Afficher les notifications pour :
+      // 1. Les RDV < 24h (à venir) → "Événement à venir"
+      // 2. Les RDV terminés (peu importe depuis combien de temps) → "Événement terminé"
+      // Supprimer seulement si l'événement est à plus de 24h ET n'est pas terminé
+      if (hoursUntilStart > 24 && !isCompleted) {
         await this.deleteEventNotifications(rdv.id);
         return;
       }
@@ -62,12 +66,18 @@ export class EventNotificationSync {
       // Récupérer les destinataires
       const recipients = await this.getEventRecipients(rdv);
 
+      console.log(`📋 Événement ${rdv.id} - Destinataires trouvés: ${recipients.length}`, recipients.map(r => `${r.user_type}:${r.user_id}`));
+
+      if (recipients.length === 0) {
+        console.warn(`⚠️ Aucun destinataire trouvé pour l'événement ${rdv.id} (client_id: ${rdv.client_id}, expert_id: ${rdv.expert_id}, apporteur_id: ${rdv.apporteur_id}, created_by: ${rdv.created_by})`);
+      }
+
       // Synchroniser les notifications pour chaque destinataire
       for (const recipient of recipients) {
         await this.syncNotificationForRecipient(rdv, recipient, eventStatus, eventStart, eventEnd);
       }
 
-      console.log(`✅ Notifications synchronisées pour l'événement ${rdv.id}`);
+      console.log(`✅ Notifications synchronisées pour l'événement ${rdv.id} (${recipients.length} destinataires)`);
     } catch (error) {
       console.error('❌ Erreur synchronisation notifications événement:', error);
     }
@@ -202,12 +212,17 @@ export class EventNotificationSync {
     const recipients: EventRecipient[] = [];
 
     // Récupérer les participants depuis la table RDV_Participants
-    const { data: participants } = await supabase
+    const { data: participants, error: participantsError } = await supabase
       .from('RDV_Participants')
       .select('user_id, user_type, user_name')
       .eq('rdv_id', rdv.id);
 
+    if (participantsError) {
+      console.warn('⚠️ Erreur récupération participants RDV:', participantsError);
+    }
+
     if (participants && participants.length > 0) {
+      console.log(`📋 Participants trouvés dans RDV_Participants: ${participants.length}`);
       participants.forEach((p: any) => {
         if (p.user_id) {
           recipients.push({
@@ -265,6 +280,59 @@ export class EventNotificationSync {
             user_type: 'apporteur',
             name: `${apporteur.first_name || ''} ${apporteur.last_name || ''}`.trim(),
           });
+        }
+      }
+
+      // Si aucun destinataire trouvé, ajouter le créateur comme destinataire
+      if (recipients.length === 0 && rdv.created_by) {
+        console.log(`📋 Aucun destinataire trouvé, utilisation du créateur: ${rdv.created_by}`);
+        
+        // Essayer de trouver le créateur dans Admin
+        const { data: admin } = await supabase
+          .from('Admin')
+          .select('auth_user_id, first_name, last_name')
+          .eq('id', rdv.created_by)
+          .single();
+        
+        if (admin?.auth_user_id) {
+          recipients.push({
+            user_id: admin.auth_user_id,
+            user_type: 'admin',
+            name: `${admin.first_name || ''} ${admin.last_name || ''}`.trim() || 'Administrateur',
+          });
+          console.log(`✅ Créateur (admin) ajouté comme destinataire: ${admin.auth_user_id}`);
+        } else {
+          // Essayer Expert
+          const { data: expert } = await supabase
+            .from('Expert')
+            .select('auth_user_id, first_name, last_name')
+            .eq('id', rdv.created_by)
+            .single();
+          
+          if (expert?.auth_user_id) {
+            recipients.push({
+              user_id: expert.auth_user_id,
+              user_type: 'expert',
+              name: `${expert.first_name || ''} ${expert.last_name || ''}`.trim() || 'Expert',
+            });
+            console.log(`✅ Créateur (expert) ajouté comme destinataire: ${expert.auth_user_id}`);
+          } else {
+            // Essayer Client
+            const { data: client } = await supabase
+              .from('Client')
+              .select('auth_user_id, first_name, last_name')
+              .eq('id', rdv.created_by)
+              .single();
+            
+            if (client?.auth_user_id) {
+              recipients.push({
+                user_id: client.auth_user_id,
+                user_type: 'client',
+                name: `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Client',
+              });
+              console.log(`✅ Créateur (client) ajouté comme destinataire: ${client.auth_user_id}`);
+            }
+          }
         }
       }
     }

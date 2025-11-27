@@ -168,10 +168,30 @@ export class DossierTimelineService {
         const { data: rdvs, error: rdvError } = await rdvQuery;
 
         if (!rdvError && rdvs) {
+          // Récupérer les rapports de RDV pour tous les RDV
+          const rdvIds = rdvs
+            .filter((rdv: any) => rdv.dossier_id === dossier_id || rdv.metadata?.dossier_id === dossier_id)
+            .map((rdv: any) => rdv.id);
+          
+          let rdvReports: any[] = [];
+          if (rdvIds.length > 0) {
+            const { data: reports } = await supabase
+              .from('RDV_Report')
+              .select('*')
+              .in('rdv_id', rdvIds)
+              .order('created_at', { ascending: false });
+            
+            if (reports) {
+              rdvReports = reports;
+            }
+          }
+
           rdvs.forEach((rdv: any) => {
             // Vérifier que le RDV est bien lié à ce dossier
             if (rdv.dossier_id === dossier_id || rdv.metadata?.dossier_id === dossier_id) {
               const rdvDate = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+              const report = rdvReports.find((r: any) => r.rdv_id === rdv.id);
+              
               rdvEvents.push({
                 id: `rdv-${rdv.id}`,
                 dossier_id,
@@ -191,6 +211,9 @@ export class DossierTimelineService {
                   location: rdv.location,
                   meeting_url: rdv.meeting_url,
                   meeting_type: rdv.meeting_type,
+                  has_report: !!report,
+                  report_id: report?.id || null,
+                  report_summary: report?.summary || null,
                   ...(rdv.metadata || {})
                 },
                 icon: '📅',
@@ -733,7 +756,7 @@ export class DossierTimelineService {
       actor_id: data.expert_id,
       actor_name: data.expert_name,
       title: '👨‍💼 Expert assigné',
-      description: `Expert ${data.expert_name} a accepté le dossier ${data.product_name} de ${data.client_name}`,
+      description: `Un nouveau dossier vous est assigné. Acceptez le dossier pour continuer le process.`,
       metadata: {
         expert_id: data.expert_id,
         expert_name: data.expert_name,

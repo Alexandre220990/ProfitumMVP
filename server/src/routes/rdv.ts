@@ -1027,6 +1027,266 @@ router.post('/:id/report', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/rdv/:id/report - Récupérer le rapport d'un RDV
+ */
+router.get('/:id/report', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthenticatedUser;
+    const { id } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    const { data: rdv, error: fetchError } = await supabase
+      .from('RDV')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !rdv) {
+      return res.status(404).json({
+        success: false,
+        message: 'RDV non trouvé'
+      });
+    }
+
+    const isParticipant =
+      rdv.client_id === user.database_id ||
+      rdv.expert_id === user.database_id ||
+      rdv.apporteur_id === user.database_id ||
+      user.type === 'admin';
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé'
+      });
+    }
+
+    const { data: report, error: reportError } = await supabase
+      .from('RDV_Report')
+      .select('*')
+      .eq('rdv_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (reportError && reportError.code !== 'PGRST116') {
+      console.error('❌ Erreur récupération rapport RDV:', reportError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération du rapport'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: report || null
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route GET /rdv/:id/report:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * PUT /api/rdv/:id/report - Modifier le rapport d'un RDV
+ */
+router.put('/:id/report', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthenticatedUser;
+    const { id } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    const { data: rdv, error: fetchError } = await supabase
+      .from('RDV')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !rdv) {
+      return res.status(404).json({
+        success: false,
+        message: 'RDV non trouvé'
+      });
+    }
+
+    if (rdv.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Le RDV doit être complété avant de modifier un résumé'
+      });
+    }
+
+    // Vérifier si un rapport existe
+    const { data: existingReport, error: fetchReportError } = await supabase
+      .from('RDV_Report')
+      .select('*')
+      .eq('rdv_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (fetchReportError || !existingReport) {
+      return res.status(404).json({
+        success: false,
+        message: 'Rapport non trouvé'
+      });
+    }
+
+    // Vérifier que l'utilisateur est l'auteur ou un admin
+    if (existingReport.author_id !== user.database_id && user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous ne pouvez modifier que vos propres rapports'
+      });
+    }
+
+    const summary: string = req.body?.summary;
+    const actionItems = Array.isArray(req.body?.action_items) ? req.body.action_items : [];
+    const metadata = typeof req.body?.metadata === 'object' && req.body?.metadata !== null ? req.body.metadata : {};
+    const visibility: 'participants' | 'cabinet' | 'internal' =
+      ['participants', 'cabinet', 'internal'].includes(req.body?.visibility)
+        ? req.body.visibility
+        : existingReport.visibility;
+
+    if (!summary || typeof summary !== 'string' || summary.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Un résumé est requis'
+      });
+    }
+
+    const { data: updatedReport, error: updateError } = await supabase
+      .from('RDV_Report')
+      .update({
+        summary: summary.trim(),
+        action_items: actionItems,
+        visibility,
+        metadata,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existingReport.id)
+      .select('*')
+      .single();
+
+    if (updateError) {
+      console.error('❌ Erreur modification rapport RDV:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la modification du rapport'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: updatedReport,
+      message: 'Rapport modifié avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route PUT /rdv/:id/report:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * DELETE /api/rdv/:id/report - Supprimer le rapport d'un RDV
+ */
+router.delete('/:id/report', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthenticatedUser;
+    const { id } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    const { data: rdv, error: fetchError } = await supabase
+      .from('RDV')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !rdv) {
+      return res.status(404).json({
+        success: false,
+        message: 'RDV non trouvé'
+      });
+    }
+
+    // Vérifier si un rapport existe
+    const { data: existingReport, error: fetchReportError } = await supabase
+      .from('RDV_Report')
+      .select('*')
+      .eq('rdv_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (fetchReportError || !existingReport) {
+      return res.status(404).json({
+        success: false,
+        message: 'Rapport non trouvé'
+      });
+    }
+
+    // Vérifier que l'utilisateur est l'auteur ou un admin
+    if (existingReport.author_id !== user.database_id && user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous ne pouvez supprimer que vos propres rapports'
+      });
+    }
+
+    const { error: deleteError } = await supabase
+      .from('RDV_Report')
+      .delete()
+      .eq('id', existingReport.id);
+
+    if (deleteError) {
+      console.error('❌ Erreur suppression rapport RDV:', deleteError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la suppression du rapport'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Rapport supprimé avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route DELETE /rdv/:id/report:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
  * POST /api/rdv/:id/tasks - Créer une tâche liée au RDV/dossier
  */
 router.post('/:id/tasks', async (req: Request, res: Response) => {
