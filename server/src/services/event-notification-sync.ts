@@ -223,6 +223,7 @@ export class EventNotificationSync {
 
     if (participants && participants.length > 0) {
       console.log(`📋 Participants trouvés dans RDV_Participants: ${participants.length}`);
+      // Ajouter tous les participants
       participants.forEach((p: any) => {
         if (p.user_id) {
           recipients.push({
@@ -232,6 +233,79 @@ export class EventNotificationSync {
           });
         }
       });
+
+      // Ajouter aussi le créateur s'il n'est pas déjà dans les participants
+      if (rdv.created_by) {
+        console.log(`📋 Vérification du créateur: ${rdv.created_by}`);
+        
+        // Récupérer l'auth_user_id du créateur
+        let creatorAuthUserId: string | null = null;
+        let creatorType: 'admin' | 'expert' | 'client' | null = null;
+        let creatorName: string = '';
+
+        // Essayer de trouver le créateur dans Admin
+        const { data: admin } = await supabase
+          .from('Admin')
+          .select('auth_user_id, first_name, last_name')
+          .eq('id', rdv.created_by)
+          .single();
+        
+        if (admin?.auth_user_id) {
+          creatorAuthUserId = admin.auth_user_id;
+          creatorType = 'admin';
+          creatorName = `${admin.first_name || ''} ${admin.last_name || ''}`.trim() || 'Administrateur';
+        } else {
+          // Essayer Expert
+          const { data: expert } = await supabase
+            .from('Expert')
+            .select('auth_user_id, first_name, last_name')
+            .eq('id', rdv.created_by)
+            .single();
+          
+          if (expert?.auth_user_id) {
+            creatorAuthUserId = expert.auth_user_id;
+            creatorType = 'expert';
+            creatorName = `${expert.first_name || ''} ${expert.last_name || ''}`.trim() || 'Expert';
+          } else {
+            // Essayer Client
+            const { data: client } = await supabase
+              .from('Client')
+              .select('auth_user_id, first_name, last_name')
+              .eq('id', rdv.created_by)
+              .single();
+            
+            if (client?.auth_user_id) {
+              creatorAuthUserId = client.auth_user_id;
+              creatorType = 'client';
+              creatorName = `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Client';
+            }
+          }
+        }
+
+        // Vérifier si le créateur est déjà dans les participants (comparer auth_user_id)
+        if (creatorAuthUserId) {
+          const creatorAlreadyInParticipants = participants.some(
+            (p: any) => p.user_id === creatorAuthUserId
+          );
+
+          if (!creatorAlreadyInParticipants) {
+            // Vérifier aussi qu'il n'est pas déjà dans les recipients (éviter doublons)
+            const alreadyAdded = recipients.some(r => r.user_id === creatorAuthUserId);
+            if (!alreadyAdded && creatorType) {
+              recipients.push({
+                user_id: creatorAuthUserId,
+                user_type: creatorType,
+                name: creatorName,
+              });
+              console.log(`✅ Créateur (${creatorType}) ajouté comme destinataire: ${creatorAuthUserId}`);
+            }
+          } else {
+            console.log(`📋 Le créateur est déjà dans les participants, pas besoin de l'ajouter`);
+          }
+        } else {
+          console.warn(`⚠️ Impossible de trouver l'auth_user_id du créateur ${rdv.created_by}`);
+        }
+      }
     } else {
       // Fallback: utiliser les IDs directement du RDV
       if (rdv.client_id) {
