@@ -3,11 +3,16 @@
  * Usage: ts-node server/scripts/sync-all-rdv-notifications.ts [--dry-run]
  */
 
+// IMPORTANT: Charger le .env AVANT d'importer les services qui en dépendent
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Charger le .env depuis le répertoire server
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
+// Maintenant importer les services
 import { EventNotificationSync } from '../src/services/event-notification-sync';
 import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
