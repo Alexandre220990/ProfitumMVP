@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # ============================================================================
 # RAILWAY BUILD SCRIPT - PROFITUM MVP
 # ============================================================================
@@ -28,13 +28,7 @@ else
 fi
 
 # 4. Vérifier les fichiers critiques
-CRITICAL_FILES=(
-    "dist/index.js"
-    "dist/routes/simulator.js"
-    "dist/routes/client-simulation.js"
-)
-
-for file in "${CRITICAL_FILES[@]}"; do
+for file in "dist/index.js" "dist/routes/simulator.js" "dist/routes/client-simulation.js"; do
     if [ -f "$file" ]; then
         echo "✅ $file existe"
     else
