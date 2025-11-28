@@ -114,7 +114,7 @@ export class DailyActivityReportService {
     // Depuis notification (pour les admins)
     const { data: generalNotifications, error: generalNotifError } = await supabase
       .from('notification')
-      .select('id, title, message, notification_type as type, priority, created_at, archived_at')
+      .select('id, title, message, notification_type, priority, created_at, archived_at')
       .eq('user_type', 'admin')
       .eq('status', 'archived')
       .gte('archived_at', `${dateStr}T00:00:00.000Z`)
@@ -140,7 +140,7 @@ export class DailyActivityReportService {
         id: n.id,
         title: n.title,
         message: n.message,
-        type: n.type,
+        type: n.notification_type, // Mapper notification_type vers type
         priority: n.priority || 'normal',
         created_at: n.created_at,
         archived_at: n.archived_at
