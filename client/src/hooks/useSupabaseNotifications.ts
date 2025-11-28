@@ -85,6 +85,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
     if (!user?.type) return '/api/notifications';
     if (user.type === 'expert') return '/api/expert/notifications';
     if (user.type === 'admin') return '/api/admin/notifications';
+    if (user.type === 'apporteur') return '/api/apporteur/notifications';
     return '/api/notifications';
   }, [user?.type]);
 
@@ -177,6 +178,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
 
       const actionPathMap: Record<string, string | undefined> = {
         read: `${getEndpoint()}/${notificationId}/read`,
+        unread: `${getEndpoint()}/${notificationId}/unread`,
         archive: `${getEndpoint()}/${notificationId}/archive`,
         unarchive: `${getEndpoint()}/${notificationId}/unarchive`,
         delete: `${getEndpoint()}/${notificationId}`,
@@ -190,6 +192,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
 
       const methodMap: Record<string, string> = {
         read: 'PUT',
+        unread: 'PUT',
         archive: 'PUT',
         unarchive: 'PUT',
         delete: 'DELETE',

@@ -169,6 +169,19 @@ router.put('/notifications/:notificationId/read', async (req: any, res: any): Pr
     }
 });
 
+// Marquer une notification comme non lue
+router.put('/notifications/:notificationId/unread', async (req: any, res: any): Promise<void> => {
+    try {
+        const { notificationId } = req.params;
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.markNotificationAsUnread(notificationId, apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur mark notification as unread:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la mise à jour de la notification' });
+    }
+});
+
 // Marquer toutes les notifications comme lues
 router.put('/notifications/mark-all-read', async (req: any, res: any): Promise<void> => {
     try {

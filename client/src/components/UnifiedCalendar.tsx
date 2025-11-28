@@ -129,6 +129,60 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     }
   }, []);
 
+  // Gérer l'affichage automatique d'un événement depuis l'URL (notifications)
+  useEffect(() => {
+    const handleDisplayEvent = (eventData: { event: CalendarEvent; action?: 'view' | 'edit' }) => {
+      const { event, action = 'view' } = eventData;
+      
+      // Naviguer vers la date de l'événement
+      if (event.start_date) {
+        const eventDate = new Date(event.start_date);
+        setView({
+          type: 'day', // Afficher la vue jour pour mieux voir l'événement
+          date: eventDate
+        });
+      }
+
+      // Sélectionner et afficher l'événement
+      setSelectedEvent(event);
+      
+      if (action === 'edit') {
+        setShowDetailsDialog(false);
+        setShowEventDialog(true);
+      } else {
+        setShowEventDialog(false);
+        setShowDetailsDialog(true);
+      }
+    };
+
+    // Vérifier localStorage pour un événement à afficher
+    const eventToDisplay = localStorage.getItem('calendar_event_to_display');
+    if (eventToDisplay) {
+      try {
+        const data = JSON.parse(eventToDisplay);
+        handleDisplayEvent(data);
+        // Nettoyer après utilisation
+        localStorage.removeItem('calendar_event_to_display');
+      } catch (err) {
+        console.error('❌ Erreur parsing event to display:', err);
+        localStorage.removeItem('calendar_event_to_display');
+      }
+    }
+
+    // Écouter l'événement personnalisé
+    const handleCustomEvent = (e: CustomEvent) => {
+      if (e.detail?.event) {
+        handleDisplayEvent(e.detail);
+      }
+    };
+
+    window.addEventListener('calendar:display-event', handleCustomEvent as EventListener);
+
+    return () => {
+      window.removeEventListener('calendar:display-event', handleCustomEvent as EventListener);
+    };
+  }, []);
+
   // Hook calendrier unifié
   const {
     loading,

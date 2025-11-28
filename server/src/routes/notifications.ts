@@ -406,6 +406,39 @@ router.put('/:id/read', asyncHandler(async (req, res) => {
   }
 }));
 
+// PUT /api/notifications/:id/unread - Marquer une notification comme non lue
+router.put('/:id/unread', asyncHandler(async (req, res) => {
+  try {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+
+    const { error } = await supabaseClient
+      .from('notification')
+      .update({
+        status: 'unread',
+        is_read: false,
+        read_at: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+
+    return res.json({
+      success: true,
+      message: 'Notification marquée comme non lue'
+    });
+
+  } catch (error) {
+    console.error('Erreur marquage non lu:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du marquage'
+    });
+  }
+}));
+
 // PUT /api/notifications/:id/star - Marquer une notification comme favori
 router.put('/:id/star', asyncHandler(async (req, res) => {
   try {

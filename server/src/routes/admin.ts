@@ -6723,7 +6723,26 @@ router.patch('/notifications/:id/unread', async (req, res) => {
       });
     }
     
-    // Vérifier que la notification existe
+    // ✅ CORRECTION: Récupérer l'auth_user_id pour filtrer les notifications
+    let userId = (user as any).id || (user as any).auth_user_id;
+    
+    if (!userId || userId === 'undefined' || userId === undefined) {
+      const databaseId = (user as any).database_id;
+      
+      if (databaseId) {
+        const { data: adminData, error: adminError } = await supabaseAdmin
+          .from('Admin')
+          .select('auth_user_id')
+          .eq('id', databaseId)
+          .single();
+        
+        if (!adminError && adminData?.auth_user_id) {
+          userId = adminData.auth_user_id;
+        }
+      }
+    }
+    
+    // Vérifier que la notification existe dans AdminNotification
     const { data: existing, error: checkError } = await supabaseClient
       .from('AdminNotification')
       .select('id, status')
@@ -6739,13 +6758,61 @@ router.patch('/notifications/:id/unread', async (req, res) => {
     }
     
     if (!existing) {
+      // Vérifier aussi dans la table notification au cas où (notifications d'événement)
+      console.log(`⚠️ Notification ${id} non trouvée dans AdminNotification, vérification dans notification...`);
+      const { data: notifInOtherTable, error: otherError } = await supabaseClient
+        .from('notification')
+        .select('id, status, is_read, notification_type, title, user_type, user_id')
+        .eq('id', id)
+        .maybeSingle();
+      
+      if (notifInOtherTable) {
+        console.log(`ℹ️ Notification trouvée dans table 'notification' avec user_type: ${notifInOtherTable.user_type}`);
+        
+        // Si c'est une notification admin dans la table notification, la mettre à jour là-bas
+        if (notifInOtherTable.user_type === 'admin') {
+          const { data: updatedNotif, error: updateError } = await supabaseClient
+            .from('notification')
+            .update({ 
+              status: 'unread',
+              is_read: false,
+              read_at: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .eq('user_type', 'admin')
+            .select();
+          
+          if (updateError) {
+            console.error('❌ Erreur mise à jour notification dans table notification:', updateError);
+            return res.status(500).json({
+              success: false,
+              message: 'Erreur lors de la mise à jour de la notification'
+            });
+          }
+          
+          if (updatedNotif && updatedNotif.length > 0) {
+            return res.json({
+              success: true,
+              message: 'Notification marquée comme non lue',
+              data: { notification: updatedNotif[0] }
+            });
+          }
+        }
+        
+        return res.status(400).json({
+          success: false,
+          message: 'Cette notification est dans la table notification mais pas pour un admin'
+        });
+      }
+      
       return res.status(404).json({
         success: false,
         message: 'Notification introuvable'
       });
     }
     
-    // Marquer comme non lu
+    // Marquer comme non lu dans AdminNotification
     const { data, error } = await supabaseClient
       .from('AdminNotification')
       .update({ 
@@ -6810,6 +6877,64 @@ router.patch('/notifications/:id/unarchive', async (req, res) => {
     }
     
     if (!existing) {
+      // Vérifier aussi dans la table notification au cas où (notifications d'événement)
+      console.log(`⚠️ Notification ${id} non trouvée dans AdminNotification, vérification dans notification...`);
+      const { data: notifInOtherTable, error: otherError } = await supabaseClient
+        .from('notification')
+        .select('id, status, is_read, read_at, notification_type, title, user_type, user_id')
+        .eq('id', id)
+        .maybeSingle();
+      
+      if (notifInOtherTable) {
+        console.log(`ℹ️ Notification trouvée dans table 'notification' avec user_type: ${notifInOtherTable.user_type}`);
+        
+        // Si c'est une notification admin dans la table notification, la mettre à jour là-bas
+        if (notifInOtherTable.user_type === 'admin') {
+          if (notifInOtherTable.status !== 'archived') {
+            return res.status(400).json({
+              success: false,
+              message: 'Cette notification n\'est pas archivée'
+            });
+          }
+          
+          const wasRead = notifInOtherTable.is_read || notifInOtherTable.read_at !== null;
+          const newStatus = wasRead ? 'read' : 'unread';
+          
+          const { data: updatedNotif, error: updateError } = await supabaseClient
+            .from('notification')
+            .update({ 
+              status: newStatus,
+              is_read: wasRead,
+              archived_at: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .eq('user_type', 'admin')
+            .select();
+          
+          if (updateError) {
+            console.error('❌ Erreur réintégration notification dans table notification:', updateError);
+            return res.status(500).json({
+              success: false,
+              message: 'Erreur lors de la réintégration de la notification'
+            });
+          }
+          
+          if (updatedNotif && updatedNotif.length > 0) {
+            return res.json({
+              success: true,
+              message: `Notification réintégrée (${newStatus})`,
+              data: { notification: updatedNotif[0] }
+            });
+          }
+        }
+        
+        return res.status(400).json({
+          success: false,
+          message: 'Cette notification est dans la table notification mais pas pour un admin'
+        });
+      }
+      
       return res.status(404).json({
         success: false,
         message: 'Notification introuvable'
@@ -6882,8 +7007,63 @@ router.delete('/notifications/:id', async (req, res) => {
       });
     }
     
-    // Si la notification n'existe pas ou est déjà archivée, retourner succès
+    // Si la notification n'existe pas dans AdminNotification, vérifier dans notification
     if (!existing) {
+      // Vérifier aussi dans la table notification au cas où (notifications d'événement)
+      console.log(`⚠️ Notification ${id} non trouvée dans AdminNotification, vérification dans notification...`);
+      const { data: notifInOtherTable, error: otherError } = await supabaseClient
+        .from('notification')
+        .select('id, status, notification_type, title, user_type, user_id')
+        .eq('id', id)
+        .maybeSingle();
+      
+      if (notifInOtherTable) {
+        console.log(`ℹ️ Notification trouvée dans table 'notification' avec user_type: ${notifInOtherTable.user_type}`);
+        
+        // Si c'est une notification admin dans la table notification, l'archiver là-bas
+        if (notifInOtherTable.user_type === 'admin') {
+          if (notifInOtherTable.status === 'archived') {
+            return res.json({
+              success: true,
+              message: 'Notification déjà archivée',
+              data: { notification: notifInOtherTable }
+            });
+          }
+          
+          const { data: updatedNotif, error: updateError } = await supabaseClient
+            .from('notification')
+            .update({ 
+              status: 'archived',
+              archived_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .eq('user_type', 'admin')
+            .select();
+          
+          if (updateError) {
+            console.error('❌ Erreur archivage notification dans table notification:', updateError);
+            return res.status(500).json({
+              success: false,
+              message: 'Erreur lors de l\'archivage de la notification'
+            });
+          }
+          
+          if (updatedNotif && updatedNotif.length > 0) {
+            return res.json({
+              success: true,
+              message: 'Notification archivée',
+              data: { notification: updatedNotif[0] }
+            });
+          }
+        }
+        
+        return res.status(400).json({
+          success: false,
+          message: 'Cette notification est dans la table notification mais pas pour un admin'
+        });
+      }
+      
       return res.json({
         success: true,
         message: 'Notification introuvable ou déjà supprimée',
@@ -6899,7 +7079,7 @@ router.delete('/notifications/:id', async (req, res) => {
       });
     }
     
-    // Archiver la notification
+    // Archiver la notification dans AdminNotification
     const { data, error } = await supabaseClient
       .from('AdminNotification')
       .update({ 

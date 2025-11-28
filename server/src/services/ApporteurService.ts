@@ -1073,6 +1073,28 @@ export class ApporteurService {
         }
     }
 
+    // Marquer une notification comme non lue
+    static async markNotificationAsUnread(notificationId: string, apporteurId: string) {
+        try {
+            const { error } = await supabase
+                .from('notification')
+                .update({ is_read: false, read_at: null, status: 'unread' })
+                .eq('id', notificationId)
+                .eq('user_id', apporteurId)
+                .eq('user_type', 'apporteur');
+
+            if (error) {
+                console.error('Erreur mark notification as unread:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur markNotificationAsUnread:', error);
+            return { success: false, error: 'Erreur lors de la mise à jour de la notification' };
+        }
+    }
+
     // Marquer toutes les notifications comme lues
     static async markAllNotificationsAsRead(apporteurId: string) {
         try {
