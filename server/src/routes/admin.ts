@@ -7800,4 +7800,31 @@ router.get('/events/:id/synthese', asyncHandler(async (req, res) => {
   }
 }));
 
+// POST /api/admin/events/sync-completed - Forcer la vérification et mise à jour des RDV passés
+router.post('/events/sync-completed', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Synchronisation manuelle des RDV passés demandée par admin');
+
+    // Importer le service de complétion RDV
+    const rdvCompletionServiceModule = await import('../services/rdvCompletionService');
+    const rdvCompletionService = rdvCompletionServiceModule.default as any;
+    
+    // Appeler la méthode publique de vérification forcée
+    await rdvCompletionService.forceCheck();
+
+    return res.json({
+      success: true,
+      message: 'Synchronisation des RDV passés effectuée avec succès'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur synchronisation RDV passés:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la synchronisation des RDV passés',
+      error: error.message
+    });
+  }
+}));
+
 export default router;
