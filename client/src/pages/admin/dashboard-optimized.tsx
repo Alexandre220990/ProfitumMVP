@@ -1888,113 +1888,66 @@ const AdminDashboardOptimized: React.FC = () => {
   // ========================================
   
   const AdminFooter = () => (
-    <footer className="bg-white border-t border-gray-200 mt-12">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="bg-white border-t border-gray-100 mt-12">
+      <div className="max-w-7xl mx-auto px-6 py-5">
+        {/* Ligne principale compacte */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 lg:gap-8">
           {/* Logo et description */}
-          <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
-              <span className="text-xl font-bold text-gray-900">Profitum</span>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-md flex items-center justify-center shadow-sm">
+              <span className="text-white font-semibold text-xs">P</span>
             </div>
-            <p className="text-gray-600 mb-4 max-w-md">
-              Plateforme de gestion financière et d'optimisation fiscale pour entreprises. 
-              Simplifiez vos démarches administratives et maximisez vos économies.
-            </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors">
-                <span className="sr-only">LinkedIn</span>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-semibold text-gray-900 tracking-tight">Profitum</span>
+                <span className="text-xs text-gray-400 font-light">•</span>
+                <span className="text-xs text-gray-500 font-light">Plateforme de gestion financière et d'optimisation fiscale</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Liens groupés horizontalement */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+            <div className="flex items-center gap-4">
+              <a href="/admin/dashboard-optimized" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">Dashboard</a>
+              <a href="/admin/messagerie-admin" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">Messagerie</a>
+              <a href="/admin/agenda-admin" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">Agenda</a>
+              <a href="/admin/documents" className="text-gray-500 hover:text-gray-900 transition-colors font-medium">Documents</a>
+            </div>
+            <span className="text-gray-300">|</span>
+            <div className="flex items-center gap-4">
+              <a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Centre d'aide</a>
+              <a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Support</a>
+              <a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">API</a>
+              <a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Statut</a>
+            </div>
+            <span className="text-gray-300">|</span>
+            <div className="flex items-center gap-3">
+              <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="LinkedIn">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.338 16.338H13.67V12.16c0-.995-.017-2.277-1.387-2.277-1.39 0-1.601 1.086-1.601 2.207v4.248H8.014v-8.59h2.559v1.174h.037c.356-.675 1.227-1.387 2.526-1.387 2.703 0 3.203 1.778 3.203 4.092v4.711zM5.005 6.575a1.548 1.548 0 11-.003-3.096 1.548 1.548 0 01.003 3.096zm-1.337 9.763H6.34v-8.59H3.667v8.59zM17.668 1H2.328C1.595 1 1 1.581 1 2.298v15.403C1 18.418 1.595 19 2.328 19h15.34c.734 0 1.332-.582 1.332-1.299V2.298C19 1.581 18.402 1 17.668 1z" clipRule="evenodd" />
                 </svg>
               </a>
-              <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors">
-                <span className="sr-only">Twitter</span>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Twitter">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M6.29 18.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0020 3.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.073 4.073 0 01.8 7.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 010 16.407a11.616 11.616 0 006.29 1.84" />
                 </svg>
               </a>
             </div>
           </div>
-
-          {/* Liens rapides */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase mb-4">
-              Plateforme
-            </h3>
-            <ul className="space-y-3">
-              <li>
-                <a href="/admin/dashboard-optimized" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Dashboard Admin
-                </a>
-              </li>
-              <li>
-                <a href="/admin/messagerie-admin" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Messagerie
-                </a>
-              </li>
-              <li>
-                <a href="/admin/agenda-admin" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Agenda
-                </a>
-              </li>
-              <li>
-                <a href="/admin/documents" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Documents
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase mb-4">
-              Support
-            </h3>
-            <ul className="space-y-3">
-              <li>
-                <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Centre d'aide
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Contact support
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Documentation API
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Statut système
-                </a>
-              </li>
-            </ul>
-          </div>
         </div>
 
-        {/* Ligne de séparation */}
-        <div className="border-t border-gray-200 mt-8 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-500 text-sm">
-              © 2025 Profitum. Tous droits réservés.
-            </p>
-            <div className="flex space-x-6 mt-4 md:mt-0">
-              <a href="#" className="text-gray-500 hover:text-gray-900 text-sm transition-colors">
-                Politique de confidentialité
-              </a>
-              <a href="#" className="text-gray-500 hover:text-gray-900 text-sm transition-colors">
-                Conditions d'utilisation
-              </a>
-              <a href="#" className="text-gray-500 hover:text-gray-900 text-sm transition-colors">
-                Mentions légales
-              </a>
-            </div>
+        {/* Ligne inférieure */}
+        <div className="border-t border-gray-100 mt-4 pt-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <p className="text-xs text-gray-400 font-light">
+            © 2025 Profitum. Tous droits réservés.
+          </p>
+          <div className="flex items-center gap-4 text-xs">
+            <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors font-light">Confidentialité</a>
+            <span className="text-gray-300">•</span>
+            <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors font-light">Conditions</a>
+            <span className="text-gray-300">•</span>
+            <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors font-light">Mentions légales</a>
           </div>
         </div>
       </div>
