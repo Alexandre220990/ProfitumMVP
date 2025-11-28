@@ -472,7 +472,9 @@ export function UniversalNotificationCenter({
 
     if (eventStatus === 'upcoming') {
       const timeRemaining = eventStart.getTime() - now.getTime();
-      if (timeRemaining <= 0) return 'Maintenant';
+      // Si l'événement devrait commencer maintenant ou est en retard, ne pas afficher "Maintenant"
+      // mais plutôt le décompte négatif ou rien (la date/heure sera affichée séparément)
+      if (timeRemaining <= 0) return null; // Ne pas afficher de décompte si l'événement est passé
       
       const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
       const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
@@ -484,14 +486,15 @@ export function UniversalNotificationCenter({
       }
     } else if (eventStatus === 'in_progress') {
       const timeRemaining = eventEnd.getTime() - now.getTime();
-      if (timeRemaining <= 0) return 'Terminé';
+      if (timeRemaining <= 0) return null; // Ne pas afficher si terminé
       
       const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
       const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
       
       return `Se termine dans ${hours > 0 ? `${hours}h ` : ''}${minutes}min`;
     } else {
-      return 'Terminé';
+      // Pour les événements terminés, ne pas afficher de décompte
+      return null;
     }
   };
 
@@ -560,6 +563,9 @@ export function UniversalNotificationCenter({
 
     const isUnread = !notification.is_read && !isArchived;
     
+    // Déterminer si la tuile est cliquable
+    const isClickable = !isArchived && !!actionUrl;
+    
     return (
       <Card
         key={notification.id}
@@ -581,9 +587,12 @@ export function UniversalNotificationCenter({
         )}
       >
         <CardContent
-          className="p-4"
+          className={cn(
+            "p-4",
+            isClickable && "cursor-pointer hover:bg-gray-50 transition-colors"
+          )}
           onClick={() => {
-            if (!isArchived) {
+            if (isClickable) {
               handleNotificationClick(notification);
             }
           }}
@@ -638,21 +647,36 @@ export function UniversalNotificationCenter({
                 </p>
                 {isEventNotification && (
                   <div className="space-y-1">
-                    {/* Date/heure du RDV */}
-                    {metadata.scheduled_datetime && (
+                    {/* Date/heure du RDV - toujours afficher */}
+                    {metadata.scheduled_datetime ? (
                       <div className="text-xs text-gray-600 font-medium">
                         📅 {metadata.scheduled_datetime}
                       </div>
-                    )}
-                    {/* Décompte jusqu'au début/fin */}
-                    {eventTimeRemaining && (
+                    ) : metadata.scheduled_date && metadata.scheduled_time ? (
+                      <div className="text-xs text-gray-600 font-medium">
+                        📅 {new Date(`${metadata.scheduled_date}T${metadata.scheduled_time}`).toLocaleString('fr-FR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    ) : null}
+                    {/* Décompte jusqu'au début/fin - seulement si l'événement n'est pas terminé */}
+                    {eventTimeRemaining && eventStatus !== 'completed' && (
                       <div className={cn(
                         "text-xs font-semibold px-2 py-1 rounded inline-block",
                         eventStatus === 'upcoming' && "bg-blue-100 text-blue-700",
-                        eventStatus === 'in_progress' && "bg-orange-100 text-orange-700",
-                        eventStatus === 'completed' && "bg-green-100 text-green-700"
+                        eventStatus === 'in_progress' && "bg-orange-100 text-orange-700"
                       )}>
                         {eventTimeRemaining}
+                      </div>
+                    )}
+                    {/* Badge statut pour les événements terminés */}
+                    {eventStatus === 'completed' && (
+                      <div className="text-xs font-semibold px-2 py-1 rounded inline-block bg-green-100 text-green-700">
+                        Terminé
                       </div>
                     )}
                   </div>
@@ -756,19 +780,7 @@ export function UniversalNotificationCenter({
                       <Archive className="w-4 h-4" />
                     </Button>
                   </div>
-                  {actionUrl && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleNotificationClick(notification);
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      Ouvrir
-                    </Button>
-                  )}
+                  {/* Bouton rapport pour les événements terminés */}
                   {isEventNotification && eventStatus === 'completed' && metadata.event_id && (
                     <Button
                       variant="outline"
