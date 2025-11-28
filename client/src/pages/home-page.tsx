@@ -1,6 +1,5 @@
 import { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import { 
   TrendingUp, 
   ShieldCheck, 
@@ -510,36 +509,109 @@ const TestimonialsSection = () => (
   </section>
 );
 
-const CallToActionSection = () => (
-  <section className="py-12 sm:py-16 md:py-20 lg:py-24 bg-gradient-to-br from-blue-600 to-indigo-700">
-    <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6 sm:mb-8 px-4">
-        Prêt à optimiser vos <span className="bg-gradient-to-r from-blue-200 to-indigo-200 bg-clip-text text-transparent">finances</span> ?
-      </h2>
-      <p className="text-base sm:text-lg md:text-xl text-blue-100 mb-8 sm:mb-10 lg:mb-12 max-w-2xl mx-auto leading-relaxed px-4">
-        Rejoignez Profitum et commencez à économiser dès aujourd'hui avec nos experts qualifiés.
-      </p>
-      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-stretch sm:items-center">
-        <Link to="/simulateur" className="w-full sm:w-auto">
-          <Button className="w-full sm:w-auto group bg-white text-blue-700 font-bold px-8 sm:px-10 py-3 sm:py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-            <span className="flex items-center justify-center gap-2 text-sm sm:text-base">
-              <span className="whitespace-nowrap">Commencer une simulation</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </span>
-          </Button>
-        </Link>
-        <Link to="/simulateur" className="w-full sm:w-auto">
-          <Button className="w-full sm:w-auto group bg-transparent border-2 border-white text-white font-bold px-8 sm:px-10 py-3 sm:py-4 rounded-xl hover:bg-white/10 transition-all duration-300 transform hover:-translate-y-1">
-            <span className="flex items-center justify-center gap-2 text-sm sm:text-base">
-              <span className="whitespace-nowrap">Tester le simulateur</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </span>
-          </Button>
-        </Link>
+const CallToActionSection = () => {
+  const navigate = useNavigate();
+  
+  return (
+    <section className="py-12 sm:py-16 md:py-20 lg:py-24 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-hidden">
+      {/* Subtle background pattern */}
+      <div className="absolute inset-0 opacity-[0.02]">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 2px 2px, rgb(15 23 42) 1px, transparent 0)`,
+          backgroundSize: '40px 40px'
+        }}></div>
       </div>
-    </div>
-  </section>
-);
+      
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-blue-200/50 text-blue-700 px-5 py-2.5 rounded-full text-xs font-medium tracking-wide mb-8">
+          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+          <span className="uppercase tracking-wider">Démarrez votre optimisation</span>
+        </div>
+        
+        <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-slate-900 mb-4 sm:mb-6 lg:mb-8 px-4 leading-tight tracking-tight">
+          <span className="block mb-2">Prêt à optimiser vos</span>
+          <span className="font-normal bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            finances ?
+          </span>
+        </h2>
+        
+        <p className="text-base sm:text-lg md:text-xl text-slate-600 mb-8 sm:mb-10 lg:mb-12 max-w-2xl mx-auto leading-relaxed px-4 font-light tracking-wide">
+          Rejoignez Profitum et commencez à économiser dès aujourd'hui avec nos experts qualifiés.
+        </p>
+        
+        {/* CTA Buttons - Design premium */}
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-stretch sm:items-center">
+          {/* Bouton principal - Simulation */}
+          <div className="flex-1 group w-full sm:w-auto max-w-sm mx-auto sm:max-w-none">
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 justify-center">
+                <div className="w-1.5 h-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
+                <span className="text-xs font-light text-slate-600 uppercase tracking-wide">Simulation</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-blue-200 to-transparent max-w-12"></div>
+              </div>
+              
+              <button 
+                onClick={() => navigate('/simulateur')}
+                className="group relative w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-medium py-3 sm:py-3.5 px-6 sm:px-8 rounded-xl shadow-lg hover:shadow-blue-500/20 transition-all duration-300 transform hover:-translate-y-0.5 overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                <span className="relative flex items-center justify-center gap-2">
+                  <span className="text-sm sm:text-base font-medium">Commencer une simulation</span>
+                  <div className="w-4 h-4 bg-white/20 rounded-full flex items-center justify-center">
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-300" />
+                  </div>
+                </span>
+              </button>
+              
+              <div className="mt-2 flex items-center justify-center gap-1.5">
+                <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm border border-green-200/50 rounded-full px-2.5 py-1">
+                  <div className="w-1 h-1 bg-green-500 rounded-full"></div>
+                  <span className="text-xs font-light text-green-600 whitespace-nowrap tracking-wide">Gratuit</span>
+                </div>
+                <span className="text-xs text-slate-400 font-light">•</span>
+                <span className="text-xs text-slate-500 font-light whitespace-nowrap tracking-wide">Résultats en 2 min</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Bouton secondaire - Contact */}
+          <div className="flex-1 group w-full sm:w-auto max-w-sm mx-auto sm:max-w-none">
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 justify-center">
+                <div className="w-1.5 h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"></div>
+                <span className="text-xs font-light text-slate-600 uppercase tracking-wide">Contact</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-emerald-200 to-transparent max-w-12"></div>
+              </div>
+              
+              <button 
+                onClick={() => navigate('/contact')}
+                className="group relative w-full bg-white border border-slate-200/80 hover:border-slate-300 text-slate-700 font-medium py-3 sm:py-3.5 px-6 sm:px-8 rounded-xl shadow-md hover:shadow-slate-500/10 transition-all duration-300 transform hover:-translate-y-0.5 overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-50 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                <span className="relative flex items-center justify-center gap-2">
+                  <span className="text-sm sm:text-base font-medium">Prendre contact</span>
+                  <div className="w-4 h-4 bg-slate-100 rounded-full flex items-center justify-center">
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-300" />
+                  </div>
+                </span>
+              </button>
+              
+              <div className="mt-2 flex items-center justify-center gap-1.5">
+                <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm border border-purple-200/50 rounded-full px-2.5 py-1">
+                  <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                  <span className="text-xs font-light text-purple-600 whitespace-nowrap tracking-wide">Expert dédié</span>
+                </div>
+                <span className="text-xs text-slate-400 font-light">•</span>
+                <span className="text-xs text-slate-500 font-light whitespace-nowrap tracking-wide">Réponse sous 24h</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
 
 const FooterSection = () => (
   <footer className="bg-slate-900">
@@ -641,7 +713,7 @@ export default function HomePage() {
       <ValuePropositionSection />
       
       {/* ProcessSteps - Responsive */}
-      <div className="py-12 sm:py-16 md:py-20 lg:py-24 bg-white">
+      <div className="py-12 sm:py-16 md:py-20 lg:py-24 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <ProcessSteps />
       </div>
       
