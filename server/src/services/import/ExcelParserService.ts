@@ -8,7 +8,9 @@ export class ExcelParserService {
   async parseFile(buffer: Buffer): Promise<ExcelFileData> {
     try {
       const workbook = new XLSX.Workbook();
-      await workbook.xlsx.load(buffer);
+      // Convertir le Buffer en format compatible avec exceljs
+      const bufferData = Buffer.from(buffer);
+      await workbook.xlsx.load(bufferData);
 
       // Prendre la première feuille
       const worksheet = workbook.worksheets[0];
