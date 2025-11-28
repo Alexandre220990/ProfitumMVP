@@ -23,10 +23,9 @@ export default function AdvancedConfigStep({
   });
   const [experts, setExperts] = useState<Array<{ id: string; name: string }>>([]);
   const [cabinets, setCabinets] = useState<Array<{ id: string; name: string }>>([]);
-  const [produits, setProduits] = useState<Array<{ id: string; nom: string }>>([]);
 
   useEffect(() => {
-    // Charger les experts, cabinets et produits
+    // Charger les experts et cabinets
     loadData();
   }, []);
 
@@ -55,18 +54,6 @@ export default function AdvancedConfigStep({
         setCabinets(cabinetsData.data?.map((c: any) => ({
           id: c.id,
           name: c.name
-        })) || []);
-      }
-
-      // Charger produits
-      const produitsRes = await fetch(`${envConfig.API_URL}/api/produits-eligibles`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (produitsRes.ok) {
-        const produitsData = await produitsRes.json();
-        setProduits(produitsData.data?.map((p: any) => ({
-          id: p.id,
-          nom: p.nom
         })) || []);
       }
     } catch (error) {
@@ -110,14 +97,14 @@ export default function AdvancedConfigStep({
         <div>
           <Label htmlFor="default-expert">Expert par défaut (optionnel)</Label>
           <Select
-            value={config.defaultExpertId || ''}
-            onValueChange={(value) => setConfig({ ...config, defaultExpertId: value || undefined })}
+            value={config.defaultExpertId || '__none__'}
+            onValueChange={(value) => setConfig({ ...config, defaultExpertId: value === '__none__' ? undefined : value })}
           >
             <SelectTrigger id="default-expert" className="mt-1">
               <SelectValue placeholder="Aucun" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Aucun</SelectItem>
+              <SelectItem value="__none__">Aucun</SelectItem>
               {experts.map((expert) => (
                 <SelectItem key={expert.id} value={expert.id}>
                   {expert.name}
@@ -130,14 +117,14 @@ export default function AdvancedConfigStep({
         <div>
           <Label htmlFor="default-cabinet">Cabinet par défaut (optionnel)</Label>
           <Select
-            value={config.defaultCabinetId || ''}
-            onValueChange={(value) => setConfig({ ...config, defaultCabinetId: value || undefined })}
+            value={config.defaultCabinetId || '__none__'}
+            onValueChange={(value) => setConfig({ ...config, defaultCabinetId: value === '__none__' ? undefined : value })}
           >
             <SelectTrigger id="default-cabinet" className="mt-1">
               <SelectValue placeholder="Aucun" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Aucun</SelectItem>
+              <SelectItem value="__none__">Aucun</SelectItem>
               {cabinets.map((cabinet) => (
                 <SelectItem key={cabinet.id} value={cabinet.id}>
                   {cabinet.name}

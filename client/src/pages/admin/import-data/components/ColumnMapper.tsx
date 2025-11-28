@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ExcelFileData, EntityType, MappingConfig, MappingRule, TransformationConfig } from '@/types/import';
+import { ExcelFileData, EntityType, MappingConfig, MappingRule } from '@/types/import';
 import { toast } from 'sonner';
 
 interface ColumnMapperProps {
@@ -118,7 +118,8 @@ export default function ColumnMapper({
 
   const handleFieldChange = (index: number, field: string) => {
     const newRules = [...rules];
-    newRules[index].databaseField = field;
+    // Si "__ignore__" est sélectionné, mettre une chaîne vide pour ignorer la colonne
+    newRules[index].databaseField = field === '__ignore__' ? '' : field;
     
     // Marquer comme requis si le champ l'est
     const availableFields = AVAILABLE_FIELDS[entityType];
@@ -230,14 +231,14 @@ export default function ColumnMapper({
                   </td>
                   <td className="px-4 py-3">
                     <Select
-                      value={rule.databaseField}
+                      value={rule.databaseField || '__ignore__'}
                       onValueChange={(value) => handleFieldChange(index, value)}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Sélectionner un champ" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">-- Ignorer cette colonne --</SelectItem>
+                        <SelectItem value="__ignore__">-- Ignorer cette colonne --</SelectItem>
                         {availableFields.map((field) => (
                           <SelectItem key={field.value} value={field.value}>
                             {field.label} {field.required && '*'}
