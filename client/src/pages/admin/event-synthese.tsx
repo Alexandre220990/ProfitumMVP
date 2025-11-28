@@ -20,12 +20,20 @@ import {
   Users,
   AlertTriangle,
   ArrowLeft,
-  Edit
+  Edit,
+  Check,
+  X,
+  Send
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
 import { toast } from 'sonner';
 import { RDVReportModal } from '@/components/rdv/RDVReportModal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { config } from '@/config/env';
 
 interface EventData {
   id: string;
@@ -119,6 +127,18 @@ const EventSynthese: React.FC = () => {
   const [event, setEvent] = useState<EventData | null>(null);
   const [report, setReport] = useState<ReportData | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [eventResponseModal, setEventResponseModal] = useState<{
+    isOpen: boolean;
+    action: 'accept' | 'refuse' | 'propose_alternative' | null;
+  }>({
+    isOpen: false,
+    action: null
+  });
+  const [alternativeDateTime, setAlternativeDateTime] = useState({
+    date: '',
+    time: '',
+    notes: ''
+  });
 
   useEffect(() => {
     if (id) {
@@ -230,6 +250,61 @@ const EventSynthese: React.FC = () => {
            event.ApporteurAffaires.email;
   };
 
+  // Vérifier si l'utilisateur est participant à l'événement
+  const isParticipant = () => {
+    if (!event || !user) return false;
+    return event.RDV_Participants?.some(
+      (p: any) => p.user_id === user.id
+    ) || false;
+  };
+
+  // Fonction pour répondre à un événement proposé
+  const handleEventResponse = async (
+    action: 'accept' | 'refuse' | 'propose_alternative',
+    refusalReason?: string,
+    alternativeDate?: string,
+    alternativeTime?: string,
+    notes?: string
+  ) => {
+    if (!event?.id) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${config.API_URL}/api/rdv/${event.id}/respond`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action,
+          refusal_reason: refusalReason,
+          alternative_date: alternativeDate,
+          alternative_time: alternativeTime,
+          notes
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(
+          action === 'accept' ? 'Événement accepté' :
+          action === 'refuse' ? 'Événement refusé' :
+          'Horaire alternatif proposé'
+        );
+        loadEventData(); // Recharger les données
+        setEventResponseModal({ isOpen: false, action: null });
+        setAlternativeDateTime({ date: '', time: '', notes: '' });
+      } else {
+        toast.error(data.message || 'Erreur lors de la réponse');
+      }
+    } catch (error: any) {
+      console.error('Erreur réponse événement:', error);
+      toast.error('Erreur lors de la réponse à l\'événement');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
@@ -251,9 +326,40 @@ const EventSynthese: React.FC = () => {
               </h1>
             </div>
             {!loading && event && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl font-bold text-gray-900">{event.title}</h2>
                 {event.status && getStatusBadge(event.status)}
+                {/* Actions pour les événements proposés */}
+                {event.status === 'proposed' && isParticipant() && (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => handleEventResponse('accept')}
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Accepter
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                      onClick={() => setEventResponseModal({ isOpen: true, action: 'propose_alternative' })}
+                    >
+                      <Clock className="w-4 h-4 mr-1" />
+                      Proposer horaire
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-300 text-red-700 hover:bg-red-50"
+                      onClick={() => setEventResponseModal({ isOpen: true, action: 'refuse' })}
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Refuser
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -769,6 +875,179 @@ const EventSynthese: React.FC = () => {
           } : undefined}
         />
       )}
+
+      {/* Modal de réponse à un événement proposé */}
+      <Dialog open={eventResponseModal.isOpen} onOpenChange={(open) => {
+        if (!open) {
+          setEventResponseModal({ isOpen: false, action: null });
+          setAlternativeDateTime({ date: '', time: '', notes: '' });
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {eventResponseModal.action === 'accept' && 'Accepter l\'événement'}
+              {eventResponseModal.action === 'refuse' && 'Refuser l\'événement'}
+              {eventResponseModal.action === 'propose_alternative' && 'Proposer un horaire alternatif'}
+            </DialogTitle>
+            <DialogDescription>
+              {event?.title && (
+                <div className="mt-2 text-sm font-medium text-gray-700">
+                  {event.title}
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {eventResponseModal.action === 'refuse' && (
+            <div className="space-y-4 mt-4">
+              <div>
+                <Label htmlFor="refusal-reason">Motif de refus *</Label>
+                <Textarea
+                  id="refusal-reason"
+                  placeholder="Expliquez pourquoi vous refusez cet événement..."
+                  className="mt-1"
+                  rows={4}
+                  onChange={(e) => {
+                    setAlternativeDateTime(prev => ({ ...prev, notes: e.target.value }));
+                  }}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEventResponseModal({ isOpen: false, action: null });
+                    setAlternativeDateTime({ date: '', time: '', notes: '' });
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    if (!alternativeDateTime.notes.trim()) {
+                      toast.error('Veuillez indiquer un motif de refus');
+                      return;
+                    }
+                    handleEventResponse('refuse', alternativeDateTime.notes);
+                  }}
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Confirmer le refus
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {eventResponseModal.action === 'propose_alternative' && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="alternative-date">Date *</Label>
+                  <Input
+                    id="alternative-date"
+                    type="date"
+                    className="mt-1"
+                    value={alternativeDateTime.date}
+                    onChange={(e) => {
+                      setAlternativeDateTime(prev => ({ ...prev, date: e.target.value }));
+                    }}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="alternative-time">Heure *</Label>
+                  <Input
+                    id="alternative-time"
+                    type="time"
+                    className="mt-1"
+                    value={alternativeDateTime.time}
+                    onChange={(e) => {
+                      const time = e.target.value;
+                      const minutes = time.split(':')[1];
+                      if (minutes && minutes !== '00' && minutes !== '30') {
+                        toast.error('L\'heure doit être à :00 ou :30');
+                        return;
+                      }
+                      setAlternativeDateTime(prev => ({ ...prev, time }));
+                    }}
+                    step="1800"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="alternative-notes">Notes (optionnel)</Label>
+                <Textarea
+                  id="alternative-notes"
+                  placeholder="Ajoutez des notes sur cet horaire alternatif..."
+                  className="mt-1"
+                  rows={3}
+                  value={alternativeDateTime.notes}
+                  onChange={(e) => {
+                    setAlternativeDateTime(prev => ({ ...prev, notes: e.target.value }));
+                  }}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEventResponseModal({ isOpen: false, action: null });
+                    setAlternativeDateTime({ date: '', time: '', notes: '' });
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={() => {
+                    if (!alternativeDateTime.date || !alternativeDateTime.time) {
+                      toast.error('Veuillez remplir la date et l\'heure');
+                      return;
+                    }
+                    handleEventResponse(
+                      'propose_alternative',
+                      undefined,
+                      alternativeDateTime.date,
+                      alternativeDateTime.time,
+                      alternativeDateTime.notes
+                    );
+                  }}
+                >
+                  <Send className="w-4 h-4 mr-1" />
+                  Proposer cet horaire
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {eventResponseModal.action === 'accept' && (
+            <div className="space-y-4 mt-4">
+              <p className="text-sm text-gray-600">
+                Êtes-vous sûr de vouloir accepter cet événement ?
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEventResponseModal({ isOpen: false, action: null });
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => handleEventResponse('accept')}
+                >
+                  <Check className="w-4 h-4 mr-1" />
+                  Confirmer
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

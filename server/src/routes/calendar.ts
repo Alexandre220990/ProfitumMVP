@@ -1412,7 +1412,7 @@ router.post('/events/:id/participants', calendarLimiter, asyncHandler(async (req
 
     // Ajouter les participants
     const participantData = participants.map((participant: any) => ({
-      event_id: id,
+      rdv_id: id, // Correction: utiliser rdv_id au lieu de event_id
       user_id: participant.user_id,
       user_type: participant.user_type,
       user_email: participant.user_email,
@@ -1428,6 +1428,121 @@ router.post('/events/:id/participants', calendarLimiter, asyncHandler(async (req
     if (error) {
       console.error('❌ Erreur ajout participants:', error);
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+
+    // Formater la date et l'heure pour les notifications
+    const formatDateTime = (date: string, time: string): string => {
+      try {
+        const dateObj = new Date(`${date}T${time}`);
+        const day = dateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const hour = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        return `${day} à ${hour}`;
+      } catch {
+        return `${date} à ${time}`;
+      }
+    };
+
+    const dateTimeStr = formatDateTime(event.scheduled_date, event.scheduled_time);
+
+    // Envoyer des notifications aux nouveaux participants
+    // Si l'événement est proposé, envoyer une notification de proposition
+    const isProposed = event.status === 'proposed';
+    
+    for (const participant of participants) {
+      try {
+        // Ne pas envoyer de notification à l'utilisateur qui ajoute les participants
+        if (participant.user_id === authUser.id) {
+          continue;
+        }
+
+        // Générer l'URL d'action selon le type d'utilisateur
+        const getActionUrl = (userType: string): string => {
+          switch (userType) {
+            case 'admin':
+              return `/admin/events/${id}`;
+            case 'expert':
+              return `/expert/events/${id}`;
+            case 'apporteur':
+              return `/apporteur/events/${id}`;
+            case 'client':
+            default:
+              return `/events/${id}`;
+          }
+        };
+
+        const actionUrl = getActionUrl(participant.user_type);
+
+        if (isProposed) {
+          // Notification de proposition d'événement
+          await supabase
+            .from('notification')
+            .insert({
+              user_id: participant.user_id,
+              user_type: participant.user_type,
+              notification_type: 'event_proposed',
+              title: 'Proposition d\'événement',
+              message: `Vous êtes invité à l'événement "${event.title}" le ${dateTimeStr}`,
+              priority: 'high',
+              status: 'unread',
+              is_read: false,
+              metadata: {
+                event_id: id,
+                event_title: event.title,
+                event_status: 'proposed',
+                scheduled_date: event.scheduled_date,
+                scheduled_time: event.scheduled_time,
+                scheduled_datetime: dateTimeStr,
+                duration_minutes: event.duration_minutes || 60,
+                location: event.location,
+                meeting_url: event.meeting_url,
+                meeting_type: event.meeting_type,
+                organizer_name: (authUser as any).name || authUser.email || 'Organisateur',
+                organizer_id: authUser.id,
+                organizer_type: authUser.type
+              },
+              action_url: actionUrl,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+        } else {
+          // Notification d'invitation à un événement confirmé
+          await supabase
+            .from('notification')
+            .insert({
+              user_id: participant.user_id,
+              user_type: participant.user_type,
+              notification_type: 'event_invitation',
+              title: 'Invitation à un événement',
+              message: `Vous êtes invité à l'événement "${event.title}" le ${dateTimeStr}`,
+              priority: 'medium',
+              status: 'unread',
+              is_read: false,
+              metadata: {
+                event_id: id,
+                event_title: event.title,
+                event_status: event.status,
+                scheduled_date: event.scheduled_date,
+                scheduled_time: event.scheduled_time,
+                scheduled_datetime: dateTimeStr,
+                duration_minutes: event.duration_minutes || 60,
+                location: event.location,
+                meeting_url: event.meeting_url,
+                meeting_type: event.meeting_type,
+                organizer_name: (authUser as any).name || authUser.email || 'Organisateur',
+                organizer_id: authUser.id,
+                organizer_type: authUser.type
+              },
+              action_url: actionUrl,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+        }
+
+        console.log(`✅ Notification envoyée à ${participant.user_type}:${participant.user_id} pour l'événement ${id}`);
+      } catch (notificationError) {
+        console.warn(`⚠️ Erreur notification participant ${participant.user_id}:`, notificationError);
+        // Ne pas faire échouer l'ajout de participants si les notifications échouent
+      }
     }
 
     // Log de l'activité

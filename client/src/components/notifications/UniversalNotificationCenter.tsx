@@ -44,7 +44,9 @@ import {
   DollarSign,
   UserCheck,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Clock,
+  Send
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -54,7 +56,10 @@ import { RDVReportModal } from '@/components/rdv/RDVReportModal';
 import { FileText as FileTextIcon } from 'lucide-react';
 import { config } from '@/config/env';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface UniversalNotificationCenterProps {
   /** Mode d'affichage : modal plein écran ou compact intégré */
@@ -128,6 +133,25 @@ export function UniversalNotificationCenter({
   }>({
     isOpen: false,
     report: null
+  });
+
+  // État pour le modal de réponse à un événement proposé
+  const [eventResponseModal, setEventResponseModal] = useState<{
+    isOpen: boolean;
+    eventId: string | null;
+    action: 'accept' | 'refuse' | 'propose_alternative' | null;
+    eventTitle?: string;
+  }>({
+    isOpen: false,
+    eventId: null,
+    action: null
+  });
+
+  // État pour le formulaire de proposition d'horaire alternatif
+  const [alternativeDateTime, setAlternativeDateTime] = useState({
+    date: '',
+    time: '',
+    notes: ''
   });
 
   // Charger les rapports pour les événements terminés
@@ -686,6 +710,62 @@ export function UniversalNotificationCenter({
     }
   };
 
+  // Fonction pour répondre à un événement proposé
+  const handleEventResponse = async (
+    eventId: string,
+    action: 'accept' | 'refuse' | 'propose_alternative',
+    refusalReason?: string,
+    alternativeDate?: string,
+    alternativeTime?: string,
+    notes?: string
+  ) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${config.API_URL}/api/rdv/${eventId}/respond`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action,
+          refusal_reason: refusalReason,
+          alternative_date: alternativeDate,
+          alternative_time: alternativeTime,
+          notes
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(
+          action === 'accept' ? 'Événement accepté' :
+          action === 'refuse' ? 'Événement refusé' :
+          'Horaire alternatif proposé'
+        );
+        reload();
+        setEventResponseModal({ isOpen: false, eventId: null, action: null });
+        setAlternativeDateTime({ date: '', time: '', notes: '' });
+      } else {
+        toast.error(data.message || 'Erreur lors de la réponse');
+      }
+    } catch (error: any) {
+      console.error('Erreur réponse événement:', error);
+      toast.error('Erreur lors de la réponse à l\'événement');
+    }
+  };
+
+  // Ouvrir le modal de réponse
+  const openEventResponseModal = (eventId: string, action: 'accept' | 'refuse' | 'propose_alternative', eventTitle?: string) => {
+    setEventResponseModal({
+      isOpen: true,
+      eventId,
+      action,
+      eventTitle
+    });
+  };
+
   const renderNotificationCard = (notification: any) => {
     const metadata = notification.metadata || {};
     const slaDescription = formatSlaDescription(notification);
@@ -701,13 +781,21 @@ export function UniversalNotificationCenter({
       notification.notification_type === 'event_upcoming' ||
       notification.notification_type === 'event_in_progress' ||
       notification.notification_type === 'event_completed' ||
+      notification.notification_type === 'event_proposed' ||
+      notification.notification_type === 'event_invitation' ||
       metadata.event_id;
+    
+    // Vérifier si c'est une proposition d'événement (nécessite une réponse)
+    const isEventProposed = 
+      notification.notification_type === 'event_proposed' ||
+      (metadata.event_status === 'proposed' && metadata.event_id);
     
     const eventTimeRemaining = isEventNotification ? formatEventTimeRemaining(notification) : null;
     const eventStatus = metadata.event_status || 
       (notification.notification_type === 'event_upcoming' ? 'upcoming' :
        notification.notification_type === 'event_in_progress' ? 'in_progress' :
-       notification.notification_type === 'event_completed' ? 'completed' : null);
+       notification.notification_type === 'event_completed' ? 'completed' :
+       notification.notification_type === 'event_proposed' ? 'proposed' : null);
 
     const isUnread = !notification.is_read && !isArchived;
     
@@ -725,6 +813,8 @@ export function UniversalNotificationCenter({
             return "border-l-4 border-l-green-600 bg-green-100 shadow-md";
           } else if (eventStatus === 'in_progress') {
             return "border-l-4 border-l-orange-600 bg-orange-100 shadow-md";
+          } else if (eventStatus === 'proposed' || isEventProposed) {
+            return "border-l-4 border-l-purple-600 bg-purple-100 shadow-md";
           } else {
             return "border-l-4 border-l-blue-600 bg-blue-100 shadow-md";
           }
@@ -734,6 +824,8 @@ export function UniversalNotificationCenter({
             return "border-l-2 border-l-green-300 bg-green-50";
           } else if (eventStatus === 'in_progress') {
             return "border-l-2 border-l-orange-300 bg-orange-50";
+          } else if (eventStatus === 'proposed' || isEventProposed) {
+            return "border-l-2 border-l-purple-300 bg-purple-50";
           } else {
             return "border-l-2 border-l-blue-300 bg-blue-50";
           }
@@ -862,6 +954,50 @@ export function UniversalNotificationCenter({
                         Terminé
                       </div>
                     )}
+                    {/* Badge pour les événements proposés */}
+                    {(eventStatus === 'proposed' || isEventProposed) && (
+                      <div className="text-xs font-semibold px-2 py-1 rounded inline-block bg-purple-100 text-purple-700">
+                        En attente de réponse
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Actions pour les événements proposés */}
+                {isEventProposed && metadata.event_id && !isArchived && (
+                  <div className="flex flex-wrap gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => {
+                        handleEventResponse(metadata.event_id, 'accept');
+                      }}
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Accepter
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                      onClick={() => {
+                        openEventResponseModal(metadata.event_id, 'propose_alternative', metadata.event_title || notification.title);
+                      }}
+                    >
+                      <Clock className="w-4 h-4 mr-1" />
+                      Proposer horaire
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-300 text-red-700 hover:bg-red-50"
+                      onClick={() => {
+                        openEventResponseModal(metadata.event_id, 'refuse', metadata.event_title || notification.title);
+                      }}
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Refuser
+                    </Button>
                   </div>
                 )}
                 {(metadata.next_step_label || metadata.next_step_description) && (
@@ -1540,6 +1676,195 @@ export function UniversalNotificationCenter({
                   })}
                 </div>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Modal de réponse à un événement proposé */}
+      <Dialog open={eventResponseModal.isOpen} onOpenChange={(open) => {
+        if (!open) {
+          setEventResponseModal({ isOpen: false, eventId: null, action: null });
+          setAlternativeDateTime({ date: '', time: '', notes: '' });
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {eventResponseModal.action === 'accept' && 'Accepter l\'événement'}
+              {eventResponseModal.action === 'refuse' && 'Refuser l\'événement'}
+              {eventResponseModal.action === 'propose_alternative' && 'Proposer un horaire alternatif'}
+            </DialogTitle>
+            <DialogDescription>
+              {eventResponseModal.eventTitle && (
+                <div className="mt-2 text-sm font-medium text-gray-700">
+                  {eventResponseModal.eventTitle}
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {eventResponseModal.action === 'refuse' && (
+            <div className="space-y-4 mt-4">
+              <div>
+                <Label htmlFor="refusal-reason">Motif de refus *</Label>
+                <Textarea
+                  id="refusal-reason"
+                  placeholder="Expliquez pourquoi vous refusez cet événement..."
+                  className="mt-1"
+                  rows={4}
+                  onChange={(e) => {
+                    const reason = e.target.value;
+                    // Stocker temporairement dans alternativeDateTime.notes pour le refus
+                    setAlternativeDateTime(prev => ({ ...prev, notes: reason }));
+                  }}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEventResponseModal({ isOpen: false, eventId: null, action: null });
+                    setAlternativeDateTime({ date: '', time: '', notes: '' });
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    if (!alternativeDateTime.notes.trim()) {
+                      toast.error('Veuillez indiquer un motif de refus');
+                      return;
+                    }
+                    if (eventResponseModal.eventId) {
+                      handleEventResponse(
+                        eventResponseModal.eventId,
+                        'refuse',
+                        alternativeDateTime.notes
+                      );
+                    }
+                  }}
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Confirmer le refus
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {eventResponseModal.action === 'propose_alternative' && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="alternative-date">Date *</Label>
+                  <Input
+                    id="alternative-date"
+                    type="date"
+                    className="mt-1"
+                    value={alternativeDateTime.date}
+                    onChange={(e) => {
+                      setAlternativeDateTime(prev => ({ ...prev, date: e.target.value }));
+                    }}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="alternative-time">Heure *</Label>
+                  <Input
+                    id="alternative-time"
+                    type="time"
+                    className="mt-1"
+                    value={alternativeDateTime.time}
+                    onChange={(e) => {
+                      const time = e.target.value;
+                      // Valider que l'heure est à :00 ou :30
+                      const minutes = time.split(':')[1];
+                      if (minutes && minutes !== '00' && minutes !== '30') {
+                        toast.error('L\'heure doit être à :00 ou :30');
+                        return;
+                      }
+                      setAlternativeDateTime(prev => ({ ...prev, time }));
+                    }}
+                    step="1800"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="alternative-notes">Notes (optionnel)</Label>
+                <Textarea
+                  id="alternative-notes"
+                  placeholder="Ajoutez des notes sur cet horaire alternatif..."
+                  className="mt-1"
+                  rows={3}
+                  value={alternativeDateTime.notes}
+                  onChange={(e) => {
+                    setAlternativeDateTime(prev => ({ ...prev, notes: e.target.value }));
+                  }}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEventResponseModal({ isOpen: false, eventId: null, action: null });
+                    setAlternativeDateTime({ date: '', time: '', notes: '' });
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={() => {
+                    if (!alternativeDateTime.date || !alternativeDateTime.time) {
+                      toast.error('Veuillez remplir la date et l\'heure');
+                      return;
+                    }
+                    if (eventResponseModal.eventId) {
+                      handleEventResponse(
+                        eventResponseModal.eventId,
+                        'propose_alternative',
+                        undefined,
+                        alternativeDateTime.date,
+                        alternativeDateTime.time,
+                        alternativeDateTime.notes
+                      );
+                    }
+                  }}
+                >
+                  <Send className="w-4 h-4 mr-1" />
+                  Proposer cet horaire
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {eventResponseModal.action === 'accept' && (
+            <div className="space-y-4 mt-4">
+              <p className="text-sm text-gray-600">
+                Êtes-vous sûr de vouloir accepter cet événement ?
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEventResponseModal({ isOpen: false, eventId: null, action: null });
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => {
+                    if (eventResponseModal.eventId) {
+                      handleEventResponse(eventResponseModal.eventId, 'accept');
+                    }
+                  }}
+                >
+                  <Check className="w-4 h-4 mr-1" />
+                  Confirmer
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
