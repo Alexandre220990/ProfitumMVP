@@ -354,9 +354,13 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
         console.log('🔍 Appel createEvent avec:', eventData);
         await createEvent(eventData);
       }
+      
+      // Réinitialiser les états après succès
       setShowEventDialog(false);
       setSelectedEvent(null);
       setSelectedDate(null);
+      
+      toast.success(selectedEvent ? 'Événement mis à jour avec succès' : 'Événement créé avec succès');
     } catch (error) {
       console.error('❌ Erreur création/mise à jour événement:', error);
       throw error;
@@ -554,7 +558,14 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                     isToday && "bg-blue-50 border-blue-300 font-bold",
                     isSelected && "bg-blue-100 border-blue-400"
                   )}
-                  onClick={() => setSelectedDate(date)}
+                  onClick={() => {
+                    // Ouvrir le formulaire avec la date préremplie à 09:00
+                    const dateWithTime = new Date(date);
+                    dateWithTime.setHours(9, 0, 0, 0);
+                    setSelectedDate(dateWithTime);
+                    setSelectedEvent(null);
+                    setShowEventDialog(true);
+                  }}
                 >
                   <div className={cn(
                     "text-sm font-medium",
@@ -766,16 +777,73 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                 
                 {/* Grille horaire avec événements */}
                 <div className="relative">
-                  {/* Lignes des heures */}
+                  {/* Lignes des heures - cliquables pour créer un événement et droppables pour drag & drop */}
                   {hours.map((hour) => (
                     <div 
                       key={hour} 
-                      className="border-b border-gray-200"
+                      className="border-b border-gray-200 relative group cursor-pointer hover:bg-blue-50/50 transition-colors"
                       style={{ height: `${hourHeight}px` }}
-                    />
+                      onClick={(e) => {
+                        // Calculer la position du clic dans le créneau
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const clickY = e.clientY - rect.top;
+                        const minutes = Math.floor((clickY / hourHeight) * 60);
+                        const clickedDate = new Date(day);
+                        clickedDate.setHours(hour, minutes, 0, 0);
+                        
+                        // Ouvrir le formulaire avec la date/heure préremplies
+                        setSelectedDate(clickedDate);
+                        setSelectedEvent(null);
+                        setShowEventDialog(true);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        e.currentTarget.classList.add('bg-blue-100');
+                      }}
+                      onDragLeave={(e) => {
+                        e.currentTarget.classList.remove('bg-blue-100');
+                      }}
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove('bg-blue-100');
+                        
+                        try {
+                          const dragData = JSON.parse(e.dataTransfer.getData('text/plain'));
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const dropY = e.clientY - rect.top;
+                          const minutes = Math.floor((dropY / hourHeight) * 60);
+                          const newStartDate = new Date(day);
+                          newStartDate.setHours(hour, minutes, 0, 0);
+                          
+                          // Trouver l'événement à mettre à jour
+                          const eventToUpdate = filteredEvents.find(ev => ev.id === dragData.eventId);
+                          if (!eventToUpdate) return;
+                          
+                          // Calculer la nouvelle date de fin en préservant la durée
+                          const duration = dragData.duration || (30 * 60 * 1000); // 30 minutes par défaut
+                          const newEndDate = new Date(newStartDate.getTime() + duration);
+                          
+                          // Mettre à jour l'événement
+                          await updateEvent({
+                            ...eventToUpdate,
+                            start_date: newStartDate.toISOString(),
+                            end_date: newEndDate.toISOString()
+                          });
+                          
+                          toast.success('Événement déplacé avec succès');
+                        } catch (error) {
+                          console.error('Erreur lors du déplacement de l\'événement:', error);
+                          toast.error('Erreur lors du déplacement de l\'événement');
+                        }
+                      }}
+                    >
+                      {/* Indicateur visuel au survol */}
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-blue-100/30 pointer-events-none transition-opacity" />
+                    </div>
                   ))}
                   
-                  {/* Événements positionnés absolument */}
+                  {/* Événements positionnés absolument avec drag & drop */}
                   {dayEvents.map((event) => {
                     const style = getEventStyle(event);
                     const colorClass = getEventColor(event);
@@ -786,10 +854,20 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                       <div
                         key={event.id}
                         className={cn(
-                          "absolute left-1 right-1 rounded-lg border-2 text-white p-2 cursor-pointer shadow-md hover:shadow-lg transition-shadow overflow-hidden",
+                          "absolute left-1 right-1 rounded-lg border-2 text-white p-2 cursor-move shadow-md hover:shadow-lg transition-shadow overflow-hidden",
                           colorClass
                         )}
                         style={style}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', JSON.stringify({
+                            eventId: event.id,
+                            startDate: event.start_date,
+                            endDate: event.end_date,
+                            duration: new Date(event.end_date).getTime() - new Date(event.start_date).getTime()
+                          }));
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
                         onClick={() => handleViewEvent(event)}
                       >
                         <div className="font-semibold text-xs truncate mb-0.5">
@@ -1041,7 +1119,14 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       {/* Dialog de création/édition d'événement */}
       <EventDialog
         open={showEventDialog}
-        onOpenChange={setShowEventDialog}
+        onOpenChange={(open) => {
+          setShowEventDialog(open);
+          if (!open) {
+            // Réinitialiser les états quand le dialogue se ferme
+            setSelectedEvent(null);
+            setSelectedDate(null);
+          }
+        }}
         event={selectedEvent}
         selectedDate={selectedDate}
         onSubmit={handleEventSubmit}
@@ -1475,30 +1560,58 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
 
   const prefillData = React.useMemo(() => getPrefillData(), [open, event]);
 
-  const [formData, setFormData] = useState({
-    title: event?.title || prefillData?.title || '',
-    description: event?.description || prefillData?.description || '',
-    start_date: event?.start_date 
-      ? formatDateTimeLocal(new Date(event.start_date))
-      : prefillData?.start_date 
-        ? formatDateTimeLocal(new Date(prefillData.start_date))
-        : formatDateTimeLocal(new Date()),
-    end_date: event?.end_date 
-      ? formatDateTimeLocal(new Date(event.end_date))
-      : prefillData?.end_date
-        ? formatDateTimeLocal(new Date(prefillData.end_date))
-        : formatDateTimeLocal(getDefaultEndTime(new Date())),
-    priority: event?.priority || prefillData?.priority || 'medium',
-    location: event?.location || '',
-    is_online: event?.is_online || false,
-    meeting_url: event?.meeting_url || '',
-    color: event?.color || '#3B82F6',
-    client_id: event?.client_id || prefillData?.client_id || '',
-    expert_id: event?.expert_id || '',
-    apporteur_id: (event as any)?.apporteur_id || '',
-    dossier_id: (event as any)?.dossier_id || prefillData?.dossier_id || '',
-    participants: event?.participants || []
-  });
+  // Fonction pour obtenir les valeurs initiales du formulaire
+  const getInitialFormData = () => {
+    if (event) {
+      // Mode édition : utiliser les données de l'événement
+      return {
+        title: event.title || '',
+        description: event.description || '',
+        start_date: event.start_date ? formatDateTimeLocal(new Date(event.start_date)) : formatDateTimeLocal(new Date()),
+        end_date: event.end_date ? formatDateTimeLocal(new Date(event.end_date)) : formatDateTimeLocal(getDefaultEndTime(new Date())),
+        priority: event.priority || 'medium',
+        location: event.location || '',
+        is_online: event.is_online || false,
+        meeting_url: event.meeting_url || '',
+        color: event.color || '#3B82F6',
+        client_id: event.client_id || '',
+        expert_id: event.expert_id || '',
+        apporteur_id: (event as any)?.apporteur_id || '',
+        dossier_id: (event as any)?.dossier_id || '',
+        participants: event.participants || []
+      };
+    } else {
+      // Mode création : valeurs par défaut ou prefill
+      const prefill = prefillData;
+      const defaultDate = selectedDate || new Date();
+      const defaultStartDate = new Date(defaultDate);
+      defaultStartDate.setHours(9, 0, 0, 0);
+      const defaultEndDate = getDefaultEndTime(defaultStartDate);
+      
+      return {
+        title: prefill?.title || '',
+        description: prefill?.description || '',
+        start_date: prefill?.start_date 
+          ? formatDateTimeLocal(new Date(prefill.start_date))
+          : formatDateTimeLocal(defaultStartDate),
+        end_date: prefill?.end_date
+          ? formatDateTimeLocal(new Date(prefill.end_date))
+          : formatDateTimeLocal(defaultEndDate),
+        priority: prefill?.priority || 'medium',
+        location: '',
+        is_online: false,
+        meeting_url: '',
+        color: '#3B82F6',
+        client_id: prefill?.client_id || '',
+        expert_id: '',
+        apporteur_id: '',
+        dossier_id: prefill?.dossier_id || '',
+        participants: []
+      };
+    }
+  };
+
+  const [formData, setFormData] = useState(getInitialFormData);
 
   const [availableParticipants, setAvailableParticipants] = useState<ParticipantOption[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -1546,44 +1659,29 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
       loadAvailableParticipants();
     }
     
-    // Réinitialiser formData si prefillData change
-    if (open && prefillData && !event) {
-      setFormData(prev => ({
-        ...prev,
-        title: prefillData.title || prev.title,
-        description: prefillData.description || prev.description,
-        start_date: prefillData.start_date ? formatDateTimeLocal(new Date(prefillData.start_date)) : prev.start_date,
-        end_date: prefillData.end_date ? formatDateTimeLocal(new Date(prefillData.end_date)) : prev.end_date,
-        client_id: prefillData.client_id || prev.client_id,
-        dossier_id: prefillData.dossier_id || prev.dossier_id,
-        priority: prefillData.priority || prev.priority
-      }));
+    // Réinitialiser le formulaire quand le dialogue s'ouvre
+    if (open) {
+      const initialData = getInitialFormData();
+      setFormData(initialData);
+      setFieldErrors({});
+      setSubmitError(null);
     }
-  }, [open, user?.type, prefillData, event]);
+  }, [open, event, selectedDate, prefillData, user?.type]);
 
   // Mettre à jour les dates quand selectedDate change (si le formulaire est ouvert et qu'on n'édite pas un événement)
+  // Note: Ce useEffect est géré par le premier useEffect qui réinitialise le formulaire quand open change
+  // Il est conservé pour les cas où selectedDate change après l'ouverture du dialogue
   React.useEffect(() => {
     if (open && selectedDate && !event) {
-      // Préserver l'heure si elle existe déjà dans formData
-      const currentStart = formData.start_date ? new Date(formData.start_date) : null;
-      const currentEnd = formData.end_date ? new Date(formData.end_date) : null;
-      
-      // Calculer la nouvelle date de début avec l'heure préservée ou 9h par défaut
+      // Utiliser l'heure de selectedDate si elle est définie, sinon 9h par défaut
       const newStartDate = new Date(selectedDate);
-      if (currentStart) {
-        newStartDate.setHours(currentStart.getHours(), currentStart.getMinutes(), 0, 0);
-      } else {
+      if (newStartDate.getHours() === 0 && newStartDate.getMinutes() === 0) {
+        // Si l'heure n'est pas définie, utiliser 9h par défaut
         newStartDate.setHours(9, 0, 0, 0);
       }
       
-      // Calculer la nouvelle date de fin avec la durée préservée ou 30 minutes par défaut
-      const newEndDate = new Date(newStartDate);
-      if (currentStart && currentEnd) {
-        const duration = currentEnd.getTime() - currentStart.getTime();
-        newEndDate.setTime(newStartDate.getTime() + duration);
-      } else {
-        newEndDate.setTime(newStartDate.getTime() + 30 * 60 * 1000); // 30 minutes
-      }
+      // Calculer la nouvelle date de fin avec 30 minutes par défaut
+      const newEndDate = getDefaultEndTime(newStartDate);
       
       setFormData(prev => ({
         ...prev,
@@ -1740,16 +1838,6 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
     console.log('🔍 EventDialog handleSubmit appelé');
     console.log('🔍 Données du formulaire avant traitement:', formData);
 
-    const errors: Record<string, string> = {};
-    // Plus de validation obligatoire pour client_id - tout est optionnel sauf titre et dates
-
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      setSubmitError('Veuillez renseigner les champs obligatoires');
-      toast.error('Merci de compléter les champs obligatoires du rendez-vous');
-      return;
-    }
-
     setFieldErrors({});
     setSubmitError(null);
     
@@ -1758,14 +1846,45 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
       ? new Date(formData.end_date)
       : getDefaultEndTime(startDate);
     
+    // Validation des champs obligatoires
+    if (!formData.title || !formData.title.trim()) {
+      setFieldErrors({ title: 'Le titre est obligatoire' });
+      setSubmitError('Le titre est obligatoire');
+      toast.error('Le titre est obligatoire');
+      return;
+    }
+
+    if (!formData.start_date) {
+      setFieldErrors({ start_date: 'La date de début est obligatoire' });
+      setSubmitError('La date de début est obligatoire');
+      toast.error('La date de début est obligatoire');
+      return;
+    }
+
+    if (!formData.end_date) {
+      setFieldErrors({ end_date: 'La date de fin est obligatoire' });
+      setSubmitError('La date de fin est obligatoire');
+      toast.error('La date de fin est obligatoire');
+      return;
+    }
+
+    // Vérifier que la date de fin est après la date de début
+    if (endDate <= startDate) {
+      setFieldErrors({ end_date: 'La date de fin doit être après la date de début' });
+      setSubmitError('La date de fin doit être après la date de début');
+      toast.error('La date de fin doit être après la date de début');
+      return;
+    }
+
     const eventData = {
-      title: formData.title,
-      description: formData.description || undefined,
+      title: formData.title.trim(),
+      description: formData.description?.trim() || undefined,
       start_date: startDate.toISOString(),
       end_date: endDate.toISOString(),
+      type: 'appointment', // Type par défaut requis par le serveur
       priority: formData.priority || 'medium',
-      location: formData.location || null,
-      meeting_url: formData.meeting_url || null,
+      location: formData.location?.trim() || null,
+      meeting_url: formData.meeting_url?.trim() || null,
       is_online: formData.is_online || false,
       client_id: formData.client_id || undefined,
       expert_id: formData.expert_id || undefined,
