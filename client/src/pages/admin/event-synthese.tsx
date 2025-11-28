@@ -19,8 +19,6 @@ import {
   Building,
   Users,
   AlertTriangle,
-  CheckCircle,
-  XCircle,
   ArrowLeft,
   Edit
 } from 'lucide-react';
@@ -102,9 +100,14 @@ interface ReportData {
   id: string;
   rdv_id: string;
   summary: string;
-  visibility?: string;
+  visibility?: 'participants' | 'cabinet' | 'internal';
   created_at: string;
   updated_at: string;
+}
+
+interface EventSyntheseResponse {
+  event: EventData;
+  report: ReportData | null;
 }
 
 const EventSynthese: React.FC = () => {
@@ -134,12 +137,13 @@ const EventSynthese: React.FC = () => {
       }
       
       console.log('🔍 loadEventData - Chargement événement:', id);
-      const response = await get(`/admin/events/${id}/synthese`);
+      const response = await get<EventSyntheseResponse>(`/admin/events/${id}/synthese`);
       
       if (response.success && response.data) {
-        console.log('✅ loadEventData - Événement chargé:', response.data.event?.id);
-        setEvent(response.data.event as EventData);
-        setReport(response.data.report as ReportData | null);
+        const data = response.data as EventSyntheseResponse;
+        console.log('✅ loadEventData - Événement chargé:', data.event?.id);
+        setEvent(data.event);
+        setReport(data.report);
       } else {
         console.error('❌ loadEventData - Réponse non réussie:', response);
         toast.error(response.message || 'Événement non trouvé');
@@ -755,7 +759,14 @@ const EventSynthese: React.FC = () => {
           onSuccess={() => {
             loadEventData();
           }}
-          existingReport={report || undefined}
+          existingReport={report ? {
+            id: report.id,
+            rdv_id: report.rdv_id,
+            summary: report.summary,
+            visibility: report.visibility as 'participants' | 'cabinet' | 'internal' | undefined,
+            created_at: report.created_at,
+            updated_at: report.updated_at
+          } : undefined}
         />
       )}
     </div>

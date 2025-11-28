@@ -7617,7 +7617,41 @@ router.get('/events/:id/synthese', asyncHandler(async (req, res) => {
       });
     }
 
-    // Récupérer l'événement avec toutes ses relations
+    // Vérifier d'abord que l'ID existe dans la table RDV
+    const { data: rdvCheck, error: checkError } = await supabaseClient
+      .from('RDV')
+      .select('id')
+      .eq('id', id)
+      .single();
+
+    if (checkError || !rdvCheck) {
+      console.error('❌ Vérification ID RDV - Événement non trouvé dans la table RDV:', {
+        id,
+        error: checkError,
+        code: checkError?.code,
+        message: checkError?.message
+      });
+      
+      // Vérifier si l'ID existe dans d'autres tables (pour diagnostic)
+      const { data: calendarCheck } = await supabaseClient
+        .from('CalendarEvent')
+        .select('id')
+        .eq('id', id)
+        .single();
+      
+      if (calendarCheck) {
+        console.warn('⚠️ ID trouvé dans CalendarEvent au lieu de RDV - Migration nécessaire');
+      }
+      
+      return res.status(404).json({
+        success: false,
+        message: 'Événement non trouvé dans la base de données',
+        eventId: id,
+        suggestion: 'Vérifiez que l\'ID correspond bien à un événement dans la table RDV'
+      });
+    }
+
+    // Récupérer l'événement avec toutes ses relations depuis la table RDV
     const { data: event, error: eventError } = await supabaseClient
       .from('RDV')
       .select(`
