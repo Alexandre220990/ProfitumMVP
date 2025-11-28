@@ -872,8 +872,12 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                           const eventToUpdate = filteredEvents.find(ev => ev.id === dragData.eventId);
                           if (!eventToUpdate) return;
                           
-                          // Calculer la nouvelle date de fin en préservant la durée
-                          const duration = dragData.duration || (30 * 60 * 1000); // 30 minutes par défaut
+                          // Calculer la durée originale à partir de l'événement actuel pour la préserver
+                          const originalStartDate = new Date(eventToUpdate.start_date);
+                          const originalEndDate = new Date(eventToUpdate.end_date);
+                          const duration = originalEndDate.getTime() - originalStartDate.getTime();
+                          
+                          // Calculer la nouvelle date de fin en préservant la durée exacte
                           const newEndDate = new Date(newStartDate.getTime() + duration);
                           
                           // Préparer les données de mise à jour en utilisant la fonction de nettoyage
