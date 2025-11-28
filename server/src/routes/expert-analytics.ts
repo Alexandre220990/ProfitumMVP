@@ -286,10 +286,7 @@ router.get('/products', asyncHandler(async (req, res) => {
       .from('expertassignment')
       .select(`
         *,
-        ProduitEligible:produit_id (
-          id,
-          nom
-        )
+        ProduitEligible(*)
       `)
       .eq('expert_id', expertId);
 

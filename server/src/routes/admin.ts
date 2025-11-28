@@ -605,12 +605,7 @@ router.get('/experts/:id/produits', asyncHandler(async (req, res) => {
         produit_id,
         niveau_expertise,
         statut,
-        ProduitEligible:produit_id (
-          id,
-          nom,
-          description,
-          categorie
-        )
+        ProduitEligible(*)
       `)
       .eq('expert_id', id)
       .eq('statut', 'actif');
@@ -7687,15 +7682,7 @@ router.get('/events/:id/synthese', asyncHandler(async (req, res) => {
           email,
           phone
         ),
-        RDV_Produits (
-          produit_id,
-          ProduitEligible:produit_id (
-            id,
-            nom,
-            description,
-            categorie
-          )
-        ),
+        RDV_Produits(*, ProduitEligible(*)),
         RDV_Participants (
           user_id,
           user_type,

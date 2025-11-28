@@ -2431,15 +2431,7 @@ router.get('/events/:id/synthese', async (req: Request, res: Response) => {
           email,
           phone
         ),
-        RDV_Produits (
-          produit_id,
-          ProduitEligible:produit_id (
-            id,
-            nom,
-            description,
-            categorie
-          )
-        ),
+        RDV_Produits(*, ProduitEligible(*)),
         RDV_Participants (
           user_id,
           user_type,

@@ -41,11 +41,7 @@ router.get('/', asyncHandler(async (req, res) => {
                     name,
                     company_name
                 ),
-                ProduitEligible:produit_id (
-                    id,
-                    nom,
-                    description
-                )
+                ProduitEligible(*)
             `);
 
         if (userType === 'expert') {
@@ -143,7 +139,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
                 *,
                 Expert:expert_id!inner(auth_user_id, id, name, email),
                 Client:client_id!inner(auth_user_id, id, name, email),
-                ProduitEligible:produit_id(*)
+                ProduitEligible(*)
             `)
             .eq('id', id)
             .single();

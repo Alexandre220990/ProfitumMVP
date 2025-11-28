@@ -201,10 +201,7 @@ router.get('/', async (req, res) => {
           produit_id,
           niveau_expertise,
           statut,
-          ProduitEligible:produit_id (
-            id,
-            nom
-          )
+          ProduitEligible(*)
         )
       `)
       .eq('status', 'active')
@@ -302,10 +299,7 @@ router.get('/:id', async (req, res) => {
           produit_id,
           niveau_expertise,
           statut,
-          ProduitEligible:produit_id (
-            id,
-            nom
-          )
+          ProduitEligible(*)
         )
       `)
       .eq('id', id)
