@@ -9,6 +9,17 @@ export default function ProtectedRoute({ requiredType }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
+  // Log pour déboguer les problèmes d'authentification
+  if (requiredType) {
+    console.log('🔒 ProtectedRoute - Vérification:', {
+      requiredType,
+      userType: user?.type,
+      hasUser: !!user,
+      isLoading,
+      pathname: location.pathname
+    });
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -18,6 +29,7 @@ export default function ProtectedRoute({ requiredType }: ProtectedRouteProps) {
   }
 
   if (!user) {
+    console.log('❌ ProtectedRoute - Aucun utilisateur, redirection vers connexion');
     // Rediriger vers la bonne page de connexion selon le type requis
     if (requiredType === 'expert') {
       return <Navigate to="/connexion-expert" state={{ from: location }} replace />;
@@ -31,8 +43,14 @@ export default function ProtectedRoute({ requiredType }: ProtectedRouteProps) {
   }
 
   if (requiredType && user.type !== requiredType) {
+    console.error('❌ ProtectedRoute - Type utilisateur incorrect:', {
+      requiredType,
+      userType: user.type,
+      pathname: location.pathname
+    });
     return <Navigate to="/unauthorized" replace />;
   }
 
+  console.log('✅ ProtectedRoute - Accès autorisé');
   return <Outlet />;
 } 

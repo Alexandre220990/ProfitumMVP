@@ -6377,6 +6377,8 @@ router.get('/notifications', async (req, res) => {
       notification_type: notif.notification_type || notif.type,
       // Mapper les champs pour correspondre au format AdminNotification si nécessaire
       type: notif.notification_type || notif.type,
+      // S'assurer que action_url est préservé (important pour les notifications d'événement)
+      action_url: notif.action_url || null,
     }));
     
     // Fusionner les deux listes de notifications

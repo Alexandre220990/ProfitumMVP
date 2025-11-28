@@ -219,23 +219,59 @@ export function UniversalNotificationCenter({
   };
 
   const getPrimaryActionUrl = (notification: any): string | null => {
+    // Log pour déboguer
+    console.log('🔍 getPrimaryActionUrl - Notification:', {
+      id: notification.id,
+      notification_type: notification.notification_type,
+      action_url: notification.action_url,
+      action_data: notification.action_data,
+      metadata: notification.metadata,
+      userRole
+    });
+
+    // Pour les notifications d'événement, vérifier d'abord l'action_url direct
     if (notification.action_url) {
+      console.log('✅ getPrimaryActionUrl - Utilisation action_url direct:', notification.action_url);
       return notification.action_url;
     }
 
     if (notification.action_data && notification.action_data.action_url) {
+      console.log('✅ getPrimaryActionUrl - Utilisation action_data.action_url:', notification.action_data.action_url);
       return notification.action_data.action_url;
     }
 
     const metadata = notification.metadata || {};
 
     if (metadata.action_url) {
+      console.log('✅ getPrimaryActionUrl - Utilisation metadata.action_url:', metadata.action_url);
       return metadata.action_url;
+    }
+
+    // Pour les notifications d'événement, construire l'URL à partir de metadata.event_id
+    if (metadata.event_id) {
+      const eventId = metadata.event_id;
+      let eventUrl: string | null = null;
+      
+      if (userRole === 'admin') {
+        eventUrl = `/admin/agenda-admin?event=${eventId}`;
+      } else if (userRole === 'expert') {
+        eventUrl = `/expert/agenda?event=${eventId}`;
+      } else if (userRole === 'apporteur') {
+        eventUrl = `/apporteur/agenda?event=${eventId}`;
+      } else if (userRole === 'client') {
+        eventUrl = `/agenda-client?event=${eventId}`;
+      }
+      
+      if (eventUrl) {
+        console.log('✅ getPrimaryActionUrl - URL construite pour événement:', eventUrl);
+        return eventUrl;
+      }
     }
 
     const dossierId = metadata.dossier_id;
 
     if (!dossierId) {
+      console.log('⚠️ getPrimaryActionUrl - Aucune URL trouvée pour la notification');
       return null;
     }
 
@@ -266,13 +302,31 @@ export function UniversalNotificationCenter({
   };
 
   const handleNotificationClick = async (notification: any) => {
+    console.log('🔔 handleNotificationClick - Notification cliquée:', {
+      id: notification.id,
+      notification_type: notification.notification_type,
+      is_read: notification.is_read,
+      userRole
+    });
+
     if (!notification.is_read) {
       await markAsRead(notification.id);
     }
 
     const targetUrl = getPrimaryActionUrl(notification);
+    console.log('🔗 handleNotificationClick - URL cible:', targetUrl);
+    
     if (targetUrl) {
+      // Vérifier que l'utilisateur est bien authentifié avant de naviguer
+      if (!userRole) {
+        console.error('❌ handleNotificationClick - userRole non défini, impossible de naviguer');
+        return;
+      }
+      
+      console.log('➡️ handleNotificationClick - Navigation vers:', targetUrl);
       navigate(targetUrl);
+    } else {
+      console.warn('⚠️ handleNotificationClick - Aucune URL trouvée pour la notification');
     }
   };
 
