@@ -21,7 +21,8 @@ import {
   Shield,
   Building2,
   UserCircle,
-  Target
+  Target,
+  Upload
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -129,6 +130,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: '/admin/ajouter-lead',
       icon: Target,
       current: location.pathname === '/admin/ajouter-lead'
+    },
+    {
+      name: 'Import de données',
+      href: '/admin/import-data',
+      icon: Upload,
+      current: location.pathname.includes('/admin/import-data')
     }
   ];
 
