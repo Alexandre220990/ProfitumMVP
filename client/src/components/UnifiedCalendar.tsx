@@ -1040,6 +1040,47 @@ const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
   onDelete,
   onClose 
 }) => {
+  const [report, setReport] = useState<any | null>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
+
+  // Charger le rapport de RDV si l'événement a un rdv_id
+  useEffect(() => {
+    if (open && event && event.metadata?.rdv_id) {
+      loadReport(event.metadata.rdv_id);
+    } else {
+      setReport(null);
+    }
+  }, [open, event]);
+
+  const loadReport = async (rdvId: string) => {
+    setLoadingReport(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${config.API_URL}/api/rdv/${rdvId}/report`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setReport(data.data);
+        } else {
+          setReport(null);
+        }
+      } else {
+        setReport(null);
+      }
+    } catch (error) {
+      console.error('Erreur chargement rapport:', error);
+      setReport(null);
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
   if (!event) return null;
 
   const formatFullDateTime = (date: Date) => format(date, 'dd/MM/yyyy à HH:mm', { locale: fr });
@@ -1126,6 +1167,28 @@ const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
                 Description
               </h4>
               <p className="text-gray-700 whitespace-pre-wrap">{event.description}</p>
+            </div>
+          )}
+
+          {/* Rapport de RDV */}
+          {event.metadata?.rdv_id && (
+            <div>
+              {loadingReport ? (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Chargement du rapport...</span>
+                </div>
+              ) : report ? (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Rapport de RDV
+                  </h4>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p className="text-gray-700 whitespace-pre-wrap">{report.summary}</p>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
 

@@ -253,7 +253,7 @@ export function UniversalNotificationCenter({
       let eventUrl: string | null = null;
       
       if (userRole === 'admin') {
-        // Rediriger vers la page de synthèse événement pour les admins
+        // Rediriger vers la page de synthèse événement dédiée pour les admins
         eventUrl = `/admin/events/${eventId}`;
       } else if (userRole === 'expert') {
         eventUrl = `/expert/agenda?event=${eventId}`;
