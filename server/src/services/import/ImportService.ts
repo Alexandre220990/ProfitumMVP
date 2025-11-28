@@ -109,19 +109,57 @@ export class ImportService {
           options
         );
 
-        // Si c'est un client, créer les produits éligibles
-        if (mappingConfig.entityType === 'client' && workflowConfig) {
-          try {
-            await this.relationshipService.createClientProduits(
-              entityResult.id,
-              fileData.rows[i],
-              fileData.columns,
-              mappingConfig,
-              workflowConfig
-            );
-          } catch (prodError: any) {
-            console.warn(`Erreur création produits pour client ${entityResult.id}:`, prodError.message);
-            // Ne pas faire échouer l'import pour ça
+        // Si c'est un client, créer les relations (produits, RDV, assignations)
+        if (mappingConfig.entityType === 'client') {
+          let createdProduitIds: string[] = [];
+
+          // Créer les produits éligibles
+          if (mappingConfig.relatedTables?.produits?.enabled || workflowConfig) {
+            try {
+              createdProduitIds = await this.relationshipService.createClientProduits(
+                entityResult.id,
+                fileData.rows[i],
+                fileData.columns,
+                mappingConfig,
+                workflowConfig
+              );
+            } catch (prodError: any) {
+              console.warn(`Erreur création produits pour client ${entityResult.id}:`, prodError.message);
+              // Ne pas faire échouer l'import pour ça
+            }
+          }
+
+          // Créer les RDV préprogrammés
+          if (mappingConfig.relatedTables?.rdv?.enabled) {
+            try {
+              await this.relationshipService.createRDV(
+                entityResult.id,
+                fileData.rows[i],
+                fileData.columns,
+                mappingConfig,
+                entityResult.authUserId
+              );
+            } catch (rdvError: any) {
+              console.warn(`Erreur création RDV pour client ${entityResult.id}:`, rdvError.message);
+              // Ne pas faire échouer l'import pour ça
+            }
+          }
+
+          // Créer les assignations d'experts
+          if (mappingConfig.relatedTables?.expertAssignments?.enabled) {
+            try {
+              const firstProduitId = createdProduitIds.length > 0 ? createdProduitIds[0] : null;
+              await this.relationshipService.createExpertAssignment(
+                entityResult.id,
+                firstProduitId,
+                fileData.rows[i],
+                fileData.columns,
+                mappingConfig
+              );
+            } catch (assignError: any) {
+              console.warn(`Erreur création assignation pour client ${entityResult.id}:`, assignError.message);
+              // Ne pas faire échouer l'import pour ça
+            }
           }
         }
 

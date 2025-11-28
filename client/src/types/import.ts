@@ -22,6 +22,7 @@ export interface TransformationConfig {
 export interface MappingRule {
   excelColumn: string;
   databaseField: string;
+  targetTable?: 'Client' | 'ClientProduitEligible' | 'RDV' | 'expertassignment';
   transformation?: TransformationConfig;
   isRequired: boolean;
   defaultValue?: any;
@@ -31,6 +32,21 @@ export interface MappingConfig {
   partnerName: string;
   entityType: EntityType;
   rules: MappingRule[];
+  // Configurations pour les tables liées
+  relatedTables?: {
+    produits?: {
+      enabled: boolean;
+      rules: MappingRule[];
+    };
+    rdv?: {
+      enabled: boolean;
+      rules: MappingRule[];
+    };
+    expertAssignments?: {
+      enabled: boolean;
+      rules: MappingRule[];
+    };
+  };
 }
 
 export interface ExcelColumn {
