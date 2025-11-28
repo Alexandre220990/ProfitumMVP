@@ -103,6 +103,7 @@ import { getCorsConfig, corsMiddleware } from './config/cors';
 import { startCalendarRemindersCron } from './cron/calendar-reminders';
 import { startRefundRemindersCron } from './cron/refund-reminder';
 import { startActionTypeRemindersCron } from './cron/action-type-reminders';
+import { startDailyActivityReportCron } from './cron/daily-activity-report';
 import routes from './routes';
 
 // Routes apporteurs d'affaires
@@ -765,6 +766,14 @@ server.listen(PORT, HOST, () => {
     // Relances automatiques selon les SLA définis pour chaque actionType
   } catch (error) {
     console.error('❌ Erreur démarrage cron job relances actionType:', error);
+  }
+
+  // Démarrer le cron job pour les rapports d'activité quotidiens
+  try {
+    startDailyActivityReportCron();
+    // Envoi automatique du rapport d'activité quotidien à tous les admins à 20h
+  } catch (error) {
+    console.error('❌ Erreur démarrage cron job rapports d\'activité quotidiens:', error);
   }
   
   // monitoringSystem.recordAuditLog({

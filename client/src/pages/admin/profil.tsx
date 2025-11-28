@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Lock, CheckCircle, AlertCircle, ArrowLeft, User } from 'lucide-react';
+import { Eye, EyeOff, Lock, CheckCircle, AlertCircle, ArrowLeft, User, Mail, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
@@ -23,6 +23,7 @@ export default function AdminProfil() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [sendingReport, setSendingReport] = useState(false);
 
   const validatePassword = (password: string): { valid: boolean; message?: string } => {
     if (password.length < 8) {
@@ -116,6 +117,45 @@ export default function AdminProfil() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendDailyReport = async () => {
+    setSendingReport(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Vous devez être connecté');
+      }
+
+      const response = await fetch(`${config.API_URL}/api/admin/reports/daily-activity`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Erreur lors de l\'envoi du rapport');
+      }
+
+      toast.success('Rapport envoyé avec succès', {
+        description: `Le rapport d'activité quotidien a été envoyé à ${result.sentTo || 'votre adresse email'}`
+      });
+
+    } catch (err: any) {
+      console.error('Erreur envoi rapport:', err);
+      setError(err.message || 'Erreur lors de l\'envoi du rapport');
+      toast.error('Erreur', {
+        description: err.message || 'Une erreur est survenue lors de l\'envoi du rapport'
+      });
+    } finally {
+      setSendingReport(false);
     }
   };
 
@@ -292,6 +332,52 @@ export default function AdminProfil() {
                     </Button>
                   </div>
                 </form>
+              </div>
+
+              {/* Section Rapport d'activité quotidien */}
+              <div className="mt-8 pt-8 border-t">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Mail className="w-5 h-5 mr-2 text-blue-600" />
+                    Rapport d'activité quotidien
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Envoyer le rapport d'activité quotidien par email. Ce rapport inclut :
+                  </p>
+                  <ul className="text-sm text-gray-600 mb-6 space-y-1 list-disc list-inside">
+                    <li>Récap des RDV de la journée de tous les experts</li>
+                    <li>Récap des notifications marquées comme archivées de la journée</li>
+                    <li>Récap des RDV du lendemain</li>
+                  </ul>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Note : L'envoi manuel n'affecte pas l'envoi automatique quotidien à 20h.
+                  </p>
+
+                  {error && (
+                    <Alert variant="destructive" className="mb-4">
+                      <AlertCircle className="w-4 h-4" />
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <Button
+                    onClick={handleSendDailyReport}
+                    disabled={sendingReport}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    {sendingReport ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Envoi en cours...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4 mr-2" />
+                        Envoyer le rapport quotidien
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

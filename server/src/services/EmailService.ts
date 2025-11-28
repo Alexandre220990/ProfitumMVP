@@ -17,6 +17,29 @@ export interface EmailTemplate {
 }
 
 export class EmailService {
+    private static emailTransporter: nodemailer.Transporter | null = null;
+
+    /**
+     * Initialiser le transporteur email (singleton pattern)
+     */
+    private static initializeTransporter(): nodemailer.Transporter {
+        if (!this.emailTransporter) {
+            if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+                console.warn('⚠️ Variables SMTP non configurées. Les emails ne seront pas envoyés.');
+            }
+
+            this.emailTransporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST || 'smtp.gmail.com',
+                port: parseInt(process.env.SMTP_PORT || '587'),
+                secure: false, // true pour port 465, false pour port 587
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS
+                }
+            });
+        }
+        return this.emailTransporter;
+    }
     
     // ===== GÉNÉRATION MOT DE PASSE PROVISOIRE =====
     static generateTemporaryPassword(): string {
@@ -931,11 +954,65 @@ L'équipe Profitum`;
     }
 
     // ===== MÉTHODE GÉNÉRIQUE D'ENVOI =====
+    /**
+     * Envoyer un email via SMTP (méthode publique pour les services externes)
+     * @param to Adresse email du destinataire
+     * @param subject Sujet de l'email
+     * @param html Contenu HTML de l'email
+     * @param text Version texte de l'email (optionnel)
+     * @returns true si l'email a été envoyé avec succès, false sinon
+     */
+    static async sendDailyReportEmail(to: string, subject: string, html: string, text?: string): Promise<boolean> {
+        return this.sendEmail(to, subject, html, text);
+    }
+
+    /**
+     * Envoyer un email via SMTP (méthode privée interne)
+     * @param to Adresse email du destinataire
+     * @param subject Sujet de l'email
+     * @param html Contenu HTML de l'email
+     * @param text Version texte de l'email (optionnel)
+     * @returns true si l'email a été envoyé avec succès, false sinon
+     */
     private static async sendEmail(to: string, subject: string, html: string, text?: string): Promise<boolean> {
-        // TODO: Intégrer votre service d'email préféré
-        // Exemples : SendGrid, Mailgun, AWS SES, etc.
-        
-        console.log('📧 Email envoyé:', { to, subject });
-        return true;
+        try {
+            // Vérifier que les variables SMTP sont configurées
+            if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+                console.error('❌ Variables SMTP non configurées. Email non envoyé à:', to);
+                return false;
+            }
+
+            // Initialiser le transporteur
+            const transporter = this.initializeTransporter();
+
+            // Préparer les options d'envoi
+            const mailOptions: nodemailer.SendMailOptions = {
+                from: process.env.SMTP_FROM || process.env.SMTP_USER || 'Profitum <profitum.app@gmail.com>',
+                to,
+                subject,
+                html,
+                text: text || html.replace(/<[^>]*>/g, ''), // Extraire le texte si non fourni
+            };
+
+            // Envoyer l'email
+            const info = await transporter.sendMail(mailOptions);
+            
+            console.log('✅ Email envoyé avec succès:', {
+                to,
+                subject,
+                messageId: info.messageId
+            });
+
+            return true;
+
+        } catch (error: any) {
+            console.error('❌ Erreur envoi email:', {
+                to,
+                subject,
+                error: error.message,
+                stack: error.stack
+            });
+            return false;
+        }
     }
 }
