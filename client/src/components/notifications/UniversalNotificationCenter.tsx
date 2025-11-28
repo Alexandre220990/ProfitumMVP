@@ -16,7 +16,7 @@
  * Date: 27 Octobre 2025
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,6 +54,7 @@ import { RDVReportModal } from '@/components/rdv/RDVReportModal';
 import { FileText as FileTextIcon } from 'lucide-react';
 import { config } from '@/config/env';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface UniversalNotificationCenterProps {
   /** Mode d'affichage : modal plein écran ou compact intégré */
@@ -99,11 +100,10 @@ export function UniversalNotificationCenter({
   } = useSupabaseNotifications();
   
   // État local
-  const [filter, setFilter] = useState<'all' | 'unread' | 'archived' | 'late'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'archived' | 'late' | 'events' | 'contact_requests'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showPreferences, setShowPreferences] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  const [groupByDossier, setGroupByDossier] = useState(true);
   const expandLimit = 5; // Afficher 5 par défaut
   const [rdvReportModal, setRdvReportModal] = useState<{
     isOpen: boolean;
@@ -115,6 +115,89 @@ export function UniversalNotificationCenter({
     rdvId: null,
     existingReport: null
   });
+  
+  // État pour stocker les rapports des événements
+  const [eventReports, setEventReports] = useState<Record<string, any>>({});
+  const loadingReportsRef = useRef<Set<string>>(new Set());
+  
+  // État pour le popup de résumé de rapport
+  const [reportSummaryPopup, setReportSummaryPopup] = useState<{
+    isOpen: boolean;
+    report: any | null;
+    eventTitle?: string;
+  }>({
+    isOpen: false,
+    report: null
+  });
+
+  // Charger les rapports pour les événements terminés
+  useEffect(() => {
+    const loadEventReports = async () => {
+      const eventNotifications = notifications.filter((n: any) => {
+        const metadata = n.metadata && typeof n.metadata === 'object' ? n.metadata : {};
+        const isEventCompleted = 
+          n.notification_type === 'event_completed' ||
+          metadata.event_status === 'completed';
+        const eventId = metadata.event_id;
+        return isEventCompleted && eventId && 
+               !eventReports[eventId] && 
+               eventReports[eventId] !== null &&
+               !loadingReportsRef.current.has(eventId);
+      });
+
+      if (eventNotifications.length === 0) return;
+
+      const promises = eventNotifications.map(async (notification: any) => {
+        const metadata = notification.metadata || {};
+        const eventId = metadata.event_id;
+        
+        if (!eventId || loadingReportsRef.current.has(eventId)) return;
+
+        loadingReportsRef.current.add(eventId);
+
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${config.API_URL}/api/rdv/${eventId}/report`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+              setEventReports(prev => ({
+                ...prev,
+                [eventId]: data.data
+              }));
+            } else {
+              setEventReports(prev => ({
+                ...prev,
+                [eventId]: null
+              }));
+            }
+          } else {
+            setEventReports(prev => ({
+              ...prev,
+              [eventId]: null
+            }));
+          }
+        } catch (error) {
+          console.error('Erreur chargement rapport:', error);
+          setEventReports(prev => ({
+            ...prev,
+            [eventId]: null
+          }));
+        } finally {
+          loadingReportsRef.current.delete(eventId);
+        }
+      });
+
+      await Promise.all(promises);
+    };
+
+    loadEventReports();
+  }, [notifications]);
 
   const enrichedNotifications = useMemo(() => {
     const now = Date.now();
@@ -136,9 +219,18 @@ export function UniversalNotificationCenter({
           ? (dueAt.getTime() - now) / (1000 * 60 * 60)
           : 0;
 
+      // Vérifier si un rapport existe pour cet événement
+      const eventId = metadata.event_id;
+      const hasReport = eventId ? !!eventReports[eventId] : false;
+      const report = eventId ? eventReports[eventId] : null;
+
       return {
         ...notification,
-        metadata,
+        metadata: {
+          ...metadata,
+          has_report: hasReport,
+          report: report
+        },
         sla: {
           dueAt,
           triggeredAt,
@@ -148,7 +240,7 @@ export function UniversalNotificationCenter({
         }
       };
     });
-  }, [notifications]);
+  }, [notifications, eventReports]);
 
   // Statistiques
   // Pour toutes les notifications: status peut être 'unread' (non lu), 'read' (lu), 'archived' (archivé)
@@ -163,6 +255,20 @@ export function UniversalNotificationCenter({
   const lateCount = enrichedNotifications.filter(
     (n) => n.status !== 'archived' && n.sla.isLate
   ).length;
+  
+  // Compteurs pour les filtres spécifiques
+  const eventCount = enrichedNotifications.filter((n) => {
+    if (n.status === 'archived') return false;
+    const isEvent = n.metadata?.event_id || 
+      ['event_upcoming', 'event_in_progress', 'event_completed'].includes(n.notification_type || '');
+    return isEvent;
+  }).length;
+  
+  const contactRequestCount = enrichedNotifications.filter((n) => {
+    if (n.status === 'archived') return false;
+    return n.notification_type === 'contact_message' || 
+           n.notification_type === 'expert_contact_request';
+  }).length;
 
   // Filtrage dynamique selon le rôle
   const filteredNotifications = useMemo(() => {
@@ -192,6 +298,16 @@ export function UniversalNotificationCenter({
         matchesFilter = notification.status === 'archived';
       } else if (filter === 'late') {
         matchesFilter = notification.sla.isLate;
+      } else if (filter === 'events') {
+        // Filtrer uniquement les notifications d'événement
+        const isEvent = notification.metadata?.event_id || 
+          ['event_upcoming', 'event_in_progress', 'event_completed'].includes(notification.notification_type || '');
+        matchesFilter = isEvent && notification.status !== 'archived';
+      } else if (filter === 'contact_requests') {
+        // Filtrer uniquement les notifications de demande de contact
+        matchesFilter = (notification.notification_type === 'contact_message' || 
+                        notification.notification_type === 'expert_contact_request') &&
+                       notification.status !== 'archived';
       } else if (filter === 'all') {
         matchesFilter = notification.status !== 'archived';
       }
@@ -598,24 +714,50 @@ export function UniversalNotificationCenter({
     // Déterminer si la tuile est cliquable
     const isClickable = !isArchived && !!actionUrl;
     
+    // Pour les événements, améliorer la distinction visuelle lu/non lu
+    const getEventCardStyle = () => {
+      if (isArchived) return "opacity-60";
+      
+      if (isEventNotification) {
+        if (isUnread) {
+          // Non lu : bordure épaisse et fond coloré plus marqué
+          if (eventStatus === 'completed') {
+            return "border-l-4 border-l-green-600 bg-green-100 shadow-md";
+          } else if (eventStatus === 'in_progress') {
+            return "border-l-4 border-l-orange-600 bg-orange-100 shadow-md";
+          } else {
+            return "border-l-4 border-l-blue-600 bg-blue-100 shadow-md";
+          }
+        } else {
+          // Lu : bordure fine et fond plus clair
+          if (eventStatus === 'completed') {
+            return "border-l-2 border-l-green-300 bg-green-50";
+          } else if (eventStatus === 'in_progress') {
+            return "border-l-2 border-l-orange-300 bg-orange-50";
+          } else {
+            return "border-l-2 border-l-blue-300 bg-blue-50";
+          }
+        }
+      }
+      
+      // Pour les autres notifications
+      if (notification.sla.isLate && !isArchived) {
+        return "border-l-4 border-l-red-500 bg-red-50";
+      } else if (isUnread) {
+        return "border-l-4 border-l-blue-500 bg-blue-50 shadow-sm";
+      } else if (!isArchived) {
+        return "border-l-2 border-l-gray-200 bg-white";
+      }
+      
+      return "opacity-60";
+    };
+    
     return (
       <Card
         key={notification.id}
         className={cn(
           "transition-all duration-200 hover:shadow-md",
-          isEventNotification && eventStatus === 'in_progress' && !isArchived
-            ? "border-l-4 border-l-orange-500 bg-orange-50"
-            : isEventNotification && eventStatus === 'completed' && !isArchived
-            ? "border-l-4 border-l-green-500 bg-green-50"
-            : isEventNotification && eventStatus === 'upcoming' && !isArchived
-            ? "border-l-4 border-l-blue-500 bg-blue-50"
-            : notification.sla.isLate && !isArchived
-            ? "border-l-4 border-l-red-500 bg-red-50"
-            : isUnread
-            ? "border-l-4 border-l-blue-500 bg-blue-50 shadow-sm"
-            : !isArchived
-            ? "border-l-2 border-l-gray-200 bg-white"
-            : "opacity-60"
+          getEventCardStyle()
         )}
       >
         <CardContent
@@ -643,12 +785,21 @@ export function UniversalNotificationCenter({
                   <div className="flex items-center gap-2">
                     <h4 className={cn(
                       "truncate",
-                      isUnread ? "font-semibold text-gray-900" : "font-medium text-gray-700"
+                      isUnread 
+                        ? isEventNotification 
+                          ? "font-bold text-gray-900 text-base" 
+                          : "font-semibold text-gray-900"
+                        : isEventNotification
+                        ? "font-medium text-gray-700"
+                        : "font-medium text-gray-700"
                     )}>
                       {notification.title}
                     </h4>
                     {isUnread && (
-                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                      <div className={cn(
+                        "rounded-full flex-shrink-0",
+                        isEventNotification ? "w-3 h-3 bg-blue-600" : "w-2 h-2 bg-blue-500"
+                      )} />
                     )}
                   </div>
                   <Badge
@@ -814,18 +965,40 @@ export function UniversalNotificationCenter({
                   </div>
                   {/* Bouton rapport pour les événements terminés */}
                   {isEventNotification && eventStatus === 'completed' && metadata.event_id && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleOpenReportModal(metadata.event_id, metadata.event_title || notification.message);
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <FileTextIcon className="w-4 h-4" />
-                      {metadata.has_report ? 'Modifier rapport' : 'Ajouter rapport'}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {/* Icône de rapport si un rapport existe */}
+                      {metadata.has_report && metadata.report && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setReportSummaryPopup({
+                              isOpen: true,
+                              report: metadata.report,
+                              eventTitle: metadata.event_title || notification.message
+                            });
+                          }}
+                          className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50 relative"
+                          title="Voir le résumé du rapport"
+                        >
+                          <FileTextIcon className="w-5 h-5" />
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleOpenReportModal(metadata.event_id, metadata.event_title || notification.message);
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <FileTextIcon className="w-4 h-4" />
+                        {metadata.has_report ? 'Modifier rapport' : 'Ajouter rapport'}
+                      </Button>
+                    </div>
                   )}
                 </>
               )}
@@ -839,29 +1012,6 @@ export function UniversalNotificationCenter({
   // ============================================================================
   // RENDER - Mode Compact
   // ============================================================================
-
-  const groupedNotifications = useMemo(() => {
-    if (!groupByDossier || filter === 'archived') {
-      return null;
-    }
-
-    const groups = new Map<string, any[]>();
-    filteredNotifications.forEach((notification: any) => {
-      const key = notification.metadata?.dossier_id || '__autres__';
-      if (!groups.has(key)) {
-        groups.set(key, []);
-      }
-      groups.get(key)!.push(notification);
-    });
-
-    return Array.from(groups.entries()).map(([dossierId, items]) => ({
-      dossierId,
-      items: items.sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-    }));
-  }, [filteredNotifications, groupByDossier]);
 
   if (mode === 'compact') {
     return (
@@ -896,13 +1046,54 @@ export function UniversalNotificationCenter({
                   {filteredNotifications.slice(0, showAll ? filteredNotifications.length : expandLimit).map((notification) => {
                     const isArchived = notification.status === 'archived';
                     const isUnread = !notification.is_read && !isArchived;
+                    const metadata = notification.metadata || {};
+                    const isEventNotification = 
+                      notification.notification_type === 'event_upcoming' ||
+                      notification.notification_type === 'event_in_progress' ||
+                      notification.notification_type === 'event_completed' ||
+                      metadata.event_id;
+                    const eventStatus = metadata.event_status || 
+                      (notification.notification_type === 'event_upcoming' ? 'upcoming' :
+                       notification.notification_type === 'event_in_progress' ? 'in_progress' :
+                       notification.notification_type === 'event_completed' ? 'completed' : null);
+                    
+                    // Style amélioré pour les événements lu/non lu
+                    const getCompactCardStyle = () => {
+                      if (isArchived) return "opacity-60";
+                      
+                      if (isEventNotification) {
+                        if (isUnread) {
+                          if (eventStatus === 'completed') {
+                            return "border-l-4 border-l-green-600 bg-green-100 shadow-md";
+                          } else if (eventStatus === 'in_progress') {
+                            return "border-l-4 border-l-orange-600 bg-orange-100 shadow-md";
+                          } else {
+                            return "border-l-4 border-l-blue-600 bg-blue-100 shadow-md";
+                          }
+                        } else {
+                          if (eventStatus === 'completed') {
+                            return "border-l-2 border-l-green-300 bg-green-50";
+                          } else if (eventStatus === 'in_progress') {
+                            return "border-l-2 border-l-orange-300 bg-orange-50";
+                          } else {
+                            return "border-l-2 border-l-blue-300 bg-blue-50";
+                          }
+                        }
+                      }
+                      
+                      if (isUnread) {
+                        return "border-l-4 border-l-blue-500 bg-blue-50 shadow-sm";
+                      } else if (!isArchived) {
+                        return "border-l-2 border-l-gray-200 bg-white";
+                      }
+                      
+                      return "opacity-60";
+                    };
                     
                     return (
                       <Card key={notification.id} className={cn(
                         "transition-all hover:shadow-md",
-                        isUnread && "border-l-4 border-l-blue-500 bg-blue-50 shadow-sm",
-                        !isUnread && !isArchived && "border-l-2 border-l-gray-200 bg-white",
-                        isArchived && "opacity-60",
+                        getCompactCardStyle(),
                         notification.action_url && "cursor-pointer hover:border-blue-300"
                       )}>
                         <CardContent className="p-3">
@@ -922,12 +1113,19 @@ export function UniversalNotificationCenter({
                                 <div className="flex items-center gap-2">
                                   <h4 className={cn(
                                     "text-sm truncate",
-                                    isUnread ? "font-semibold text-gray-900" : "font-medium text-gray-700"
+                                    isUnread 
+                                      ? isEventNotification 
+                                        ? "font-bold text-gray-900" 
+                                        : "font-semibold text-gray-900"
+                                      : "font-medium text-gray-700"
                                   )}>
                                     {notification.title}
                                   </h4>
                                   {isUnread && (
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                                    <div className={cn(
+                                      "rounded-full flex-shrink-0",
+                                      isEventNotification ? "w-3 h-3 bg-blue-600" : "w-2 h-2 bg-blue-500"
+                                    )} />
                                   )}
                                 </div>
                                 <p className={cn(
@@ -942,6 +1140,27 @@ export function UniversalNotificationCenter({
                           
                           {/* Actions pour chaque notification */}
                           <div className="flex items-center gap-2 flex-shrink-0">
+                            {/* Icône de rapport pour les événements terminés */}
+                            {isEventNotification && eventStatus === 'completed' && metadata.event_id && metadata.has_report && metadata.report && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setReportSummaryPopup({
+                                    isOpen: true,
+                                    report: metadata.report,
+                                    eventTitle: metadata.event_title || notification.message
+                                  });
+                                }}
+                                className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50 relative"
+                                title="Voir le résumé du rapport"
+                              >
+                                <FileTextIcon className="w-4 h-4" />
+                                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+                              </Button>
+                            )}
+                            
                             {/* Toggle lu/non lu */}
                             <div className="flex items-center gap-1">
                               <Switch
@@ -1097,6 +1316,32 @@ export function UniversalNotificationCenter({
                     </Badge>
                   </button>
                   <button
+                    onClick={() => setFilter('events')}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                      filter === 'events' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"
+                    )}
+                  >
+                    <div className="flex items-center">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      <span>Événements</span>
+                    </div>
+                    <Badge variant="secondary" className="ml-2">{eventCount}</Badge>
+                  </button>
+                  <button
+                    onClick={() => setFilter('contact_requests')}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                      filter === 'contact_requests' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"
+                    )}
+                  >
+                    <div className="flex items-center">
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      <span>Demandes de contact</span>
+                    </div>
+                    <Badge variant="secondary" className="ml-2">{contactRequestCount}</Badge>
+                  </button>
+                  <button
                     onClick={() => setFilter('archived')}
                     className={cn(
                       "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
@@ -1136,18 +1381,6 @@ export function UniversalNotificationCenter({
                     <Trash2 className="h-4 w-4 mr-2" />
                     Supprimer tout lu
                   </Button>
-                </div>
-              </div>
-
-              {/* Affichage */}
-              <div className="border-t pt-4">
-                <h3 className="font-medium text-gray-900 mb-3">Affichage</h3>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Regrouper par dossier</span>
-                  <Switch
-                    checked={groupByDossier}
-                    onCheckedChange={setGroupByDossier}
-                  />
                 </div>
               </div>
 
@@ -1212,65 +1445,6 @@ export function UniversalNotificationCenter({
                     <BellOff className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">Aucune notification trouvée</p>
                   </div>
-                ) : groupByDossier && groupedNotifications && groupedNotifications.length > 0 ? (
-                  groupedNotifications.map((group) => {
-                    const first = group.items[0];
-                    const metadata = first.metadata || {};
-                    const groupLabel =
-                      metadata.dossier_nom ||
-                      metadata.produit ||
-                      (group.dossierId === '__autres__'
-                        ? 'Autres notifications'
-                        : `Dossier ${group.dossierId.slice(0, 8)}…`);
-                    const lateInGroup = group.items.filter((item: any) => item.sla.isLate).length;
-                    const actionUrl =
-                      group.items
-                        .map((item: any) => getPrimaryActionUrl(item))
-                        .find((url: string | null) => !!url) || null;
-
-                    return (
-                      <Card key={`${group.dossierId}-${group.items.length}`} className="border border-gray-200">
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <h3 className="text-sm font-semibold text-gray-900">{groupLabel}</h3>
-                              {metadata.client_nom && (
-                                <p className="text-xs text-gray-500">{metadata.client_nom}</p>
-                              )}
-                              {metadata.produit && metadata.produit !== groupLabel && (
-                                <p className="text-xs text-gray-500">{metadata.produit}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {group.items.length} notif.
-                              </Badge>
-                              {lateInGroup > 0 && (
-                                <Badge
-                                  variant="destructive"
-                                  className="text-xs bg-red-100 text-red-700 border-red-200"
-                                >
-                                  {lateInGroup} en retard
-                                </Badge>
-                              )}
-                              {actionUrl && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => navigate(actionUrl)}
-                                >
-                                  Ouvrir
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                          <div className="space-y-3">
-                            {group.items.map((notification: any) => renderNotificationCard(notification))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })
                 ) : (
                   filteredNotifications.map((notification: any) => renderNotificationCard(notification))
                 )}
@@ -1289,11 +1463,87 @@ export function UniversalNotificationCenter({
           onClose={() => setRdvReportModal({ isOpen: false, rdvId: null, existingReport: null })}
           onSuccess={() => {
             reload();
+            // Recharger le rapport pour mettre à jour l'affichage
+            const eventId = rdvReportModal.rdvId;
+            if (eventId) {
+              const token = localStorage.getItem('token');
+              fetch(`${config.API_URL}/api/rdv/${eventId}/report`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              })
+                .then(res => res.json())
+                .then(data => {
+                  if (data.success && data.data) {
+                    setEventReports(prev => ({
+                      ...prev,
+                      [eventId]: data.data
+                    }));
+                  }
+                })
+                .catch(err => console.error('Erreur rechargement rapport:', err));
+            }
             setRdvReportModal({ isOpen: false, rdvId: null, existingReport: null });
           }}
           existingReport={rdvReportModal.existingReport}
         />
       )}
+      
+      {/* Popup de résumé de rapport */}
+      <Dialog open={reportSummaryPopup.isOpen} onOpenChange={(open) => {
+        if (!open) {
+          setReportSummaryPopup({ isOpen: false, report: null });
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileTextIcon className="w-5 h-5 text-green-600" />
+              Résumé du rapport
+            </DialogTitle>
+          </DialogHeader>
+          {reportSummaryPopup.report && (
+            <div className="space-y-4 mt-4">
+              {reportSummaryPopup.eventTitle && (
+                <div className="text-sm font-medium text-gray-700 bg-gray-50 p-3 rounded-md">
+                  {reportSummaryPopup.eventTitle}
+                </div>
+              )}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-gray-900">Résumé</h4>
+                <div className="text-sm text-gray-700 bg-gray-50 p-4 rounded-md whitespace-pre-wrap">
+                  {reportSummaryPopup.report.summary}
+                </div>
+              </div>
+              {reportSummaryPopup.report.action_items && 
+               Array.isArray(reportSummaryPopup.report.action_items) && 
+               reportSummaryPopup.report.action_items.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-gray-900">Actions à suivre</h4>
+                  <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                    {reportSummaryPopup.report.action_items.map((item: any, index: number) => (
+                      <li key={index} className="bg-gray-50 p-2 rounded-md">
+                        {typeof item === 'string' ? item : item.text || JSON.stringify(item)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {reportSummaryPopup.report.created_at && (
+                <div className="text-xs text-gray-500 pt-2 border-t">
+                  Créé le {new Date(reportSummaryPopup.report.created_at).toLocaleString('fr-FR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
