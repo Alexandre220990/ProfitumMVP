@@ -70,6 +70,9 @@ function transformRDVToCalendarEvent(rdv: any): any {
     new Date(startDateTime).getTime() + (rdv.duration_minutes || 60) * 60000
   ).toISOString();
 
+  // Extraire color depuis metadata si présent, sinon utiliser getStatusColor
+  const color = rdv.metadata?.color || getStatusColor(rdv.status);
+
   return {
     id: rdv.id,
     title: rdv.title,
@@ -79,7 +82,7 @@ function transformRDVToCalendarEvent(rdv: any): any {
     location: rdv.location,
     is_online: rdv.meeting_type === 'video',
     meeting_url: rdv.meeting_url,
-    color: getStatusColor(rdv.status),
+    color,
     status: rdv.status,
     type: 'appointment',
     priority: rdv.priority === 4 ? 'critical' : rdv.priority === 3 ? 'high' : rdv.priority === 2 ? 'medium' : 'low',
@@ -848,7 +851,19 @@ router.put('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    const mergedData = { ...existingRDV, ...updates };
+    // Extraire color des updates s'il est présent et le placer dans metadata
+    const { color, ...updatesWithoutColor } = updates;
+    const existingMetadata = existingRDV.metadata || {};
+    const updatesWithMetadata = {
+      ...updatesWithoutColor,
+      metadata: {
+        ...existingMetadata,
+        ...(updates.metadata || {}),
+        ...(color && { color }) // Ajouter color dans metadata si présent
+      }
+    };
+
+    const mergedData = { ...existingRDV, ...updatesWithMetadata };
 
     let normalizedUpdates;
     try {
@@ -863,11 +878,14 @@ router.put('/:id', async (req: Request, res: Response) => {
       throw error;
     }
 
+    // Filtrer les colonnes qui n'existent pas dans RDV (comme color)
+    const { color: _, ...filteredUpdates } = updatesWithoutColor;
+    
     // Mettre à jour le RDV
     const { data: updatedRDV, error: updateError } = await supabase
       .from('RDV')
       .update({
-        ...updates,
+        ...filteredUpdates,
         ...normalizedUpdates,
         updated_at: new Date().toISOString()
       })

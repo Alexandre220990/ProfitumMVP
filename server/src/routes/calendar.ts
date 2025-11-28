@@ -46,11 +46,15 @@ function transformRDVToCalendarEvent(rdv: any): any {
     full_name: `${rdv.expert.first_name || ''} ${rdv.expert.last_name || ''}`.trim()
   } : null;
   
+  // Extraire color depuis metadata si présent
+  const color = rdv.metadata?.color || '#3B82F6';
+  
   return {
     ...rdv,
     start_date,
     end_date,
     is_online: rdv.meeting_type === 'video',
+    color, // Extraire color depuis metadata pour compatibilité API
     client_info: clientInfo,
     expert_info: expertInfo,
     // Garder les champs RDV aussi pour compatibilité
@@ -822,13 +826,46 @@ router.put('/events/:id', calendarLimiter, validateEvent, asyncHandler(async (re
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
+    // Transformer les données CalendarEvent vers format RDV
+    const transformedUpdates = transformCalendarEventToRDV(updates);
+    
+    // Fusionner les métadonnées existantes avec les nouvelles
+    const existingMetadata = existingEvent.metadata || {};
+    const newMetadata = transformedUpdates.metadata || {};
+    const mergedMetadata = {
+      ...existingMetadata,
+      ...newMetadata
+    };
+
+    // Construire l'objet de mise à jour avec seulement les colonnes valides de RDV
+    const rdvUpdates: any = {};
+    
+    // Colonnes directes de RDV
+    if (transformedUpdates.title !== undefined) rdvUpdates.title = transformedUpdates.title;
+    if (transformedUpdates.description !== undefined) rdvUpdates.description = transformedUpdates.description;
+    if (transformedUpdates.scheduled_date !== undefined) rdvUpdates.scheduled_date = transformedUpdates.scheduled_date;
+    if (transformedUpdates.scheduled_time !== undefined) rdvUpdates.scheduled_time = transformedUpdates.scheduled_time;
+    if (transformedUpdates.duration_minutes !== undefined) rdvUpdates.duration_minutes = transformedUpdates.duration_minutes;
+    if (transformedUpdates.meeting_type !== undefined) rdvUpdates.meeting_type = transformedUpdates.meeting_type;
+    if (transformedUpdates.location !== undefined) rdvUpdates.location = transformedUpdates.location;
+    if (transformedUpdates.meeting_url !== undefined) rdvUpdates.meeting_url = transformedUpdates.meeting_url;
+    if (transformedUpdates.priority !== undefined) rdvUpdates.priority = transformedUpdates.priority;
+    if (transformedUpdates.notes !== undefined) rdvUpdates.notes = transformedUpdates.notes;
+    
+    // Métadonnées fusionnées
+    rdvUpdates.metadata = mergedMetadata;
+    
+    // Colonnes optionnelles de participants
+    if (updates.client_id !== undefined) rdvUpdates.client_id = updates.client_id;
+    if (updates.expert_id !== undefined) rdvUpdates.expert_id = updates.expert_id;
+    if (updates.apporteur_id !== undefined) rdvUpdates.apporteur_id = updates.apporteur_id;
+    
+    rdvUpdates.updated_at = new Date().toISOString();
+
     // Mettre à jour l'événement
     const { data: updatedEvent, error } = await supabase
       .from('RDV')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
+      .update(rdvUpdates)
       .eq('id', id)
       .select()
       .single();
@@ -848,9 +885,12 @@ router.put('/events/:id', calendarLimiter, validateEvent, asyncHandler(async (re
       { eventTitle: updatedEvent.title }
     );
 
+    // Transformer l'événement RDV en format CalendarEvent pour la réponse
+    const transformedEvent = transformRDVToCalendarEvent(updatedEvent);
+
     return res.json({
       success: true,
-      data: updatedEvent,
+      data: transformedEvent,
       message: 'Événement mis à jour avec succès'
     });
   } catch (error) {
