@@ -7601,4 +7601,146 @@ router.post('/leads', asyncHandler(async (req, res) => {
   }
 }));
 
+// GET /api/admin/events/:id/synthese - Synthèse complète d'un événement
+router.get('/events/:id/synthese', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`🔍 Récupération synthèse événement ${id}`);
+
+    // Récupérer l'événement avec toutes ses relations
+    const { data: event, error: eventError } = await supabaseClient
+      .from('RDV')
+      .select(`
+        *,
+        Client:client_id (
+          id,
+          company_name,
+          first_name,
+          last_name,
+          name,
+          email,
+          phone_number
+        ),
+        Expert:expert_id (
+          id,
+          first_name,
+          last_name,
+          name,
+          company_name,
+          email,
+          cabinet_id,
+          Cabinet:cabinet_id (
+            id,
+            name,
+            siret
+          )
+        ),
+        ApporteurAffaires:apporteur_id (
+          id,
+          first_name,
+          last_name,
+          company_name,
+          email,
+          phone
+        ),
+        RDV_Produits (
+          produit_id,
+          ProduitEligible:produit_id (
+            id,
+            nom,
+            description,
+            categorie
+          )
+        ),
+        RDV_Participants (
+          user_id,
+          user_type,
+          status
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (eventError || !event) {
+      console.error('❌ Erreur récupération événement:', eventError);
+      return res.status(404).json({
+        success: false,
+        message: 'Événement non trouvé'
+      });
+    }
+
+    // Récupérer le rapport si existant
+    const { data: report, error: reportError } = await supabaseClient
+      .from('RDV_Report')
+      .select('*')
+      .eq('rdv_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (reportError && reportError.code !== 'PGRST116') {
+      console.error('❌ Erreur récupération rapport:', reportError);
+    }
+
+    // Enrichir les participants avec leurs informations
+    const enrichedParticipants = [];
+    if (event.RDV_Participants && event.RDV_Participants.length > 0) {
+      for (const participant of event.RDV_Participants) {
+        let participantData = null;
+        
+        if (participant.user_type === 'client') {
+          const { data: clientData } = await supabaseClient
+            .from('Client')
+            .select('id, name, email, company_name')
+            .eq('id', participant.user_id)
+            .single();
+          participantData = clientData;
+        } else if (participant.user_type === 'expert') {
+          const { data: expertData } = await supabaseClient
+            .from('Expert')
+            .select('id, name, email, company_name')
+            .eq('id', participant.user_id)
+            .single();
+          participantData = expertData;
+        } else if (participant.user_type === 'apporteur') {
+          const { data: apporteurData } = await supabaseClient
+            .from('ApporteurAffaires')
+            .select('id, first_name, last_name, company_name, email')
+            .eq('id', participant.user_id)
+            .single();
+          participantData = apporteurData;
+        }
+
+        if (participantData) {
+          enrichedParticipants.push({
+            ...participant,
+            ...participantData
+          });
+        }
+      }
+    }
+
+    console.log('✅ Synthèse événement récupérée:', event.id);
+
+    return res.json({
+      success: true,
+      data: {
+        event: {
+          ...event,
+          RDV_Participants: enrichedParticipants
+        },
+        report: report || null
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route events/:id/synthese:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+}));
+
 export default router;
