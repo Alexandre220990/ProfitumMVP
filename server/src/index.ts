@@ -128,7 +128,20 @@ import clientDocumentsRoutes from './routes/client-documents';
 // Créer l'application Express
 const app = express();
 
-dotenv.config();
+// Charger les variables d'environnement depuis server/.env
+// En dev: __dirname = server/src, donc ../.env = server/.env
+// En prod: __dirname = server/dist, donc ../.env = server/.env
+const envPath = path.resolve(__dirname, '../.env');
+console.log('🔍 Chargement du fichier .env depuis:', envPath);
+dotenv.config({ path: envPath });
+
+// Debug: Vérifier que les variables SMTP sont chargées
+console.log('🔍 Variables SMTP:', {
+  SMTP_USER: process.env.SMTP_USER ? '✅ Configuré' : '❌ Manquant',
+  SMTP_PASS: process.env.SMTP_PASS ? '✅ Configuré' : '❌ Manquant',
+  SMTP_HOST: process.env.SMTP_HOST || 'Non défini',
+  SMTP_PORT: process.env.SMTP_PORT || 'Non défini'
+});
 
 const PORT = Number(process.env.PORT) || 5001;
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '::'; // En production, écouter sur toutes les interfaces
