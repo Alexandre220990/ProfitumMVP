@@ -105,6 +105,8 @@ export default function ApporteurAgenda() {
     const eventId = searchParams.get('event');
     
     if (!eventId) {
+      // Réinitialiser le ref quand il n'y a plus d'événement dans l'URL
+      eventProcessedRef.current = false;
       return;
     }
 
@@ -119,8 +121,14 @@ export default function ApporteurAgenda() {
         // Marquer cet événement comme en cours de traitement
         eventProcessedRef.current = eventId;
         
+        // Fermer les popups précédents en déclenchant un événement de fermeture
+        window.dispatchEvent(new CustomEvent('calendar:close-dialogs'));
+        
         // Nettoyer le localStorage avant de stocker le nouvel événement
         localStorage.removeItem('calendar_event_to_display');
+        
+        // Petit délai pour s'assurer que les popups sont bien fermés
+        await new Promise(resolve => setTimeout(resolve, 150));
         
         const rdv = await rdvService.getRDV(eventId);
         
@@ -135,23 +143,24 @@ export default function ApporteurAgenda() {
 
         const calendarEvent = transformRDVToCalendarEvent(rdv);
         
+        // Stocker l'événement dans localStorage
         localStorage.setItem('calendar_event_to_display', JSON.stringify({
           event: calendarEvent,
           action: 'view'
         }));
 
+        // Nettoyer l'URL après avoir stocké l'événement
         const newSearchParams = new URLSearchParams(searchParams);
         newSearchParams.delete('event');
         setSearchParams(newSearchParams, { replace: true });
 
+        // Déclencher l'événement personnalisé pour afficher l'événement
         window.dispatchEvent(new CustomEvent('calendar:display-event', { 
-          detail: { event: calendarEvent } 
+          detail: { event: calendarEvent, action: 'view' } 
         }));
 
-        // Réinitialiser après un court délai pour permettre de traiter un autre événement
-        setTimeout(() => {
-          eventProcessedRef.current = false;
-        }, 500);
+        // Réinitialiser immédiatement après le dispatch pour permettre de traiter un autre événement
+        eventProcessedRef.current = false;
 
       } catch (error) {
         console.error('❌ Erreur chargement événement:', error);
