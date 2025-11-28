@@ -17,6 +17,7 @@ const DashboardClient = React.lazy(() => import('./pages/dashboard/client'));
 const ClientHome = React.lazy(() => import('./pages/dashboard/client-home'));
 const AgendaClient = React.lazy(() => import('./pages/agenda-client'));
 const AgendaExpert = React.lazy(() => import('./pages/agenda-expert'));
+const ClientEventSynthese = React.lazy(() => import('./pages/client/event-synthese'));
 const AgendaAdmin = React.lazy(() => import('./pages/agenda-admin'));
 const GoogleCalendarIntegration = React.lazy(() => import('./pages/google-calendar-integration'));
 const AideClient = React.lazy(() => import('./pages/aide-client'));
@@ -66,6 +67,7 @@ const ApporteurNotifications = React.lazy(() => import('./pages/ApporteurNotific
 const ApporteurProducts = React.lazy(() => import('./pages/ApporteurProducts'));
 const ApporteurMessaging = React.lazy(() => import('./pages/ApporteurMessaging'));
 const ApporteurAgenda = React.lazy(() => import('./pages/ApporteurAgenda'));
+const ApporteurEventSynthese = React.lazy(() => import('./pages/apporteur/event-synthese'));
 const ApporteurSettings = React.lazy(() => import('./pages/apporteur/settings'));
 const ApporteurLayout = React.lazy(() => import('./components/apporteur/ApporteurLayout'));
 const ClientLayout = React.lazy(() => import('./components/client/ClientLayout'));
@@ -134,6 +136,7 @@ const ExpertDashboard = React.lazy(() => import('./pages/expert/dashboard'));
 const ExpertDetails = React.lazy(() => import('./pages/expert/[id]'));
 const ExpertMesAffaires = React.lazy(() => import('./pages/expert/mes-affaires'));
 const ExpertAgenda = React.lazy(() => import('./pages/expert/agenda'));
+const ExpertEventSynthese = React.lazy(() => import('./pages/expert/event-synthese'));
 const ExpertDossier = React.lazy(() => import('./pages/expert/dossier/[id]'));
 const ExpertClient = React.lazy(() => import('./pages/expert/client/[id]'));
 const ExpertAjouterLead = React.lazy(() => import('./pages/expert/ajouter-lead'));
@@ -237,6 +240,7 @@ function App() {
                         <Route path="documents" element={<ApporteurDocumentsPage />} />
                         <Route path="messaging" element={<ApporteurMessaging />} />
                         <Route path="agenda" element={<ApporteurAgenda />} />
+                        <Route path="events/:id" element={<ApporteurEventSynthese />} />
                         <Route path="commissions" element={<ApporteurCommissions />} />
                         <Route path="statistics" element={<ApporteurStatistics />} />
                         <Route path="notifications" element={<ApporteurNotifications />} />
@@ -269,6 +273,7 @@ function App() {
                         
                         {/* Agenda & Calendar */}
                         <Route path="/agenda-client" element={<AgendaClient />} />
+                        <Route path="/events/:id" element={<ClientEventSynthese />} />
                         <Route path="/google-calendar-integration" element={<GoogleCalendarIntegration />} />
                         
                         {/* Simulateur */}
@@ -328,6 +333,7 @@ function App() {
                         {/* Agenda */}
                         <Route path="agenda" element={<ExpertAgenda />} />
                         <Route path="agenda-expert" element={<AgendaExpert />} />
+                        <Route path="events/:id" element={<ExpertEventSynthese />} />
                         
                         {/* Analytics */}
                         <Route path="analytics" element={<AnalyticsPage />} />

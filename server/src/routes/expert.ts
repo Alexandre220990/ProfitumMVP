@@ -2379,4 +2379,156 @@ router.post('/leads', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/expert/events/:id/synthese - Synthèse complète d'un événement pour expert
+router.get('/events/:id/synthese', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+
+    const authUser = req.user as AuthUser;
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux experts' });
+    }
+
+    const { id } = req.params;
+    
+    console.log(`🔍 Récupération synthèse événement ${id} pour expert ${authUser.database_id}`);
+
+    // Récupérer l'événement avec vérification que l'expert y a accès
+    const { data: event, error: eventError } = await supabase
+      .from('RDV')
+      .select(`
+        *,
+        Client:client_id (
+          id,
+          company_name,
+          first_name,
+          last_name,
+          name,
+          email,
+          phone_number
+        ),
+        Expert:expert_id (
+          id,
+          first_name,
+          last_name,
+          name,
+          company_name,
+          email,
+          cabinet_id,
+          Cabinet:cabinet_id (
+            id,
+            name,
+            siret
+          )
+        ),
+        ApporteurAffaires:apporteur_id (
+          id,
+          first_name,
+          last_name,
+          company_name,
+          email,
+          phone
+        ),
+        RDV_Produits (
+          produit_id,
+          ProduitEligible:produit_id (
+            id,
+            nom,
+            description,
+            categorie
+          )
+        ),
+        RDV_Participants (
+          user_id,
+          user_type,
+          status
+        )
+      `)
+      .eq('id', id)
+      .eq('expert_id', authUser.database_id)
+      .single();
+
+    if (eventError || !event) {
+      console.error('❌ Erreur récupération événement:', eventError);
+      return res.status(404).json({
+        success: false,
+        message: 'Événement non trouvé ou accès non autorisé'
+      });
+    }
+
+    // Récupérer le rapport si existant
+    const { data: report, error: reportError } = await supabase
+      .from('RDV_Report')
+      .select('*')
+      .eq('rdv_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (reportError && reportError.code !== 'PGRST116') {
+      console.error('❌ Erreur récupération rapport:', reportError);
+    }
+
+    // Enrichir les participants avec leurs informations
+    const enrichedParticipants = [];
+    if (event.RDV_Participants && event.RDV_Participants.length > 0) {
+      for (const participant of event.RDV_Participants) {
+        let participantData = null;
+        
+        if (participant.user_type === 'client') {
+          const { data: clientData } = await supabase
+            .from('Client')
+            .select('id, name, email, company_name')
+            .eq('id', participant.user_id)
+            .single();
+          participantData = clientData;
+        } else if (participant.user_type === 'expert') {
+          const { data: expertData } = await supabase
+            .from('Expert')
+            .select('id, name, email, company_name')
+            .eq('id', participant.user_id)
+            .single();
+          participantData = expertData;
+        } else if (participant.user_type === 'apporteur') {
+          const { data: apporteurData } = await supabase
+            .from('ApporteurAffaires')
+            .select('id, first_name, last_name, company_name, email')
+            .eq('id', participant.user_id)
+            .single();
+          participantData = apporteurData;
+        }
+
+        if (participantData) {
+          enrichedParticipants.push({
+            ...participant,
+            ...participantData
+          });
+        }
+      }
+    }
+
+    console.log('✅ Synthèse événement récupérée pour expert:', event.id);
+
+    return res.json({
+      success: true,
+      data: {
+        event: {
+          ...event,
+          RDV_Participants: enrichedParticipants
+        },
+        report: report || null
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route expert events/:id/synthese:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router; 

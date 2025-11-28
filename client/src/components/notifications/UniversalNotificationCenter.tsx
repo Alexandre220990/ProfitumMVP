@@ -256,11 +256,14 @@ export function UniversalNotificationCenter({
         // Rediriger vers la page de synthèse événement dédiée pour les admins
         eventUrl = `/admin/events/${eventId}`;
       } else if (userRole === 'expert') {
-        eventUrl = `/expert/agenda?event=${eventId}`;
+        // Rediriger vers la page de synthèse événement dédiée pour les experts
+        eventUrl = `/expert/events/${eventId}`;
       } else if (userRole === 'apporteur') {
-        eventUrl = `/apporteur/agenda?event=${eventId}`;
+        // Rediriger vers la page de synthèse événement dédiée pour les apporteurs
+        eventUrl = `/apporteur/events/${eventId}`;
       } else if (userRole === 'client') {
-        eventUrl = `/agenda-client?event=${eventId}`;
+        // Rediriger vers la page de synthèse événement dédiée pour les clients
+        eventUrl = `/events/${eventId}`;
       }
       
       if (eventUrl) {
