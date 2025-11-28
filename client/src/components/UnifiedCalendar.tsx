@@ -342,17 +342,69 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
 
 
 
+  // Fonction pour nettoyer et transformer les données d'événement pour l'API
+  const cleanEventDataForAPI = useCallback((eventData: any): any => {
+    // Convertir priority nombre en string si nécessaire
+    const getPriorityString = (priority: any): 'low' | 'medium' | 'high' | 'critical' => {
+      if (typeof priority === 'string') {
+        return priority as 'low' | 'medium' | 'high' | 'critical';
+      }
+      if (typeof priority === 'number') {
+        if (priority >= 4) return 'critical';
+        if (priority >= 3) return 'high';
+        if (priority >= 2) return 'medium';
+        return 'low';
+      }
+      return 'medium';
+    };
+
+    // Fonction helper pour convertir null en undefined
+    const nullToUndefined = (value: any): any => {
+      return value === null || value === '' ? undefined : value;
+    };
+
+    // Nettoyer les données pour l'API
+    const cleaned: any = {
+      title: eventData.title,
+      description: nullToUndefined(eventData.description),
+      start_date: eventData.start_date,
+      end_date: eventData.end_date,
+      type: eventData.type || 'appointment',
+      priority: getPriorityString(eventData.priority),
+      location: nullToUndefined(eventData.location),
+      meeting_url: nullToUndefined(eventData.meeting_url),
+      is_online: eventData.is_online || false,
+      color: eventData.color || '#3B82F6',
+      // Convertir null en undefined pour les IDs optionnels (le schéma Joi attend string UUID ou undefined, pas null)
+      client_id: nullToUndefined(eventData.client_id),
+      expert_id: nullToUndefined(eventData.expert_id),
+      apporteur_id: nullToUndefined(eventData.apporteur_id),
+      dossier_id: nullToUndefined(eventData.dossier_id),
+      participants: eventData.participants && eventData.participants.length > 0 ? eventData.participants : undefined
+    };
+
+    // Ne pas inclure le champ status (interdit dans le schéma de validation)
+    // Ne pas inclure les champs métadonnées qui ne sont pas dans le schéma
+    // Supprimer explicitement le status s'il est présent
+    delete cleaned.status;
+
+    return cleaned;
+  }, []);
+
   const handleEventSubmit = useCallback(async (eventData: any) => {
     try {
       console.log('🔍 handleEventSubmit appelé avec:', eventData);
       
+      // Nettoyer les données avant l'envoi
+      const cleanedData = cleanEventDataForAPI(eventData);
+      
       if (selectedEvent) {
         console.log('📝 Mise à jour événement existant');
-        await updateEvent({ ...eventData, id: selectedEvent.id });
+        await updateEvent({ ...cleanedData, id: selectedEvent.id });
       } else {
         console.log('📝 Création nouvel événement');
-        console.log('🔍 Appel createEvent avec:', eventData);
-        await createEvent(eventData);
+        console.log('🔍 Appel createEvent avec:', cleanedData);
+        await createEvent(cleanedData);
       }
       
       // Réinitialiser les états après succès
@@ -365,7 +417,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       console.error('❌ Erreur création/mise à jour événement:', error);
       throw error;
     }
-  }, [selectedEvent, createEvent, updateEvent]);
+  }, [selectedEvent, createEvent, updateEvent, cleanEventDataForAPI]);
 
   const handleViewEvent = useCallback((event: CalendarEvent) => {
     setSelectedEvent(event);
@@ -824,11 +876,17 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                           const duration = dragData.duration || (30 * 60 * 1000); // 30 minutes par défaut
                           const newEndDate = new Date(newStartDate.getTime() + duration);
                           
-                          // Mettre à jour l'événement
-                          await updateEvent({
+                          // Préparer les données de mise à jour en utilisant la fonction de nettoyage
+                          const updateData = cleanEventDataForAPI({
                             ...eventToUpdate,
                             start_date: newStartDate.toISOString(),
                             end_date: newEndDate.toISOString()
+                          });
+                          
+                          // Mettre à jour l'événement
+                          await updateEvent({
+                            ...updateData,
+                            id: eventToUpdate.id
                           });
                           
                           toast.success('Événement déplacé avec succès');
