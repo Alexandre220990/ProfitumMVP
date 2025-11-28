@@ -53,6 +53,7 @@ import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
 import { RDVReportModal } from '@/components/rdv/RDVReportModal';
 import { FileText as FileTextIcon } from 'lucide-react';
 import { config } from '@/config/env';
+import { toast } from 'sonner';
 
 interface UniversalNotificationCenterProps {
   /** Mode d'affichage : modal plein écran ou compact intégré */
@@ -241,6 +242,13 @@ export function UniversalNotificationCenter({
 
     if (isEventNotification && metadata.event_id) {
       const eventId = metadata.event_id;
+      
+      // Vérifier que l'ID est valide
+      if (!eventId || typeof eventId !== 'string' || eventId.trim() === '') {
+        console.error('❌ getPrimaryActionUrl - event_id invalide:', eventId, 'metadata:', metadata);
+        return null;
+      }
+      
       let eventUrl: string | null = null;
       
       if (userRole === 'admin') {
@@ -258,7 +266,13 @@ export function UniversalNotificationCenter({
       }
       
       if (eventUrl) {
-        console.log('✅ getPrimaryActionUrl - URL construite pour événement (ignorant action_url):', eventUrl);
+        console.log('✅ getPrimaryActionUrl - URL construite pour événement:', {
+          eventUrl,
+          eventId,
+          userRole,
+          notificationType: notification.notification_type,
+          metadata
+        });
         return eventUrl;
       }
     }
@@ -318,7 +332,9 @@ export function UniversalNotificationCenter({
       notification_type: notification.notification_type,
       is_read: notification.is_read,
       userRole,
-      user: user ? { id: user.id, type: user.type, email: user.email } : null
+      user: user ? { id: user.id, type: user.type, email: user.email } : null,
+      metadata: notification.metadata,
+      action_url: notification.action_url
     });
 
     // Vérifier que l'utilisateur est bien authentifié avant de continuer
@@ -332,7 +348,10 @@ export function UniversalNotificationCenter({
     }
 
     const targetUrl = getPrimaryActionUrl(notification);
-    console.log('🔗 handleNotificationClick - URL cible:', targetUrl);
+    console.log('🔗 handleNotificationClick - URL cible:', targetUrl, {
+      metadata: notification.metadata,
+      eventId: notification.metadata?.event_id
+    });
     
     if (targetUrl) {
       // Pour les notifications d'événement, vérifier que le userRole correspond à l'URL
@@ -352,18 +371,31 @@ export function UniversalNotificationCenter({
           });
           return;
         }
+        
+        // Vérifier que l'ID d'événement est valide
+        const eventId = metadata.event_id;
+        if (!eventId || typeof eventId !== 'string' || eventId.trim() === '') {
+          console.error('❌ handleNotificationClick - event_id invalide:', eventId);
+          toast.error('ID d\'événement invalide dans la notification');
+          return;
+        }
       }
       
       console.log('➡️ handleNotificationClick - Navigation vers:', targetUrl, {
         userRole,
-        userType: user.type
+        userType: user.type,
+        eventId: metadata.event_id
       });
       
       // Utiliser navigate() pour toutes les notifications pour préserver le contexte d'authentification
       // window.location.href force un rechargement complet qui peut perdre le contexte d'authentification
       navigate(targetUrl);
     } else {
-      console.warn('⚠️ handleNotificationClick - Aucune URL trouvée pour la notification');
+      console.warn('⚠️ handleNotificationClick - Aucune URL trouvée pour la notification:', {
+        notification_type: notification.notification_type,
+        metadata: notification.metadata,
+        action_url: notification.action_url
+      });
     }
   };
 

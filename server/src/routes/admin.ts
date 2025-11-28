@@ -7608,6 +7608,15 @@ router.get('/events/:id/synthese', asyncHandler(async (req, res) => {
     
     console.log(`🔍 Récupération synthèse événement ${id}`);
 
+    // Vérifier que l'ID est valide (UUID format)
+    if (!id || typeof id !== 'string' || id.length < 30) {
+      console.error('❌ ID événement invalide:', id);
+      return res.status(400).json({
+        success: false,
+        message: 'ID événement invalide'
+      });
+    }
+
     // Récupérer l'événement avec toutes ses relations
     const { data: event, error: eventError } = await supabaseClient
       .from('RDV')
@@ -7662,11 +7671,38 @@ router.get('/events/:id/synthese', asyncHandler(async (req, res) => {
       .eq('id', id)
       .single();
 
-    if (eventError || !event) {
-      console.error('❌ Erreur récupération événement:', eventError);
+    if (eventError) {
+      console.error('❌ Erreur récupération événement:', {
+        error: eventError,
+        code: eventError.code,
+        message: eventError.message,
+        details: eventError.details,
+        hint: eventError.hint,
+        eventId: id
+      });
+      
+      // Si l'événement n'existe pas (code PGRST116)
+      if (eventError.code === 'PGRST116') {
+        return res.status(404).json({
+          success: false,
+          message: 'Événement non trouvé',
+          eventId: id
+        });
+      }
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération de l\'événement',
+        error: eventError.message
+      });
+    }
+
+    if (!event) {
+      console.error('❌ Événement non trouvé (data null):', id);
       return res.status(404).json({
         success: false,
-        message: 'Événement non trouvé'
+        message: 'Événement non trouvé',
+        eventId: id
       });
     }
 

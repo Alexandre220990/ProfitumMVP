@@ -126,18 +126,37 @@ const EventSynthese: React.FC = () => {
   const loadEventData = async () => {
     setLoading(true);
     try {
-      const response = await get(`/admin/events/${id}/synthese`);
-      if (response.success && response.data) {
-        setEvent(response.data.event as EventData);
-        setReport(response.data.report as ReportData | null);
-      } else {
-        toast.error('Événement non trouvé');
+      if (!id) {
+        console.error('❌ loadEventData - ID manquant');
+        toast.error('ID d\'événement manquant');
         navigate('/admin/dashboard-optimized');
         return;
       }
-    } catch (error) {
-      console.error('Erreur chargement événement:', error);
-      toast.error('Erreur lors du chargement');
+      
+      console.log('🔍 loadEventData - Chargement événement:', id);
+      const response = await get(`/admin/events/${id}/synthese`);
+      
+      if (response.success && response.data) {
+        console.log('✅ loadEventData - Événement chargé:', response.data.event?.id);
+        setEvent(response.data.event as EventData);
+        setReport(response.data.report as ReportData | null);
+      } else {
+        console.error('❌ loadEventData - Réponse non réussie:', response);
+        toast.error(response.message || 'Événement non trouvé');
+        navigate('/admin/dashboard-optimized');
+        return;
+      }
+    } catch (error: any) {
+      console.error('❌ loadEventData - Erreur:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Erreur lors du chargement';
+      toast.error(errorMessage);
+      
+      // Si l'événement n'existe pas, rediriger vers le dashboard
+      if (error?.response?.status === 404) {
+        setTimeout(() => {
+          navigate('/admin/dashboard-optimized');
+        }, 2000);
+      }
     } finally {
       setLoading(false);
     }
