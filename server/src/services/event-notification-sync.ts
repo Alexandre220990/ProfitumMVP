@@ -119,23 +119,30 @@ export class EventNotificationSync {
       let title = '';
       let message = '';
 
+      // Formater la date et l'heure du RDV
+      const formatDateTime = (date: string, time: string): string => {
+        try {
+          const dateObj = new Date(`${date}T${time}`);
+          const day = dateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          const hour = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          return `${day} à ${hour}`;
+        } catch {
+          return `${date} à ${time}`;
+        }
+      };
+
+      const dateTimeStr = formatDateTime(rdv.scheduled_date, rdv.scheduled_time);
+
       if (eventStatus === 'upcoming') {
         title = 'Événement à venir';
-        const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-        const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-        if (hours > 0) {
-          message = `${rdv.title || 'Événement'} - Dans ${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`;
-        } else {
-          message = `${rdv.title || 'Événement'} - Dans ${minutes}min`;
-        }
+        // Le message contient juste le titre, le décompte sera affiché séparément
+        message = rdv.title || 'Événement';
       } else if (eventStatus === 'in_progress') {
         title = 'Événement en cours';
-        const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-        const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-        message = `${rdv.title || 'Événement'} - Se termine dans ${hours > 0 ? `${hours}h ` : ''}${minutes}min`;
+        message = rdv.title || 'Événement';
       } else {
         title = 'Événement terminé';
-        message = `${rdv.title || 'Événement'} - Terminé`;
+        message = rdv.title || 'Événement';
       }
 
       const metadata = {
@@ -144,6 +151,7 @@ export class EventNotificationSync {
         event_status: eventStatus,
         scheduled_date: rdv.scheduled_date,
         scheduled_time: rdv.scheduled_time,
+        scheduled_datetime: dateTimeStr, // Date/heure formatée pour l'affichage
         duration_minutes: rdv.duration_minutes || 60,
         location: rdv.location,
         meeting_url: rdv.meeting_url,

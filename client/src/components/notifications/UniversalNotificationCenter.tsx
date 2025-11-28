@@ -306,8 +306,15 @@ export function UniversalNotificationCenter({
       id: notification.id,
       notification_type: notification.notification_type,
       is_read: notification.is_read,
-      userRole
+      userRole,
+      user: user ? { id: user.id, type: user.type, email: user.email } : null
     });
+
+    // Vérifier que l'utilisateur est bien authentifié avant de continuer
+    if (!user || !userRole) {
+      console.error('❌ handleNotificationClick - Utilisateur non authentifié, impossible de naviguer');
+      return;
+    }
 
     if (!notification.is_read) {
       await markAsRead(notification.id);
@@ -317,14 +324,44 @@ export function UniversalNotificationCenter({
     console.log('🔗 handleNotificationClick - URL cible:', targetUrl);
     
     if (targetUrl) {
-      // Vérifier que l'utilisateur est bien authentifié avant de naviguer
-      if (!userRole) {
-        console.error('❌ handleNotificationClick - userRole non défini, impossible de naviguer');
-        return;
+      // Pour les notifications d'événement, vérifier que le userRole correspond à l'URL
+      const metadata = notification.metadata || {};
+      if (metadata.event_id) {
+        // Vérifier que l'URL correspond au rôle de l'utilisateur
+        const expectedRole = targetUrl.includes('/admin/') ? 'admin' :
+                            targetUrl.includes('/expert/') ? 'expert' :
+                            targetUrl.includes('/apporteur/') ? 'apporteur' :
+                            targetUrl.includes('/agenda-client') ? 'client' : null;
+        
+        if (expectedRole && expectedRole !== userRole) {
+          console.error('❌ handleNotificationClick - Rôle utilisateur incompatible:', {
+            expectedRole,
+            userRole,
+            targetUrl
+          });
+          return;
+        }
       }
       
-      console.log('➡️ handleNotificationClick - Navigation vers:', targetUrl);
-      navigate(targetUrl);
+      console.log('➡️ handleNotificationClick - Navigation vers:', targetUrl, {
+        userRole,
+        userType: user.type
+      });
+      
+      // Utiliser window.location pour forcer une navigation complète si nécessaire
+      // Cela évite les problèmes de contexte React Router
+      if (targetUrl.startsWith('/admin/') && userRole === 'admin') {
+        window.location.href = targetUrl;
+      } else if (targetUrl.startsWith('/expert/') && userRole === 'expert') {
+        window.location.href = targetUrl;
+      } else if (targetUrl.startsWith('/apporteur/') && userRole === 'apporteur') {
+        window.location.href = targetUrl;
+      } else if (targetUrl.startsWith('/agenda-client') && userRole === 'client') {
+        window.location.href = targetUrl;
+      } else {
+        // Pour les autres URLs, utiliser navigate normalement
+        navigate(targetUrl);
+      }
     } else {
       console.warn('⚠️ handleNotificationClick - Aucune URL trouvée pour la notification');
     }
@@ -599,14 +636,25 @@ export function UniversalNotificationCenter({
                 )}>
                   {notification.message}
                 </p>
-                {isEventNotification && eventTimeRemaining && (
-                  <div className={cn(
-                    "text-xs font-semibold px-2 py-1 rounded inline-block",
-                    eventStatus === 'upcoming' && "bg-blue-100 text-blue-700",
-                    eventStatus === 'in_progress' && "bg-orange-100 text-orange-700",
-                    eventStatus === 'completed' && "bg-green-100 text-green-700"
-                  )}>
-                    {eventTimeRemaining}
+                {isEventNotification && (
+                  <div className="space-y-1">
+                    {/* Date/heure du RDV */}
+                    {metadata.scheduled_datetime && (
+                      <div className="text-xs text-gray-600 font-medium">
+                        📅 {metadata.scheduled_datetime}
+                      </div>
+                    )}
+                    {/* Décompte jusqu'au début/fin */}
+                    {eventTimeRemaining && (
+                      <div className={cn(
+                        "text-xs font-semibold px-2 py-1 rounded inline-block",
+                        eventStatus === 'upcoming' && "bg-blue-100 text-blue-700",
+                        eventStatus === 'in_progress' && "bg-orange-100 text-orange-700",
+                        eventStatus === 'completed' && "bg-green-100 text-green-700"
+                      )}>
+                        {eventTimeRemaining}
+                      </div>
+                    )}
                   </div>
                 )}
                 {(metadata.next_step_label || metadata.next_step_description) && (
@@ -645,9 +693,12 @@ export function UniversalNotificationCenter({
                     {metadata.client_nom && <span>• {metadata.client_nom}</span>}
                   </p>
                 )}
-                <span className="text-xs text-gray-400">
-                  {formatDate(notification.created_at)}
-                </span>
+                {/* Pour les notifications d'événement, ne pas afficher "Il y a X" mais plutôt le décompte */}
+                {!isEventNotification && (
+                  <span className="text-xs text-gray-400">
+                    {formatDate(notification.created_at)}
+                  </span>
+                )}
               </div>
             </div>
 
