@@ -143,8 +143,10 @@ const EventSynthese: React.FC = () => {
     }
   };
 
+  // Vérification supplémentaire (la route est déjà protégée par ProtectedRoute dans App.tsx)
+  // Mais on vérifie quand même pour éviter les problèmes de timing
   if (!user || user.type !== 'admin') {
-    return <Navigate to="/login" />;
+    return <Navigate to="/connect-admin" replace />;
   }
 
   const getStatusBadge = (status: string) => {

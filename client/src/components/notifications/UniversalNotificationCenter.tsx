@@ -349,20 +349,9 @@ export function UniversalNotificationCenter({
         userType: user.type
       });
       
-      // Utiliser window.location pour forcer une navigation complète si nécessaire
-      // Cela évite les problèmes de contexte React Router
-      if (targetUrl.startsWith('/admin/') && userRole === 'admin') {
-        window.location.href = targetUrl;
-      } else if (targetUrl.startsWith('/expert/') && userRole === 'expert') {
-        window.location.href = targetUrl;
-      } else if (targetUrl.startsWith('/apporteur/') && userRole === 'apporteur') {
-        window.location.href = targetUrl;
-      } else if (targetUrl.startsWith('/agenda-client') && userRole === 'client') {
-        window.location.href = targetUrl;
-      } else {
-        // Pour les autres URLs, utiliser navigate normalement
-        navigate(targetUrl);
-      }
+      // Utiliser navigate() pour toutes les notifications pour préserver le contexte d'authentification
+      // window.location.href force un rechargement complet qui peut perdre le contexte d'authentification
+      navigate(targetUrl);
     } else {
       console.warn('⚠️ handleNotificationClick - Aucune URL trouvée pour la notification');
     }
