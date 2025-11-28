@@ -978,7 +978,17 @@ L'équipe Profitum`;
         try {
             // Vérifier que les variables SMTP sont configurées
             if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-                console.error('❌ Variables SMTP non configurées. Email non envoyé à:', to);
+                const missingVars = [];
+                if (!process.env.SMTP_USER) missingVars.push('SMTP_USER');
+                if (!process.env.SMTP_PASS) missingVars.push('SMTP_PASS');
+                if (!process.env.SMTP_HOST) missingVars.push('SMTP_HOST');
+                console.error(`❌ Variables SMTP non configurées (${missingVars.join(', ')}). Email non envoyé à:`, to);
+                console.error('💡 Pour configurer SMTP, ajoutez ces variables dans votre fichier .env ou variables d\'environnement:');
+                console.error('   SMTP_HOST=smtp.gmail.com');
+                console.error('   SMTP_PORT=587');
+                console.error('   SMTP_USER=votre_email@gmail.com');
+                console.error('   SMTP_PASS=votre_mot_de_passe_application');
+                console.error('   SMTP_FROM=Profitum <votre_email@gmail.com>');
                 return false;
             }
 

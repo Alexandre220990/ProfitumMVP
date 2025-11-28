@@ -133,15 +133,54 @@ const app = express();
 // En prod: __dirname = server/dist, donc ../.env = server/.env
 const envPath = path.resolve(__dirname, '../.env');
 console.log('🔍 Chargement du fichier .env depuis:', envPath);
-dotenv.config({ path: envPath });
 
-// Debug: Vérifier que les variables SMTP sont chargées
-console.log('🔍 Variables SMTP:', {
-  SMTP_USER: process.env.SMTP_USER ? '✅ Configuré' : '❌ Manquant',
-  SMTP_PASS: process.env.SMTP_PASS ? '✅ Configuré' : '❌ Manquant',
-  SMTP_HOST: process.env.SMTP_HOST || 'Non défini',
-  SMTP_PORT: process.env.SMTP_PORT || 'Non défini'
+// Vérifier si le fichier existe
+const envExists = fs.existsSync(envPath);
+console.log('📄 Fichier .env existe:', envExists ? '✅ Oui' : '❌ Non');
+
+if (envExists) {
+  try {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    const smtpLines = envContent.split('\n').filter((line: string) => 
+      line.trim().startsWith('SMTP_') && !line.trim().startsWith('#')
+    );
+    console.log('📧 Lignes SMTP trouvées dans .env:', smtpLines.length);
+    smtpLines.forEach((line: string) => {
+      const [key] = line.split('=');
+      console.log(`   - ${key?.trim()}: ${line.includes('=') ? '✅ Défini' : '❌ Vide'}`);
+    });
+  } catch (error: any) {
+    console.error('❌ Erreur lecture .env:', error.message);
+  }
+}
+
+// Charger le fichier .env
+const envResult = dotenv.config({ path: envPath });
+if (envResult.error) {
+  console.error('❌ Erreur chargement .env:', envResult.error.message);
+} else {
+  console.log('✅ Fichier .env chargé avec succès');
+  if (envResult.parsed) {
+    const smtpVars = Object.keys(envResult.parsed).filter(key => key.startsWith('SMTP_'));
+    console.log(`📧 Variables SMTP dans .env: ${smtpVars.length} trouvée(s)`);
+  }
+}
+
+// Debug: Vérifier que les variables SMTP sont chargées APRÈS dotenv.config()
+console.log('🔍 Variables SMTP dans process.env:', {
+  SMTP_USER: process.env.SMTP_USER ? `✅ Configuré (${process.env.SMTP_USER.substring(0, 5)}...)` : '❌ Manquant',
+  SMTP_PASS: process.env.SMTP_PASS ? `✅ Configuré (${process.env.SMTP_PASS.substring(0, 3)}...)` : '❌ Manquant',
+  SMTP_HOST: process.env.SMTP_HOST || '❌ Non défini',
+  SMTP_PORT: process.env.SMTP_PORT || '❌ Non défini',
+  SMTP_FROM: process.env.SMTP_FROM || '❌ Non défini'
 });
+
+// Vérifier si les variables sont définies dans l'environnement système (écrasent le .env)
+const systemEnvVars = ['SMTP_USER', 'SMTP_PASS', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_FROM'];
+const systemEnvSet = systemEnvVars.filter(key => process.env[key] !== undefined);
+if (systemEnvSet.length > 0) {
+  console.log(`⚠️ Variables SMTP définies dans l'environnement système (écrasent .env): ${systemEnvSet.join(', ')}`);
+}
 
 const PORT = Number(process.env.PORT) || 5001;
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '::'; // En production, écouter sur toutes les interfaces
