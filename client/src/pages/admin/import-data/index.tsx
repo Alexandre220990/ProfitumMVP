@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Upload, FileText, Map, Settings, Eye, Play, CheckCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ImportState, EntityType } from '@/types/import';
 import FileUploader from './components/FileUploader';
@@ -9,6 +8,7 @@ import AdvancedConfigStep from './components/AdvancedConfigStep';
 import PreviewTable from './components/PreviewTable';
 import ImportProgress from './components/ImportProgress';
 import ImportResults from './components/ImportResults';
+import ReadyToImport from './components/ReadyToImport';
 
 const STEPS = [
   { id: 1, name: 'Upload fichier', icon: Upload },
@@ -85,6 +85,13 @@ export default function AdminImportData() {
       currentStep: 1,
       isImporting: false
     });
+  };
+
+  const handleGoBackToMapping = () => {
+    setState(prev => ({
+      ...prev,
+      currentStep: 3 // Retour à l'étape de mapping
+    }));
   };
 
   const canGoToStep = (step: number): boolean => {
@@ -246,22 +253,16 @@ export default function AdminImportData() {
                   onReset={handleReset}
                 />
               ) : (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold">Prêt à importer</h2>
-                  <p className="text-gray-600">
-                    {state.previewData.validationErrors.length === 0
-                      ? 'Toutes les données sont valides. Vous pouvez procéder à l\'import.'
-                      : `${state.previewData.validationErrors.length} erreur(s) détectée(s). Vous pouvez continuer malgré les erreurs.`}
-                  </p>
-                  <Button
-                    onClick={handleImportStarted}
-                    className="bg-red-600 hover:bg-red-700"
-                    size="lg"
-                  >
-                    <Play className="mr-2 h-5 w-5" />
-                    Démarrer l'import
-                  </Button>
-                </div>
+                <ReadyToImport
+                  previewData={state.previewData}
+                  mappingConfig={state.mappingConfig!}
+                  fileData={{
+                    columns: state.fileData!.columns,
+                    totalRows: state.fileData!.totalRows
+                  }}
+                  onImportStart={handleImportStarted}
+                  onGoBack={handleGoBackToMapping}
+                />
               )}
             </>
           )}
