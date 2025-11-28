@@ -13,7 +13,7 @@ export default function ApporteurAgenda() {
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<'month' | 'week' | 'day' | 'list'>('month');
   const [searchParams, setSearchParams] = useSearchParams();
-  const eventProcessedRef = useRef(false);
+  const eventProcessedRef = useRef<string | false>(false);
 
   /**
    * Convertir un RDV en CalendarEvent
@@ -104,13 +104,23 @@ export default function ApporteurAgenda() {
   useEffect(() => {
     const eventId = searchParams.get('event');
     
-    if (!eventId || eventProcessedRef.current) {
+    if (!eventId) {
+      return;
+    }
+
+    // Vérifier si cet événement spécifique a déjà été traité
+    const lastProcessedEventId = eventProcessedRef.current;
+    if (lastProcessedEventId === eventId) {
       return;
     }
 
     const loadAndDisplayEvent = async () => {
       try {
-        eventProcessedRef.current = true;
+        // Marquer cet événement comme en cours de traitement
+        eventProcessedRef.current = eventId;
+        
+        // Nettoyer le localStorage avant de stocker le nouvel événement
+        localStorage.removeItem('calendar_event_to_display');
         
         const rdv = await rdvService.getRDV(eventId);
         
@@ -119,6 +129,7 @@ export default function ApporteurAgenda() {
           const newSearchParams = new URLSearchParams(searchParams);
           newSearchParams.delete('event');
           setSearchParams(newSearchParams, { replace: true });
+          eventProcessedRef.current = false;
           return;
         }
 
@@ -137,6 +148,11 @@ export default function ApporteurAgenda() {
           detail: { event: calendarEvent } 
         }));
 
+        // Réinitialiser après un court délai pour permettre de traiter un autre événement
+        setTimeout(() => {
+          eventProcessedRef.current = false;
+        }, 500);
+
       } catch (error) {
         console.error('❌ Erreur chargement événement:', error);
         toast.error('Erreur lors du chargement de l\'événement');
@@ -144,10 +160,7 @@ export default function ApporteurAgenda() {
         const newSearchParams = new URLSearchParams(searchParams);
         newSearchParams.delete('event');
         setSearchParams(newSearchParams, { replace: true });
-      } finally {
-        setTimeout(() => {
-          eventProcessedRef.current = false;
-        }, 1000);
+        eventProcessedRef.current = false;
       }
     };
 

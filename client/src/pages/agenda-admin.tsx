@@ -109,13 +109,23 @@ export default function AgendaAdmin() {
     const eventId = searchParams.get('event');
     
     // Éviter de traiter plusieurs fois le même événement
-    if (!eventId || eventProcessedRef.current) {
+    if (!eventId) {
+      return;
+    }
+
+    // Vérifier si cet événement spécifique a déjà été traité
+    const lastProcessedEventId = eventProcessedRef.current as string | false;
+    if (lastProcessedEventId === eventId) {
       return;
     }
 
     const loadAndDisplayEvent = async () => {
       try {
-        eventProcessedRef.current = true;
+        // Marquer cet événement comme en cours de traitement
+        eventProcessedRef.current = eventId;
+        
+        // Nettoyer le localStorage avant de stocker le nouvel événement
+        localStorage.removeItem('calendar_event_to_display');
         
         // Charger le RDV
         const rdv = await rdvService.getRDV(eventId);
@@ -126,6 +136,7 @@ export default function AgendaAdmin() {
           const newSearchParams = new URLSearchParams(searchParams);
           newSearchParams.delete('event');
           setSearchParams(newSearchParams, { replace: true });
+          eventProcessedRef.current = false;
           return;
         }
 
@@ -144,10 +155,14 @@ export default function AgendaAdmin() {
         setSearchParams(newSearchParams, { replace: true });
 
         // Forcer le re-render du calendrier pour qu'il détecte le nouvel événement
-        // On utilise une clé basée sur le timestamp pour forcer le re-render
         window.dispatchEvent(new CustomEvent('calendar:display-event', { 
           detail: { event: calendarEvent } 
         }));
+
+        // Réinitialiser après un court délai pour permettre de traiter un autre événement
+        setTimeout(() => {
+          eventProcessedRef.current = false;
+        }, 500);
 
       } catch (error) {
         console.error('❌ Erreur chargement événement:', error);
@@ -157,11 +172,7 @@ export default function AgendaAdmin() {
         const newSearchParams = new URLSearchParams(searchParams);
         newSearchParams.delete('event');
         setSearchParams(newSearchParams, { replace: true });
-      } finally {
-        // Réinitialiser après un délai pour permettre de traiter un autre événement
-        setTimeout(() => {
-          eventProcessedRef.current = false;
-        }, 1000);
+        eventProcessedRef.current = false;
       }
     };
 
