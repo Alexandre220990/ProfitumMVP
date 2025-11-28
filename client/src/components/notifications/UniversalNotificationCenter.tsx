@@ -229,26 +229,17 @@ export function UniversalNotificationCenter({
       userRole
     });
 
-    // Pour les notifications d'événement, vérifier d'abord l'action_url direct
-    if (notification.action_url) {
-      console.log('✅ getPrimaryActionUrl - Utilisation action_url direct:', notification.action_url);
-      return notification.action_url;
-    }
-
-    if (notification.action_data && notification.action_data.action_url) {
-      console.log('✅ getPrimaryActionUrl - Utilisation action_data.action_url:', notification.action_data.action_url);
-      return notification.action_data.action_url;
-    }
-
     const metadata = notification.metadata || {};
+    
+    // Pour les notifications d'événement, TOUJOURS construire l'URL depuis metadata.event_id
+    // pour éviter les redirections vers le popup (le popup n'est utilisé que sur les pages agenda)
+    const isEventNotification = 
+      notification.notification_type === 'event_upcoming' ||
+      notification.notification_type === 'event_in_progress' ||
+      notification.notification_type === 'event_completed' ||
+      metadata.event_id;
 
-    if (metadata.action_url) {
-      console.log('✅ getPrimaryActionUrl - Utilisation metadata.action_url:', metadata.action_url);
-      return metadata.action_url;
-    }
-
-    // Pour les notifications d'événement, construire l'URL à partir de metadata.event_id
-    if (metadata.event_id) {
+    if (isEventNotification && metadata.event_id) {
       const eventId = metadata.event_id;
       let eventUrl: string | null = null;
       
@@ -267,9 +258,25 @@ export function UniversalNotificationCenter({
       }
       
       if (eventUrl) {
-        console.log('✅ getPrimaryActionUrl - URL construite pour événement:', eventUrl);
+        console.log('✅ getPrimaryActionUrl - URL construite pour événement (ignorant action_url):', eventUrl);
         return eventUrl;
       }
+    }
+
+    // Pour les autres types de notifications, utiliser action_url si disponible
+    if (notification.action_url) {
+      console.log('✅ getPrimaryActionUrl - Utilisation action_url direct:', notification.action_url);
+      return notification.action_url;
+    }
+
+    if (notification.action_data && notification.action_data.action_url) {
+      console.log('✅ getPrimaryActionUrl - Utilisation action_data.action_url:', notification.action_data.action_url);
+      return notification.action_data.action_url;
+    }
+
+    if (metadata.action_url) {
+      console.log('✅ getPrimaryActionUrl - Utilisation metadata.action_url:', metadata.action_url);
+      return metadata.action_url;
     }
 
     const dossierId = metadata.dossier_id;

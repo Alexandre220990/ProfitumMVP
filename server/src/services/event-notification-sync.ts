@@ -159,17 +159,19 @@ export class EventNotificationSync {
       };
 
       // Générer l'URL d'action selon le type d'utilisateur
+      // Les notifications d'événement redirigent vers les pages de synthèse d'événement
+      // Le popup n'est utilisé que sur les pages agenda pour les détails d'un événement
       const getActionUrl = (userType: string): string => {
         switch (userType) {
           case 'admin':
-            return `/admin/agenda-admin?event=${rdv.id}`;
+            return `/admin/events/${rdv.id}`;
           case 'expert':
-            return `/expert/agenda?event=${rdv.id}`;
+            return `/expert/events/${rdv.id}`;
           case 'apporteur':
-            return `/apporteur/agenda?event=${rdv.id}`;
+            return `/apporteur/events/${rdv.id}`;
           case 'client':
           default:
-            return `/agenda-client?event=${rdv.id}`;
+            return `/events/${rdv.id}`;
         }
       };
 
