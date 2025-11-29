@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { get } from "@/lib/api";
+import { get, put } from "@/lib/api";
 import { 
   ArrowLeft, User, Mail, Phone, MapPin, Calendar, FileText, TrendingUp, 
   AlertCircle, MessageSquare, Eye, Activity, Send, Star,
@@ -155,28 +155,22 @@ const ExpertDetails = () => {
 
   const updateExpertStatus = async (status: 'approved' | 'rejected') => {
     try {
-      const response = await fetch(`/api/admin/experts/${id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          status,
-          comment: newComment,
-          admin_id: user?.id
-        })
+      const response = await put(`/admin/experts/${id}/status`, {
+        status,
+        comment: newComment,
+        admin_id: user?.id
       });
 
-      if (response.ok) {
+      if (response.success) {
         toast.success(`Expert ${status === 'approved' ? 'approuvé' : 'rejeté'} avec succès`);
         setShowValidationDialog(false);
         loadExpertData(); // Recharger les données
       } else {
-        throw new Error('Erreur lors de la mise à jour');
+        toast.error(response.message || 'Impossible de mettre à jour le statut');
       }
     } catch (error) {
       console.error('Erreur mise à jour statut:', error);
-      toast.error('Impossible de mettre à jour le statut');
+      toast.error(error instanceof Error ? error.message : 'Impossible de mettre à jour le statut');
     }
   };
 
