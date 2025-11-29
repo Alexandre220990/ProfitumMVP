@@ -154,10 +154,10 @@ if (envExists) {
   }
 }
 
-// Charger le fichier .env
+// Charger le fichier .env (optionnel en production)
 const envResult = dotenv.config({ path: envPath });
 if (envResult.error) {
-  console.error('❌ Erreur chargement .env:', envResult.error.message);
+  console.warn('⚠️ Fichier .env non trouvé (normal en production). Les variables d\'environnement système seront utilisées.');
 } else {
   console.log('✅ Fichier .env chargé avec succès');
   if (envResult.parsed) {
@@ -179,7 +179,10 @@ console.log('🔍 Variables SMTP dans process.env:', {
 const systemEnvVars = ['SMTP_USER', 'SMTP_PASS', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_FROM'];
 const systemEnvSet = systemEnvVars.filter(key => process.env[key] !== undefined);
 if (systemEnvSet.length > 0) {
-  console.log(`⚠️ Variables SMTP définies dans l'environnement système (écrasent .env): ${systemEnvSet.join(', ')}`);
+  console.log(`✅ Variables SMTP définies dans l'environnement système: ${systemEnvSet.join(', ')}`);
+} else {
+  console.warn('⚠️ Aucune variable SMTP trouvée dans l\'environnement système.');
+  console.warn('💡 En production, configurez les variables SMTP dans votre plateforme de déploiement (Railway/Vercel/etc.)');
 }
 
 const PORT = Number(process.env.PORT) || 5001;
