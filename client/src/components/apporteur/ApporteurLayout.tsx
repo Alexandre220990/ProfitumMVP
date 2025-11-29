@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
-import { useNotifications } from '@/hooks/use-notifications';
+import { useNotificationBadge } from '@/hooks/use-notification-badge';
 import ApporteurAuthGuard from './ApporteurAuthGuard';
 import { NotificationSlider } from './NotificationSlider';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +41,7 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
   const { badgeCount } = useMessagingBadge();
   
   // Hook pour les notifications avec compteur en temps réel
-  const { unreadCount } = useNotifications();
+  const { unreadCount: notificationsCount } = useNotificationBadge();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -81,7 +81,7 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
       href: '/apporteur/notifications',
       icon: Bell,
       current: location.pathname === '/apporteur/notifications',
-      badge: unreadCount > 0 ? unreadCount : undefined
+      badge: notificationsCount > 0 ? notificationsCount : undefined
     },
     {
       name: 'Produits',
@@ -154,10 +154,17 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
                         item.current
                           ? 'bg-blue-100 text-blue-900'
                           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      } group flex items-center px-2 py-2 text-base font-medium rounded-md w-full text-left`}
+                      } group flex items-center justify-between px-2 py-2 text-base font-medium rounded-md w-full text-left`}
                     >
-                      <Icon className="mr-4 h-6 w-6" />
-                      {item.name}
+                      <div className="flex items-center">
+                        <Icon className="mr-4 h-6 w-6" />
+                        {item.name}
+                      </div>
+                      {item.badge && item.badge > 0 && (
+                        <span className="ml-auto min-w-[18px] h-[18px] bg-red-500 rounded-full text-xs text-white flex items-center justify-center px-1">
+                          {item.badge > 9 ? '9+' : item.badge}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -194,10 +201,17 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
                         item.current
                           ? 'bg-blue-100 text-blue-900'
                           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      } group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left`}
+                      } group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md w-full text-left`}
                     >
-                      <Icon className="mr-3 h-5 w-5" />
-                      {item.name}
+                      <div className="flex items-center">
+                        <Icon className="mr-3 h-5 w-5" />
+                        {item.name}
+                      </div>
+                      {item.badge && item.badge > 0 && (
+                        <span className="ml-auto min-w-[18px] h-[18px] bg-red-500 rounded-full text-xs text-white flex items-center justify-center px-1">
+                          {item.badge > 9 ? '9+' : item.badge}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -240,9 +254,9 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
               >
                 <Bell className="h-6 w-6" />
                 {/* Badge pour notifications non lues - Afficher seulement s'il y en a */}
-                {unreadCount > 0 && (
+                {notificationsCount > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-xs text-white flex items-center justify-center px-1">
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                    {notificationsCount > 9 ? '9+' : notificationsCount}
                   </span>
                 )}
               </button>
