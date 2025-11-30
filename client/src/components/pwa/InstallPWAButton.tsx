@@ -15,7 +15,7 @@ import { toast } from 'sonner';
  * - Le statut d'installation actuel
  */
 export function InstallPWAButton() {
-  const { isInstallable, isInstalled, installing, platform, install } = usePWAInstall();
+  const { isInstallable, isInstalled, installing, platform, deferredPrompt, install } = usePWAInstall();
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   const handleInstall = async () => {
@@ -27,13 +27,27 @@ export function InstallPWAButton() {
     const success = await install();
     
     if (success) {
-      toast.success('Installation démarrée', {
-        description: 'Suivez les instructions à l\'écran pour terminer l\'installation.'
-      });
+      if (platform === 'desktop' && !deferredPrompt) {
+        toast.info('Installation disponible', {
+          description: 'Recherchez l\'icône "Installer" dans la barre d\'adresse Chrome, ou utilisez le menu Chrome (⋮) → Installer Profitum...',
+          duration: 8000,
+        });
+      } else {
+        toast.success('Installation démarrée', {
+          description: 'Suivez les instructions à l\'écran pour terminer l\'installation.'
+        });
+      }
     } else {
-      toast.error('Installation annulée', {
-        description: 'L\'installation a été annulée ou n\'est pas disponible.'
-      });
+      if (platform === 'desktop') {
+        toast.info('Installation via Chrome', {
+          description: 'Utilisez l\'icône "Installer" dans la barre d\'adresse Chrome, ou le menu Chrome (⋮) → Installer Profitum...',
+          duration: 8000,
+        });
+      } else {
+        toast.error('Installation annulée', {
+          description: 'L\'installation a été annulée ou n\'est pas disponible.'
+        });
+      }
     }
   };
 
@@ -103,6 +117,9 @@ export function InstallPWAButton() {
 
   // Sur Android ou Desktop, afficher le bouton d'installation
   if (isInstallable || platform === 'android' || platform === 'desktop') {
+    const hasDeferredPrompt = !!deferredPrompt;
+    const canInstall = isInstallable || platform === 'desktop';
+    
     return (
       <Card className="border-blue-200 bg-blue-50">
         <CardHeader className="pb-3">
@@ -117,8 +134,8 @@ export function InstallPWAButton() {
         <CardContent>
           <Button
             onClick={handleInstall}
-            disabled={installing || !isInstallable}
-            className="w-full bg-blue-600 hover:bg-blue-700"
+            disabled={installing}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             size="sm"
           >
             {installing ? (
@@ -133,9 +150,22 @@ export function InstallPWAButton() {
               </>
             )}
           </Button>
-          {!isInstallable && platform !== 'ios' && (
+          {platform === 'desktop' && !hasDeferredPrompt && (
+            <Alert className="mt-3">
+              <AlertCircle className="w-4 h-4" />
+              <AlertDescription className="text-xs">
+                <p className="font-semibold mb-1">Instructions pour Chrome Desktop :</p>
+                <ol className="list-decimal list-inside space-y-1 text-xs">
+                  <li>Cliquez sur le bouton d'installation ci-dessus</li>
+                  <li>Si le prompt n'apparaît pas, utilisez l'icône <strong>Installer</strong> dans la barre d'adresse Chrome</li>
+                  <li>Ou allez dans le menu Chrome (⋮) → <strong>Installer Profitum...</strong></li>
+                </ol>
+              </AlertDescription>
+            </Alert>
+          )}
+          {!canInstall && platform !== 'ios' && (
             <p className="text-xs text-gray-600 mt-2 text-center">
-              L'installation n'est pas disponible pour le moment. Essayez avec Chrome ou Edge.
+              L'installation nécessite Chrome ou Edge avec HTTPS activé.
             </p>
           )}
         </CardContent>
