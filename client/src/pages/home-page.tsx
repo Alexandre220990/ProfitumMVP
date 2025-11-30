@@ -707,27 +707,41 @@ export default function HomePage() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                          (window.navigator as any).standalone === true;
     
+    // CRITIQUE: Attendre que l'authentification soit chargée avant toute redirection
+    if (isStandalone && isLoading) {
+      console.log('⏳ PWA détectée mais authentification en cours, attente...');
+      return;
+    }
+    
     if (isStandalone && !isLoading) {
       const pwaStartUrl = localStorage.getItem('pwa_start_url');
       const pwaUserType = localStorage.getItem('pwa_user_type');
       
-      // PRIORITÉ ABSOLUE: Si admin, rediriger IMMÉDIATEMENT vers www.profitum.app/connect-admin
+      console.log('🔍 PWA détectée:', { isStandalone, pwaUserType, pwaStartUrl, pathname: window.location.pathname, user });
+      
+      // PRIORITÉ ABSOLUE: Si admin, rediriger vers /admin-redirect qui gère la logique
       if (pwaUserType === 'admin' || user?.type === 'admin') {
-        console.log('🚨 ADMIN DÉTECTÉ EN PWA - Redirection FORCÉE vers www.profitum.app/connect-admin');
-        // Forcer la redirection complète - ne pas utiliser navigate() car ça ne fonctionne pas toujours
-        window.location.href = 'https://www.profitum.app/connect-admin';
+        console.log('🚨 ADMIN DÉTECTÉ EN PWA - Redirection vers /admin-redirect');
+        // Utiliser setTimeout pour laisser React terminer le rendu
+        setTimeout(() => {
+          navigate('/admin-redirect', { replace: true });
+        }, 100);
         return;
       }
       
       // Si on a une URL de démarrage PWA enregistrée et qu'on est sur la page d'accueil
       if (pwaStartUrl && pwaStartUrl !== '/' && window.location.pathname === '/') {
         console.log(`🔀 Redirection PWA vers ${pwaStartUrl} (type: ${pwaUserType})`);
-        // Utiliser window.location.href pour une redirection complète
-        if (pwaStartUrl.startsWith('http://') || pwaStartUrl.startsWith('https://')) {
-          window.location.href = pwaStartUrl;
-        } else {
-          window.location.href = pwaStartUrl;
-        }
+        // Utiliser setTimeout pour laisser React terminer le rendu
+        setTimeout(() => {
+          if (pwaStartUrl.startsWith('http://') || pwaStartUrl.startsWith('https://')) {
+            // URL absolue, utiliser window.location.href
+            window.location.href = pwaStartUrl;
+          } else {
+            // Route relative, utiliser navigate() pour éviter le rechargement complet
+            navigate(pwaStartUrl, { replace: true });
+          }
+        }, 100);
         return;
       }
       
@@ -742,7 +756,9 @@ export default function HomePage() {
         const dashboardUrl = dashboardUrls[user.type];
         if (dashboardUrl) {
           console.log(`🔀 Utilisateur ${user.type} détecté en PWA, redirection vers ${dashboardUrl}`);
-          navigate(dashboardUrl, { replace: true });
+          setTimeout(() => {
+            navigate(dashboardUrl, { replace: true });
+          }, 100);
           return;
         }
       }

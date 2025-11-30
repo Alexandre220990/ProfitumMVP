@@ -79,6 +79,7 @@ const InscriptionClient = React.lazy(() => import('./pages/inscription-client'))
 const WelcomeExpert = React.lazy(() => import('./pages/welcome-expert'));
 const DemoConfirmation = React.lazy(() => import('./pages/demo-confirmation'));
 const ConnectAdmin = React.lazy(() => import('./pages/connect-admin'));
+const AdminRedirect = React.lazy(() => import('./pages/admin-redirect'));
 const HomePage = React.lazy(() => import('./pages/home-page'));
 const HomepageTest = React.lazy(() => import('./pages/homepage-test'));
 const SimulateurEligibilite = React.lazy(() => import('./pages/simulateur-eligibilite'));
@@ -166,39 +167,16 @@ function App() {
     }
   }, []);
 
-  // Redirection PWA au démarrage selon le type d'utilisateur enregistré
-  // Cette redirection doit se faire AVANT tout rendu React pour garantir qu'elle fonctionne
+  // La redirection PWA est maintenant gérée dans HomePage qui a accès à useAuth
+  // On garde juste une vérification basique ici pour éviter les conflits
   useEffect(() => {
-    // Vérifier si on est en mode PWA (standalone)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                          (window.navigator as any).standalone === true;
     
     if (isStandalone) {
       const pwaUserType = localStorage.getItem('pwa_user_type');
-      const pwaStartUrl = localStorage.getItem('pwa_start_url');
-      
-      console.log('🔍 PWA détectée:', { isStandalone, pwaUserType, pwaStartUrl, pathname: window.location.pathname });
-      
-      // PRIORITÉ 1: Si admin, rediriger IMMÉDIATEMENT vers www.profitum.app/connect-admin
-      if (pwaUserType === 'admin') {
-        console.log('🚨 ADMIN DÉTECTÉ - Redirection FORCÉE vers www.profitum.app/connect-admin');
-        // Forcer la redirection complète vers www.profitum.app/connect-admin
-        window.location.href = 'https://www.profitum.app/connect-admin';
-        return;
-      }
-      
-      // PRIORITÉ 2: Si on a une URL de démarrage enregistrée et qu'on est sur la home
-      if (pwaStartUrl && pwaStartUrl !== '/' && window.location.pathname === '/') {
-        console.log(`🚀 PWA démarrée, redirection vers ${pwaStartUrl} (type: ${pwaUserType})`);
-        
-        // Si c'est une URL absolue (commence par http:// ou https://), utiliser directement
-        if (pwaStartUrl.startsWith('http://') || pwaStartUrl.startsWith('https://')) {
-          window.location.href = pwaStartUrl;
-        } else {
-          window.location.href = pwaStartUrl;
-        }
-        return;
-      }
+      console.log('🔍 PWA détectée dans App.tsx:', { isStandalone, pwaUserType, pathname: window.location.pathname });
+      // La redirection complète sera gérée dans HomePage avec le contexte Auth
     }
   }, []);
 
@@ -296,6 +274,7 @@ function App() {
                         <Route path="settings" element={<ApporteurSettings />} />
                     </Route>
                     <Route path="/connect-admin" element={<ConnectAdmin />} />
+                    <Route path="/admin-redirect" element={<AdminRedirect />} />
                     <Route path="/register-client" element={<CreateAccountClient />} />
                     <Route path="/inscription-client" element={<InscriptionClient />} />
                     <Route path="/register-expert" element={<CreateAccountExpert />} />

@@ -27,7 +27,7 @@ export function InstallPWAAdminButton() {
     
     // Stocker les valeurs admin dans localStorage
     localStorage.setItem('pwa_user_type', 'admin');
-    localStorage.setItem('pwa_start_url', 'https://www.profitum.app/connect-admin');
+    localStorage.setItem('pwa_start_url', '/admin-redirect');
     
     return () => {
       // Restaurer le manifest normal au démontage
@@ -40,7 +40,7 @@ export function InstallPWAAdminButton() {
   const handleAdminInstall = async () => {
     // Stocker les valeurs admin AVANT l'installation
     localStorage.setItem('pwa_user_type', 'admin');
-    localStorage.setItem('pwa_start_url', 'https://www.profitum.app/connect-admin');
+    localStorage.setItem('pwa_start_url', '/admin-redirect');
     
     console.log('🔴 Installation PWA ADMIN - Configuration:', {
       pwa_user_type: localStorage.getItem('pwa_user_type'),
@@ -56,7 +56,7 @@ export function InstallPWAAdminButton() {
     
     if (success) {
       toast.success('Installation démarrée', {
-        description: 'L\'app admin redirigera vers www.profitum.app/connect-admin'
+        description: 'L\'app admin s\'ouvrira automatiquement sur la page de connexion admin'
       });
     } else {
       if (platform === 'desktop') {
@@ -104,7 +104,7 @@ export function InstallPWAAdminButton() {
             Installer l'app ADMIN
           </CardTitle>
           <CardDescription className="text-xs">
-            Instructions spéciales pour installer l'app admin sur iOS
+            Instructions pour installer l'app admin sur iOS
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -122,17 +122,17 @@ export function InstallPWAAdminButton() {
               <Alert className="bg-purple-50 border-purple-200">
                 <AlertCircle className="w-4 h-4 text-purple-600" />
                 <AlertDescription className="text-xs">
-                  <p className="font-semibold mb-2 text-purple-900">⚠️ IMPORTANT pour les admins :</p>
+                  <p className="font-semibold mb-2 text-purple-900">Instructions pour iOS :</p>
                   <ol className="list-decimal list-inside space-y-2 mt-2">
                     <li>Appuyez sur le bouton <strong>Partager</strong> <Share2 className="w-3 h-3 inline" /> en bas de Safari</li>
-                    <li>Sélectionnez <strong>"Sur l'écran d'accueil"</strong></li>
-                    <li><strong>MODIFIEZ L'URL</strong> dans le champ de texte pour mettre : <br />
-                      <code className="bg-purple-100 px-1 rounded text-purple-900 font-mono block mt-1">www.profitum.app/connect-admin</code>
-                    </li>
+                    <li>Sélectionnez <strong>"Sur l'écran d'accueil"</strong> ou <strong>"Ajouter à l'écran d'accueil"</strong></li>
                     <li>Appuyez sur <strong>"Ajouter"</strong></li>
                   </ol>
                   <p className="mt-3 text-purple-800 font-semibold">
-                    ⚡ L'URL doit être modifiée manuellement pour accéder directement à l'espace admin !
+                    ✅ L'app s'ouvrira automatiquement sur la page de connexion admin !
+                  </p>
+                  <p className="mt-2 text-purple-700 text-xs">
+                    Note : Si le champ URL est visible mais non modifiable, c'est normal sur iOS. L'app utilisera automatiquement la bonne URL grâce au manifest admin.
                   </p>
                 </AlertDescription>
               </Alert>

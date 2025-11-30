@@ -2,7 +2,7 @@
   "name": "Profitum Admin - Espace Administrateur",
   "short_name": "Profitum Admin",
   "description": "Application Profitum - Accès administrateur sécurisé",
-  "start_url": "/connect-admin",
+  "start_url": "/admin-redirect",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#9333ea",
