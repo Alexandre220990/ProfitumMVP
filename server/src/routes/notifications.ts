@@ -970,12 +970,17 @@ router.put('/preferences', asyncHandler(async (req, res) => {
     const userType = (req as any).user.type;
     const updates = req.body;
 
-    // Vérifier si les préférences existent
-    const { data: existingPreferences } = await supabaseClient
+    // Vérifier si les préférences existent (avec user_type)
+    let query = supabaseClient
       .from('UserNotificationPreferences')
       .select('id')
-      .eq('user_id', userId)
-      .single();
+      .eq('user_id', userId);
+    
+    if (userType) {
+      query = query.eq('user_type', userType);
+    }
+    
+    const { data: existingPreferences } = await query.single();
 
     // Préparer les données à sauvegarder
     const dataToSave: any = {

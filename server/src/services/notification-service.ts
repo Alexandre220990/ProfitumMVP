@@ -196,6 +196,7 @@ export interface SLAPreference {
 
 export interface UserNotificationPreferences {
   user_id: string;
+  user_type?: string;
   email_enabled: boolean;
   push_enabled: boolean;
   sms_enabled: boolean;
@@ -648,7 +649,7 @@ export class NotificationService {
       }
 
       // Récupérer les préférences utilisateur
-      const preferences = await this.getUserPreferences(recipientId);
+      const preferences = await this.getUserPreferences(recipientId, recipientType);
 
       // Remplacer les variables dans le template
       const title = this.replaceVariables(template.title, data);
@@ -861,12 +862,20 @@ export class NotificationService {
     return result;
   }
 
-  private async getUserPreferences(userId: string): Promise<UserNotificationPreferences | null> {
-    const { data, error } = await supabase
+  private async getUserPreferences(
+    userId: string,
+    userType?: 'admin' | 'expert' | 'client' | 'apporteur' | 'profitum'
+  ): Promise<UserNotificationPreferences | null> {
+    let query = supabase
       .from('UserNotificationPreferences')
       .select('*')
-      .eq('user_id', userId)
-      .single();
+      .eq('user_id', userId);
+    
+    if (userType) {
+      query = query.eq('user_type', userType);
+    }
+    
+    const { data, error } = await query.single();
 
     if (error) {
       console.error('Erreur récupération préférences:', error);
