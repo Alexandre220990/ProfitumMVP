@@ -5,6 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { 
   Mail, 
   Phone, 
@@ -14,7 +27,9 @@ import {
   CheckCircle2,
   ArrowLeft,
   X,
-  Users
+  Users,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
 import { config } from "@/config/env";
@@ -106,6 +121,52 @@ export default function AjouterLeadPage() {
   
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [showParticipantSelect, setShowParticipantSelect] = useState(false);
+  const [openSections, setOpenSections] = useState<{
+    experts: boolean;
+    admins: boolean;
+    clients: boolean;
+    apporteurs: boolean;
+  }>({
+    experts: true,
+    admins: true,
+    clients: true,
+    apporteurs: true
+  });
+
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  const toggleParticipant = (userId: string, userType: 'admin' | 'expert' | 'client' | 'apporteur') => {
+    setFormData(prev => {
+      const existingIndex = prev.participants.findIndex(
+        p => p.user_id === userId && p.user_type === userType
+      );
+      
+      if (existingIndex >= 0) {
+        // Retirer le participant
+        return {
+          ...prev,
+          participants: prev.participants.filter((_, i) => i !== existingIndex)
+        };
+      } else {
+        // Ajouter le participant
+        return {
+          ...prev,
+          participants: [...prev.participants, { user_id: userId, user_type: userType }]
+        };
+      }
+    });
+  };
+
+  const isParticipantSelected = (userId: string, userType: 'admin' | 'expert' | 'client' | 'apporteur') => {
+    return formData.participants.some(
+      p => p.user_id === userId && p.user_type === userType
+    );
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -382,182 +443,273 @@ export default function AjouterLeadPage() {
                     )}
                     
                     {/* Bouton pour ouvrir la sélection */}
-                    <div className="relative">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowParticipantSelect(!showParticipantSelect)}
-                        className="w-full justify-start"
-                      >
-                        <Users className="w-4 h-4 mr-2" />
-                        {formData.participants.length > 0 
-                          ? `${formData.participants.length} participant(s) sélectionné(s)`
-                          : "Ajouter des participants"}
-                      </Button>
-                      
-                      {/* Menu de sélection */}
-                      {showParticipantSelect && (
-                        <>
-                          <div 
-                            className="fixed inset-0 z-10" 
-                            onClick={() => setShowParticipantSelect(false)}
-                          />
-                          <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-96 overflow-y-auto">
-                            {loadingUsers ? (
-                              <div className="p-4 text-center text-sm text-slate-500">
-                                Chargement...
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowParticipantSelect(true)}
+                      className="w-full justify-start"
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      {formData.participants.length > 0 
+                        ? `${formData.participants.length} participant(s) sélectionné(s)`
+                        : "Ajouter des participants"}
+                    </Button>
+                    
+                    {/* Dialog de sélection des participants */}
+                    <Dialog open={showParticipantSelect} onOpenChange={setShowParticipantSelect}>
+                      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2">
+                            <Users className="w-5 h-5 text-blue-600" />
+                            Sélectionner les participants
+                          </DialogTitle>
+                          <DialogDescription>
+                            Choisissez les utilisateurs qui recevront ce lead. Les participants sont regroupés par catégorie.
+                          </DialogDescription>
+                        </DialogHeader>
+                        
+                        <div className="flex-1 overflow-y-auto mt-4 space-y-3">
+                          {loadingUsers ? (
+                            <div className="flex items-center justify-center py-12">
+                              <div className="text-center">
+                                <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                <p className="text-sm text-slate-500">Chargement des utilisateurs...</p>
                               </div>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Experts */}
+                              <Collapsible open={openSections.experts} onOpenChange={() => toggleSection('experts')}>
+                                <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm text-slate-900">Experts</span>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {availableUsers.experts.length}
+                                    </Badge>
+                                    {availableUsers.experts.filter(e => isParticipantSelected(e.id, 'expert')).length > 0 && (
+                                      <Badge className="bg-blue-600 text-white text-xs">
+                                        {availableUsers.experts.filter(e => isParticipantSelected(e.id, 'expert')).length} sélectionné(s)
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {openSections.experts ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-2">
+                                  <div className="max-h-60 overflow-y-auto space-y-1 p-2 border rounded-lg bg-slate-50">
+                                    {availableUsers.experts.length === 0 ? (
+                                      <p className="text-sm text-slate-500 text-center py-4">Aucun expert disponible</p>
+                                    ) : (
+                                      availableUsers.experts.map(expert => {
+                                        const isSelected = isParticipantSelected(expert.id, 'expert');
+                                        return (
+                                          <label
+                                            key={expert.id}
+                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                                              isSelected 
+                                                ? 'bg-blue-50 border border-blue-200' 
+                                                : 'bg-white border border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            <Checkbox
+                                              checked={isSelected}
+                                              onCheckedChange={() => toggleParticipant(expert.id, 'expert')}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium text-sm text-slate-900 truncate">{expert.name}</p>
+                                              {expert.email && (
+                                                <p className="text-xs text-slate-500 truncate">{expert.email}</p>
+                                              )}
+                                            </div>
+                                          </label>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+
+                              {/* Admins */}
+                              <Collapsible open={openSections.admins} onOpenChange={() => toggleSection('admins')}>
+                                <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm text-slate-900">Admins</span>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {availableUsers.admins.length}
+                                    </Badge>
+                                    {availableUsers.admins.filter(a => isParticipantSelected(a.id, 'admin')).length > 0 && (
+                                      <Badge className="bg-blue-600 text-white text-xs">
+                                        {availableUsers.admins.filter(a => isParticipantSelected(a.id, 'admin')).length} sélectionné(s)
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {openSections.admins ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-2">
+                                  <div className="max-h-60 overflow-y-auto space-y-1 p-2 border rounded-lg bg-slate-50">
+                                    {availableUsers.admins.length === 0 ? (
+                                      <p className="text-sm text-slate-500 text-center py-4">Aucun admin disponible</p>
+                                    ) : (
+                                      availableUsers.admins.map(admin => {
+                                        const isSelected = isParticipantSelected(admin.id, 'admin');
+                                        return (
+                                          <label
+                                            key={admin.id}
+                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                                              isSelected 
+                                                ? 'bg-blue-50 border border-blue-200' 
+                                                : 'bg-white border border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            <Checkbox
+                                              checked={isSelected}
+                                              onCheckedChange={() => toggleParticipant(admin.id, 'admin')}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium text-sm text-slate-900 truncate">{admin.name}</p>
+                                              {admin.email && (
+                                                <p className="text-xs text-slate-500 truncate">{admin.email}</p>
+                                              )}
+                                            </div>
+                                          </label>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+
+                              {/* Clients */}
+                              <Collapsible open={openSections.clients} onOpenChange={() => toggleSection('clients')}>
+                                <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm text-slate-900">Clients</span>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {availableUsers.clients.length}
+                                    </Badge>
+                                    {availableUsers.clients.filter(c => isParticipantSelected(c.id, 'client')).length > 0 && (
+                                      <Badge className="bg-blue-600 text-white text-xs">
+                                        {availableUsers.clients.filter(c => isParticipantSelected(c.id, 'client')).length} sélectionné(s)
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {openSections.clients ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-2">
+                                  <div className="max-h-60 overflow-y-auto space-y-1 p-2 border rounded-lg bg-slate-50">
+                                    {availableUsers.clients.length === 0 ? (
+                                      <p className="text-sm text-slate-500 text-center py-4">Aucun client disponible</p>
+                                    ) : (
+                                      availableUsers.clients.map(client => {
+                                        const isSelected = isParticipantSelected(client.id, 'client');
+                                        return (
+                                          <label
+                                            key={client.id}
+                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                                              isSelected 
+                                                ? 'bg-blue-50 border border-blue-200' 
+                                                : 'bg-white border border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            <Checkbox
+                                              checked={isSelected}
+                                              onCheckedChange={() => toggleParticipant(client.id, 'client')}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium text-sm text-slate-900 truncate">{client.name}</p>
+                                              {client.email && (
+                                                <p className="text-xs text-slate-500 truncate">{client.email}</p>
+                                              )}
+                                            </div>
+                                          </label>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+
+                              {/* Apporteurs */}
+                              <Collapsible open={openSections.apporteurs} onOpenChange={() => toggleSection('apporteurs')}>
+                                <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm text-slate-900">Apporteurs</span>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {availableUsers.apporteurs.length}
+                                    </Badge>
+                                    {availableUsers.apporteurs.filter(a => isParticipantSelected(a.id, 'apporteur')).length > 0 && (
+                                      <Badge className="bg-blue-600 text-white text-xs">
+                                        {availableUsers.apporteurs.filter(a => isParticipantSelected(a.id, 'apporteur')).length} sélectionné(s)
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {openSections.apporteurs ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-2">
+                                  <div className="max-h-60 overflow-y-auto space-y-1 p-2 border rounded-lg bg-slate-50">
+                                    {availableUsers.apporteurs.length === 0 ? (
+                                      <p className="text-sm text-slate-500 text-center py-4">Aucun apporteur disponible</p>
+                                    ) : (
+                                      availableUsers.apporteurs.map(apporteur => {
+                                        const isSelected = isParticipantSelected(apporteur.id, 'apporteur');
+                                        return (
+                                          <label
+                                            key={apporteur.id}
+                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                                              isSelected 
+                                                ? 'bg-blue-50 border border-blue-200' 
+                                                : 'bg-white border border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            <Checkbox
+                                              checked={isSelected}
+                                              onCheckedChange={() => toggleParticipant(apporteur.id, 'apporteur')}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium text-sm text-slate-900 truncate">{apporteur.name}</p>
+                                              {apporteur.email && (
+                                                <p className="text-xs text-slate-500 truncate">{apporteur.email}</p>
+                                              )}
+                                            </div>
+                                          </label>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+
+                              {availableUsers.experts.length === 0 && 
+                               availableUsers.admins.length === 0 && 
+                               availableUsers.clients.length === 0 && 
+                               availableUsers.apporteurs.length === 0 && (
+                                <div className="text-center py-12 text-slate-500">
+                                  <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                  <p className="text-sm">Aucun utilisateur disponible</p>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        
+                        <div className="flex justify-between items-center pt-4 mt-4 border-t">
+                          <div className="text-sm text-slate-600">
+                            {formData.participants.length > 0 ? (
+                              <span className="font-medium text-slate-900">{formData.participants.length}</span>
                             ) : (
-                              <div className="p-2">
-                                {/* Experts */}
-                                <div className="mb-2">
-                                  <div className="text-xs font-semibold text-slate-600 px-2 py-1">Experts</div>
-                                  {availableUsers.experts.map(expert => {
-                                    const isSelected = formData.participants.some(
-                                      p => p.user_id === expert.id && p.user_type === 'expert'
-                                    );
-                                    return (
-                                      <button
-                                        key={expert.id}
-                                        type="button"
-                                        onClick={() => {
-                                          if (isSelected) {
-                                            setFormData(prev => ({
-                                              ...prev,
-                                              participants: prev.participants.filter(
-                                                p => !(p.user_id === expert.id && p.user_type === 'expert')
-                                              )
-                                            }));
-                                          } else {
-                                            setFormData(prev => ({
-                                              ...prev,
-                                              participants: [...prev.participants, { user_id: expert.id, user_type: 'expert' }]
-                                            }));
-                                          }
-                                        }}
-                                        className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-100 ${
-                                          isSelected ? 'bg-blue-50' : ''
-                                        }`}
-                                      >
-                                        {expert.name} {isSelected && '✓'}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                                
-                                {/* Admins */}
-                                <div className="mb-2">
-                                  <div className="text-xs font-semibold text-slate-600 px-2 py-1">Admins</div>
-                                  {availableUsers.admins.map(admin => {
-                                    const isSelected = formData.participants.some(
-                                      p => p.user_id === admin.id && p.user_type === 'admin'
-                                    );
-                                    return (
-                                      <button
-                                        key={admin.id}
-                                        type="button"
-                                        onClick={() => {
-                                          if (isSelected) {
-                                            setFormData(prev => ({
-                                              ...prev,
-                                              participants: prev.participants.filter(
-                                                p => !(p.user_id === admin.id && p.user_type === 'admin')
-                                              )
-                                            }));
-                                          } else {
-                                            setFormData(prev => ({
-                                              ...prev,
-                                              participants: [...prev.participants, { user_id: admin.id, user_type: 'admin' }]
-                                            }));
-                                          }
-                                        }}
-                                        className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-100 ${
-                                          isSelected ? 'bg-blue-50' : ''
-                                        }`}
-                                      >
-                                        {admin.name} {isSelected && '✓'}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                                
-                                {/* Clients */}
-                                <div className="mb-2">
-                                  <div className="text-xs font-semibold text-slate-600 px-2 py-1">Clients</div>
-                                  {availableUsers.clients.map(client => {
-                                    const isSelected = formData.participants.some(
-                                      p => p.user_id === client.id && p.user_type === 'client'
-                                    );
-                                    return (
-                                      <button
-                                        key={client.id}
-                                        type="button"
-                                        onClick={() => {
-                                          if (isSelected) {
-                                            setFormData(prev => ({
-                                              ...prev,
-                                              participants: prev.participants.filter(
-                                                p => !(p.user_id === client.id && p.user_type === 'client')
-                                              )
-                                            }));
-                                          } else {
-                                            setFormData(prev => ({
-                                              ...prev,
-                                              participants: [...prev.participants, { user_id: client.id, user_type: 'client' }]
-                                            }));
-                                          }
-                                        }}
-                                        className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-100 ${
-                                          isSelected ? 'bg-blue-50' : ''
-                                        }`}
-                                      >
-                                        {client.name} {isSelected && '✓'}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                                
-                                {/* Apporteurs */}
-                                <div className="mb-2">
-                                  <div className="text-xs font-semibold text-slate-600 px-2 py-1">Apporteurs</div>
-                                  {availableUsers.apporteurs.map(apporteur => {
-                                    const isSelected = formData.participants.some(
-                                      p => p.user_id === apporteur.id && p.user_type === 'apporteur'
-                                    );
-                                    return (
-                                      <button
-                                        key={apporteur.id}
-                                        type="button"
-                                        onClick={() => {
-                                          if (isSelected) {
-                                            setFormData(prev => ({
-                                              ...prev,
-                                              participants: prev.participants.filter(
-                                                p => !(p.user_id === apporteur.id && p.user_type === 'apporteur')
-                                              )
-                                            }));
-                                          } else {
-                                            setFormData(prev => ({
-                                              ...prev,
-                                              participants: [...prev.participants, { user_id: apporteur.id, user_type: 'apporteur' }]
-                                            }));
-                                          }
-                                        }}
-                                        className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-100 ${
-                                          isSelected ? 'bg-blue-50' : ''
-                                        }`}
-                                      >
-                                        {apporteur.name} {isSelected && '✓'}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
+                              <span>Aucun</span>
+                            )}{' '}
+                            participant{formData.participants.length > 1 ? 's' : ''} sélectionné{formData.participants.length > 1 ? 's' : ''}
                           </div>
-                        </>
-                      )}
-                    </div>
+                          <Button 
+                            type="button" 
+                            onClick={() => setShowParticipantSelect(false)}
+                            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+                          >
+                            Valider
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
 
                   {/* Bouton d'envoi */}
