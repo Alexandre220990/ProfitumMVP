@@ -681,6 +681,7 @@ router.get('/preferences', asyncHandler(async (req, res) => {
 router.put('/preferences', asyncHandler(async (req, res) => {
   try {
     const userId = (req as any).user.id;
+    const userType = (req as any).user.type;
     const updates = req.body;
 
     // Vérifier si les préférences existent
@@ -690,15 +691,29 @@ router.put('/preferences', asyncHandler(async (req, res) => {
       .eq('user_id', userId)
       .single();
 
+    // Préparer les données à sauvegarder
+    const dataToSave: any = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+
+    // Si admin et sla_config fourni, sauvegarder dans une table séparée ou dans metadata
+    if (userType === 'admin' && updates.sla_config) {
+      // Sauvegarder les SLA dans metadata ou une table dédiée
+      dataToSave.sla_config = updates.sla_config;
+    }
+
+    // notification_types peut être sauvegardé directement dans la table
+    if (updates.notification_types) {
+      dataToSave.notification_types = updates.notification_types;
+    }
+
     let preferences;
     if (existingPreferences) {
       // Mettre à jour
       const { data, error } = await supabaseClient
         .from('UserNotificationPreferences')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
+        .update(dataToSave)
         .eq('user_id', userId)
         .select()
         .single();
@@ -711,7 +726,7 @@ router.put('/preferences', asyncHandler(async (req, res) => {
         .from('UserNotificationPreferences')
         .insert({
           user_id: userId,
-          ...updates
+          ...dataToSave
         })
         .select()
         .single();

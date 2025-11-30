@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Lock, CheckCircle, AlertCircle, ArrowLeft, User, Mail, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Eye, EyeOff, Lock, CheckCircle, AlertCircle, ArrowLeft, User, Mail, Loader2, Bell, Smartphone } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import { NotificationPreferencesPanel } from '@/components/notifications/NotificationPreferencesPanel';
+import { InstallPWAButton } from '@/components/pwa/InstallPWAButton';
 
 export default function AdminProfil() {
   const navigate = useNavigate();
@@ -182,24 +185,53 @@ export default function AdminProfil() {
             </CardHeader>
 
             <CardContent className="p-6">
-              {/* Informations utilisateur */}
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h3 className="font-semibold text-gray-900 mb-2">Informations du compte</h3>
-                <div className="space-y-1 text-sm">
-                  <p><span className="font-medium">Nom :</span> {user?.first_name} {user?.last_name}</p>
-                  <p><span className="font-medium">Email :</span> {user?.email}</p>
-                  <p><span className="font-medium">Rôle :</span> Administrateur</p>
-                </div>
+              {/* Section Application mobile */}
+              <div className="mb-6 pb-6 border-b">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                  <Smartphone className="w-4 h-4 mr-2 text-blue-600" />
+                  Application mobile
+                </h3>
+                <InstallPWAButton />
               </div>
 
-              {/* Formulaire changement mot de passe */}
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Lock className="w-5 h-5 mr-2 text-blue-600" />
-                    Changer mon mot de passe
-                  </h3>
-                </div>
+              <Tabs defaultValue="info" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="info">
+                    <User className="w-4 h-4 mr-2" />
+                    Informations
+                  </TabsTrigger>
+                  <TabsTrigger value="password">
+                    <Lock className="w-4 h-4 mr-2" />
+                    Mot de passe
+                  </TabsTrigger>
+                  <TabsTrigger value="notifications">
+                    <Bell className="w-4 h-4 mr-2" />
+                    Notifications
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="info" className="mt-6">
+                  {/* Informations utilisateur */}
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 className="font-semibold text-gray-900 mb-2">Informations du compte</h3>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="font-medium">Nom :</span> {user?.first_name} {user?.last_name}</p>
+                      <p><span className="font-medium">Email :</span> {user?.email}</p>
+                      <p><span className="font-medium">Rôle :</span> Administrateur</p>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="password" className="mt-6">
+
+                  {/* Formulaire changement mot de passe */}
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <Lock className="w-5 h-5 mr-2 text-blue-600" />
+                        Changer mon mot de passe
+                      </h3>
+                    </div>
 
                 {error && (
                   <Alert variant="destructive">
@@ -333,6 +365,12 @@ export default function AdminProfil() {
                   </div>
                 </form>
               </div>
+                </TabsContent>
+
+                <TabsContent value="notifications" className="mt-6">
+                  <NotificationPreferencesPanel />
+                </TabsContent>
+              </Tabs>
 
               {/* Section Rapport d'activité quotidien */}
               <div className="mt-8 pt-8 border-t">

@@ -175,6 +175,25 @@ export interface Notification {
   updated_at: string;
 }
 
+export interface NotificationTypePreference {
+  enabled: boolean;
+  channels: {
+    push: boolean;
+    email: boolean;
+  };
+  slaChannels: {
+    target: { push: boolean; email: boolean };
+    acceptable: { push: boolean; email: boolean };
+    critical: { push: boolean; email: boolean };
+  };
+}
+
+export interface SLAPreference {
+  targetHours: number;
+  acceptableHours: number;
+  criticalHours: number;
+}
+
 export interface UserNotificationPreferences {
   user_id: string;
   email_enabled: boolean;
@@ -195,6 +214,9 @@ export interface UserNotificationPreferences {
   digest_enabled: boolean;
   digest_frequency: 'daily' | 'weekly';
   digest_time?: string;
+  // Nouvelles préférences granulaires
+  notification_types?: Record<string, NotificationTypePreference>;
+  sla_config?: Record<string, SLAPreference>;
   created_at: string;
   updated_at: string;
 }
@@ -993,10 +1015,18 @@ export class NotificationService {
       return false;
     }
 
-    // Vérifier les filtres de type
-    if (preferences?.type_filter && 
-        !preferences.type_filter.includes(notification.notification_type as any)) {
-      return false;
+    // Vérifier les préférences granulaires par type
+    if (preferences?.notification_types) {
+      const typePref = preferences.notification_types[notification.notification_type];
+      if (typePref && !typePref.enabled) {
+        return false; // Type désactivé par l'utilisateur
+      }
+    } else {
+      // Fallback sur l'ancien système de filtres
+      if (preferences?.type_filter && 
+          !preferences.type_filter.includes(notification.notification_type as any)) {
+        return false;
+      }
     }
 
     return true;

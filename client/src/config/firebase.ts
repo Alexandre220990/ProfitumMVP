@@ -34,23 +34,46 @@ let firebaseApp: FirebaseApp | null = null;
 let messaging: Messaging | null = null;
 
 /**
+ * Vérifier si Firebase est configuré
+ */
+export function isFirebaseConfigured(): boolean {
+  const hasApiKey = firebaseConfig.apiKey && 
+    firebaseConfig.apiKey !== "AIzaSyDemoKey-ReplaceWithRealKey";
+  const hasProjectId = firebaseConfig.projectId && 
+    firebaseConfig.projectId !== "profitum-app";
+  
+  return hasApiKey && hasProjectId;
+}
+
+/**
  * Initialiser Firebase (si pas déjà fait)
  */
-export function initializeFirebase(): FirebaseApp {
+export function initializeFirebase(): FirebaseApp | null {
+  // Vérifier si Firebase est configuré
+  if (!isFirebaseConfigured()) {
+    console.warn('⚠️ Firebase n\'est pas configuré. Vérifiez les variables d\'environnement.');
+    return null;
+  }
+
   if (firebaseApp) {
     return firebaseApp;
   }
 
-  // Vérifier si Firebase est déjà initialisé
-  const existingApps = getApps();
-  if (existingApps.length > 0) {
-    firebaseApp = existingApps[0];
-  } else {
-    firebaseApp = initializeApp(firebaseConfig);
-  }
+  try {
+    // Vérifier si Firebase est déjà initialisé
+    const existingApps = getApps();
+    if (existingApps.length > 0) {
+      firebaseApp = existingApps[0];
+    } else {
+      firebaseApp = initializeApp(firebaseConfig);
+    }
 
-  console.log('🔥 Firebase initialisé avec succès');
-  return firebaseApp;
+    console.log('🔥 Firebase initialisé avec succès');
+    return firebaseApp;
+  } catch (error) {
+    console.error('❌ Erreur initialisation Firebase:', error);
+    return null;
+  }
 }
 
 /**
@@ -58,6 +81,12 @@ export function initializeFirebase(): FirebaseApp {
  */
 export async function getFirebaseMessaging(): Promise<Messaging | null> {
   try {
+    // Vérifier si Firebase est configuré
+    if (!isFirebaseConfigured()) {
+      console.warn('⚠️ Firebase n\'est pas configuré');
+      return null;
+    }
+
     // Vérifier si les notifications sont supportées
     const supported = await isSupported();
     if (!supported) {
@@ -70,6 +99,10 @@ export async function getFirebaseMessaging(): Promise<Messaging | null> {
     }
 
     const app = initializeFirebase();
+    if (!app) {
+      return null;
+    }
+
     messaging = getMessaging(app);
     
     console.log('📱 Firebase Messaging initialisé');

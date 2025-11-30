@@ -270,6 +270,51 @@ router.delete('/devices/:deviceId', enhancedAuthMiddleware, async (req: Request,
 });
 
 // ============================================================================
+// GET /api/notifications/fcm/vapid-public-key
+// Obtenir la clé VAPID publique Firebase
+// ============================================================================
+
+router.get('/vapid-public-key', (req, res) => {
+  const vapidKey = process.env.FIREBASE_VAPID_KEY || process.env.VITE_FIREBASE_VAPID_KEY;
+  
+  if (!vapidKey) {
+    return res.status(503).json({
+      success: false,
+      message: 'Clé VAPID Firebase non configurée. Vérifiez les variables d\'environnement.'
+    });
+  }
+
+  return res.json({
+    success: true,
+    data: {
+      publicKey: vapidKey
+    }
+  });
+});
+
+// ============================================================================
+// POST /api/notifications/push/subscribe
+// Alias pour compatibilité avec l'ancienne API
+// ============================================================================
+
+router.post('/subscribe', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  // Rediriger vers /register
+  req.url = '/register';
+  return router.handle(req, res);
+});
+
+// ============================================================================
+// POST /api/notifications/push/unsubscribe
+// Alias pour compatibilité avec l'ancienne API
+// ============================================================================
+
+router.post('/unsubscribe', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  // Rediriger vers /unregister
+  req.url = '/unregister';
+  return router.handle(req, res);
+});
+
+// ============================================================================
 // UTILITAIRES
 // ============================================================================
 
