@@ -55,6 +55,7 @@ export class SecureLinkService {
    * Génère le HTML pour un lien intelligent (app ou web)
    * Utilise une redirection serveur au lieu de JavaScript pour une meilleure délivrabilité
    * Compatible avec tous les clients email (Gmail, Outlook, Apple Mail, etc.)
+   * Design haut de gamme avec dégradé violet
    */
   static generateSmartLinkHTML(
     text: string,
@@ -65,13 +66,13 @@ export class SecureLinkService {
   ): string {
     // Générer un token sécurisé pour la redirection
     const token = generateRedirectToken(path, userId, userType);
-    const apiUrl = process.env.API_URL || 'https://profitummvp-production.up.railway.app';
+    const apiUrl = process.env.API_URL || process.env.BACKEND_URL || 'https://profitummvp-production.up.railway.app';
     const redirectUrl = `${apiUrl}/api/redirect/${token}`;
     
-    // Lien HTML simple sans JavaScript - compatible avec tous les clients email
+    // Lien HTML simple sans JavaScript - style premium avec dégradé violet
     return `
       <a href="${redirectUrl}" 
-         style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;"
+         style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3); transition: transform 0.2s;"
          class="${className || ''}">
         ${text}
       </a>
