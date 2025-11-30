@@ -45,6 +45,7 @@ interface RDVFormData {
   apporteur_id?: string;
   priority: number;
   category: EventCategory;
+  id?: string; // ID du RDV pour le mode édition
 }
 
 interface RDVFormModalProps {
@@ -159,12 +160,78 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
     ...initialData
   });
 
+  // Réinitialiser formData quand initialData change (mode édition)
+  useEffect(() => {
+    if (isOpen) {
+      if (editMode && initialData && Object.keys(initialData).length > 0) {
+        setFormData({
+          title: initialData.title || '',
+          scheduled_date: initialData.scheduled_date || '',
+          scheduled_time: initialData.scheduled_time || '09:00',
+          duration_minutes: initialData.duration_minutes || 30,
+          meeting_type: initialData.meeting_type || 'video',
+          location: initialData.location || '',
+          meeting_url: initialData.meeting_url || '',
+          description: initialData.description || '',
+          notes: initialData.notes || '',
+          priority: initialData.priority || 2,
+          category: initialData.category || 'rdv_client',
+          client_id: initialData.client_id,
+          expert_id: initialData.expert_id,
+          apporteur_id: initialData.apporteur_id,
+          id: initialData.id
+        });
+      } else if (!editMode) {
+        setFormData({
+          title: '',
+          scheduled_date: '',
+          scheduled_time: '09:00',
+          duration_minutes: 30,
+          meeting_type: 'video',
+          location: '',
+          meeting_url: '',
+          description: '',
+          notes: '',
+          priority: 2,
+          category: 'rdv_client'
+        });
+        setSelectedParticipants({});
+      }
+    }
+  }, [isOpen, editMode, initialData]);
+
   // Charger les contacts reliés
   useEffect(() => {
     if (isOpen) {
       loadContacts();
     }
   }, [isOpen]);
+
+  // Charger les participants après que les contacts soient chargés
+  useEffect(() => {
+    if (isOpen && editMode && initialData && contacts.length > 0) {
+      const participants: typeof selectedParticipants = {};
+      
+      if (initialData.client_id) {
+        const client = contacts.find(c => c.id === initialData.client_id);
+        if (client) participants.client = client;
+      }
+      
+      if (initialData.expert_id) {
+        const expert = contacts.find(c => c.id === initialData.expert_id);
+        if (expert) participants.expert = expert;
+      }
+      
+      if (initialData.apporteur_id) {
+        const apporteur = contacts.find(c => c.id === initialData.apporteur_id);
+        if (apporteur) participants.apporteur = apporteur;
+      }
+      
+      if (Object.keys(participants).length > 0) {
+        setSelectedParticipants(participants);
+      }
+    }
+  }, [isOpen, editMode, initialData, contacts]);
 
   const loadContacts = async () => {
     try {
@@ -250,6 +317,9 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
 
       const rdvPayload = {
         ...formData,
+        // S'assurer que scheduled_date et scheduled_time sont des chaînes simples
+        scheduled_date: String(formData.scheduled_date).trim(),
+        scheduled_time: String(formData.scheduled_time).trim(),
         client_id: selectedParticipants.client.id,
         expert_id: selectedParticipants.expert.id,
         apporteur_id: selectedParticipants.apporteur?.id || null,
@@ -259,7 +329,13 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
       };
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`${config.API_URL}/api/rdv`, {
+      
+      // URL correcte : inclure l'ID pour PUT
+      const url = editMode && formData.id
+        ? `${config.API_URL}/api/rdv/${formData.id}`
+        : `${config.API_URL}/api/rdv`;
+      
+      const response = await fetch(url, {
         method: editMode ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',

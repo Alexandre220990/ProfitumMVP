@@ -63,11 +63,75 @@ function transformRDVToCalendarEvent(rdv: any): any {
 
 /**
  * Transformer des données CalendarEvent (API) en format RDV (BDD)
+ * ⚠️ IMPORTANT: Parser manuellement les dates pour éviter les conversions de fuseau horaire
  */
 function transformCalendarEventToRDV(eventData: any): any {
-  const start_date = new Date(eventData.start_date);
-  const end_date = new Date(eventData.end_date);
-  const duration_minutes = Math.round((end_date.getTime() - start_date.getTime()) / 60000);
+  let scheduled_date: string;
+  let scheduled_time: string;
+  let duration_minutes: number;
+  
+  if (eventData.start_date && eventData.end_date) {
+    const startStr = String(eventData.start_date);
+    
+    // Si c'est au format "YYYY-MM-DDTHH:mm" ou "YYYY-MM-DDTHH:mm:ss" (sans fuseau horaire)
+    // Détecter si c'est un format local (sans Z ni +) et relativement court
+    const hasTimezone = startStr.includes('Z') || startStr.includes('+') || (startStr.includes('-') && startStr.length > 19);
+    const isLocalFormat = startStr.includes('T') && !hasTimezone;
+    
+    if (isLocalFormat) {
+      // Parser manuellement pour éviter les conversions de fuseau horaire
+      const [datePart, timePart] = startStr.split('T');
+      const timeComponents = (timePart || '').split(':');
+      const hours = parseInt(timeComponents[0] || '0', 10);
+      const minutes = parseInt(timeComponents[1] || '0', 10);
+      
+      scheduled_date = datePart;
+      scheduled_time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      
+      // Calculer la durée depuis end_date
+      const endStr = String(eventData.end_date);
+      const endHasTimezone = endStr.includes('Z') || endStr.includes('+') || (endStr.includes('-') && endStr.length > 19);
+      const endIsLocalFormat = endStr.includes('T') && !endHasTimezone;
+      
+      if (endIsLocalFormat) {
+        const [endDatePart, endTimePart] = endStr.split('T');
+        const endTimeComponents = (endTimePart || '').split(':');
+        const endHours = parseInt(endTimeComponents[0] || '0', 10);
+        const endMinutes = parseInt(endTimeComponents[1] || '0', 10);
+        
+        // Si même jour, calculer directement
+        if (datePart === endDatePart) {
+          const startTotalMinutes = hours * 60 + minutes;
+          const endTotalMinutes = endHours * 60 + endMinutes;
+          duration_minutes = Math.max(0, endTotalMinutes - startTotalMinutes);
+        } else {
+          // Calculer avec les dates complètes
+          const startDateObj = new Date(`${datePart}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`);
+          const endDateObj = new Date(`${endDatePart}T${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}:00`);
+          duration_minutes = Math.round((endDateObj.getTime() - startDateObj.getTime()) / 60000);
+        }
+      } else {
+        // Fallback : utiliser Date si format ISO avec fuseau horaire
+        const startDate = new Date(startStr);
+        scheduled_date = startDate.toISOString().split('T')[0];
+        scheduled_time = startDate.toISOString().split('T')[1].substring(0, 5);
+        const endDate = new Date(eventData.end_date);
+        duration_minutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+      }
+    } else {
+      // Format ISO avec fuseau horaire : utiliser Date normalement
+      const startDate = new Date(startStr);
+      scheduled_date = startDate.toISOString().split('T')[0];
+      scheduled_time = startDate.toISOString().split('T')[1].substring(0, 5);
+      const endDate = new Date(eventData.end_date);
+      duration_minutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+    }
+  } else {
+    // Valeurs par défaut si manquantes
+    scheduled_date = new Date().toISOString().split('T')[0];
+    scheduled_time = '09:00';
+    duration_minutes = 60;
+  }
   
   // Convertir priority string vers integer
   const priorityMap: { [key: string]: number } = {
@@ -100,8 +164,8 @@ function transformCalendarEventToRDV(eventData: any): any {
   return {
     title: eventData.title,
     description: eventData.description || null,
-    scheduled_date: start_date.toISOString().split('T')[0],
-    scheduled_time: start_date.toISOString().split('T')[1].substring(0, 8),
+    scheduled_date,
+    scheduled_time,
     duration_minutes,
     meeting_type,
     location: eventData.location || null,
