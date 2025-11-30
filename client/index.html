@@ -12,6 +12,38 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Profitum" />
+    <!-- Script de redirection PWA ADMIN - DOIT ÊTRE EXÉCUTÉ EN PREMIER -->
+    <script>
+      // Redirection IMMÉDIATE pour les admins en mode PWA
+      // Ce script s'exécute AVANT React pour garantir la redirection
+      (function() {
+        // Vérifier si on est en mode PWA (standalone)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                             (window.navigator.standalone === true);
+        
+        if (isStandalone) {
+          // Vérifier le type d'utilisateur dans localStorage
+          const pwaUserType = localStorage.getItem('pwa_user_type');
+          
+          // Si admin, rediriger IMMÉDIATEMENT vers www.profitum.app/connect-admin
+          if (pwaUserType === 'admin') {
+            console.log('🚨 ADMIN DÉTECTÉ EN PWA - Redirection IMMÉDIATE vers www.profitum.app/connect-admin');
+            // Redirection complète - ne pas attendre React
+            window.location.href = 'https://www.profitum.app/connect-admin';
+            return; // Arrêter l'exécution
+          }
+          
+          // Vérifier aussi l'URL de démarrage
+          const pwaStartUrl = localStorage.getItem('pwa_start_url');
+          if (pwaStartUrl && pwaStartUrl.startsWith('https://www.profitum.app/connect-admin')) {
+            console.log('🚨 URL ADMIN DÉTECTÉE - Redirection IMMÉDIATE vers www.profitum.app/connect-admin');
+            window.location.href = 'https://www.profitum.app/connect-admin';
+            return;
+          }
+        }
+      })();
+    </script>
+    
     <!-- Script pour les routes SPA -->
     <script>
       // Redirection SPA - pour éviter les 404 en cas de rechargement direct

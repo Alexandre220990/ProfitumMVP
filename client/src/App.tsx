@@ -167,29 +167,35 @@ function App() {
   }, []);
 
   // Redirection PWA au démarrage selon le type d'utilisateur enregistré
+  // Cette redirection doit se faire AVANT tout rendu React pour garantir qu'elle fonctionne
   useEffect(() => {
     // Vérifier si on est en mode PWA (standalone)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                          (window.navigator as any).standalone === true;
     
-    if (isStandalone && window.location.pathname === '/') {
-      const pwaStartUrl = localStorage.getItem('pwa_start_url');
+    if (isStandalone) {
       const pwaUserType = localStorage.getItem('pwa_user_type');
+      const pwaStartUrl = localStorage.getItem('pwa_start_url');
       
-      if (pwaStartUrl && pwaStartUrl !== '/') {
+      console.log('🔍 PWA détectée:', { isStandalone, pwaUserType, pwaStartUrl, pathname: window.location.pathname });
+      
+      // PRIORITÉ 1: Si admin, rediriger IMMÉDIATEMENT vers www.profitum.app/connect-admin
+      if (pwaUserType === 'admin') {
+        console.log('🚨 ADMIN DÉTECTÉ - Redirection FORCÉE vers www.profitum.app/connect-admin');
+        // Forcer la redirection complète vers www.profitum.app/connect-admin
+        window.location.href = 'https://www.profitum.app/connect-admin';
+        return;
+      }
+      
+      // PRIORITÉ 2: Si on a une URL de démarrage enregistrée et qu'on est sur la home
+      if (pwaStartUrl && pwaStartUrl !== '/' && window.location.pathname === '/') {
         console.log(`🚀 PWA démarrée, redirection vers ${pwaStartUrl} (type: ${pwaUserType})`);
         
         // Si c'est une URL absolue (commence par http:// ou https://), utiliser directement
-        // Sinon, construire l'URL complète
         if (pwaStartUrl.startsWith('http://') || pwaStartUrl.startsWith('https://')) {
           window.location.href = pwaStartUrl;
         } else {
-          // Pour les admins, rediriger vers www.profitum.app/connect-admin
-          if (pwaUserType === 'admin' && pwaStartUrl === '/connect-admin') {
-            window.location.href = 'https://www.profitum.app/connect-admin';
-          } else {
-            window.location.href = pwaStartUrl;
-          }
+          window.location.href = pwaStartUrl;
         }
         return;
       }

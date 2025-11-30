@@ -711,17 +711,23 @@ export default function HomePage() {
       const pwaStartUrl = localStorage.getItem('pwa_start_url');
       const pwaUserType = localStorage.getItem('pwa_user_type');
       
-      // Si on a une URL de démarrage PWA enregistrée et qu'on est sur la page d'accueil
-      if (pwaStartUrl && pwaStartUrl !== '/' && window.location.pathname === '/') {
-        console.log(`🔀 Redirection PWA vers ${pwaStartUrl} (type: ${pwaUserType})`);
-        navigate(pwaStartUrl, { replace: true });
+      // PRIORITÉ ABSOLUE: Si admin, rediriger IMMÉDIATEMENT vers www.profitum.app/connect-admin
+      if (pwaUserType === 'admin' || user?.type === 'admin') {
+        console.log('🚨 ADMIN DÉTECTÉ EN PWA - Redirection FORCÉE vers www.profitum.app/connect-admin');
+        // Forcer la redirection complète - ne pas utiliser navigate() car ça ne fonctionne pas toujours
+        window.location.href = 'https://www.profitum.app/connect-admin';
         return;
       }
       
-      // Si admin et pas encore redirigé, rediriger vers connect-admin
-      if (user?.type === 'admin' && window.location.pathname === '/') {
-        console.log('🔀 Utilisateur admin détecté en PWA, redirection vers /connect-admin');
-        navigate('/connect-admin', { replace: true });
+      // Si on a une URL de démarrage PWA enregistrée et qu'on est sur la page d'accueil
+      if (pwaStartUrl && pwaStartUrl !== '/' && window.location.pathname === '/') {
+        console.log(`🔀 Redirection PWA vers ${pwaStartUrl} (type: ${pwaUserType})`);
+        // Utiliser window.location.href pour une redirection complète
+        if (pwaStartUrl.startsWith('http://') || pwaStartUrl.startsWith('https://')) {
+          window.location.href = pwaStartUrl;
+        } else {
+          window.location.href = pwaStartUrl;
+        }
         return;
       }
       
