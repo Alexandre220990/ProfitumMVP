@@ -2345,7 +2345,18 @@ router.post('/leads', async (req: Request, res: Response) => {
 
     console.log('✅ Lead créé avec succès par expert:', lead?.id);
 
-    // Créer une notification admin pour ce lead (comme pour les messages de contact publics)
+    // Récupérer l'auth_user_id de l'expert pour les notifications (mais on ne notifiera pas l'expert)
+    let expertAuthUserId: string | null = null;
+    if (expertId) {
+      const { data: expertData } = await supabaseAdmin
+        .from('Expert')
+        .select('auth_user_id')
+        .eq('id', expertId)
+        .single();
+      expertAuthUserId = expertData?.auth_user_id || null;
+    }
+
+    // Créer une notification pour ce lead (notifier UNIQUEMENT tous les admins)
     try {
       const { AdminNotificationService } = await import('../services/admin-notification-service');
       await AdminNotificationService.notifyNewContactMessage({
@@ -2354,7 +2365,11 @@ router.post('/leads', async (req: Request, res: Response) => {
         email: email.trim().toLowerCase(),
         phone: phone ? phone.trim() : null,
         subject: leadSubject,
-        message: contexte.trim()
+        message: contexte.trim(),
+        sender_id: expertId || undefined,
+        sender_type: expertId ? 'expert' : undefined,
+        participants: undefined, // Pas de participants pour les leads créés par expert
+        contexte: contexte.trim()
       });
       console.log('✅ Notification admin créée pour le lead expert');
     } catch (notifError) {

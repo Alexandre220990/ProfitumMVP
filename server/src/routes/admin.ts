@@ -638,6 +638,7 @@ router.get('/experts/all', asyncHandler(async (req, res) => {
       .from('Expert')
       .select(`
         id,
+        auth_user_id,
         name,
         first_name,
         last_name,
@@ -690,6 +691,7 @@ router.get('/experts/all', asyncHandler(async (req, res) => {
       .from('Expert')
       .select(`
         id,
+        auth_user_id,
         name,
         first_name,
         last_name,
@@ -7512,7 +7514,7 @@ router.post('/dossiers/normalize-statuses', asyncHandler(async (_req, res) => {
 // POST /api/admin/leads - Créer un lead (admin uniquement)
 router.post('/leads', asyncHandler(async (req, res) => {
   try {
-    const { name, email, phone, subject, contexte } = req.body;
+    const { name, email, phone, subject, contexte, participants } = req.body;
 
     // Validation des champs obligatoires
     if (!name || !email || !contexte) {
@@ -7531,12 +7533,30 @@ router.post('/leads', asyncHandler(async (req, res) => {
       });
     }
 
+    // Validation de participants (optionnel, doit être un array si fourni)
+    if (participants !== undefined && !Array.isArray(participants)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le champ participants doit être un tableau'
+      });
+    }
+
     // Récupérer l'ID de l'admin qui envoie le lead
     const user = (req as any).user;
-    const adminId = user?.database_id || user?.id || null;
+    const adminDatabaseId = user?.database_id || user?.id || null;
+    
+    // Récupérer l'auth_user_id de l'admin pour les notifications
+    let adminAuthUserId: string | null = null;
+    if (adminDatabaseId) {
+      const { data: adminData } = await supabaseAdmin
+        .from('Admin')
+        .select('auth_user_id')
+        .eq('id', adminDatabaseId)
+        .single();
+      adminAuthUserId = adminData?.auth_user_id || null;
+    }
     
     // Insérer le lead dans la table contact_messages
-    // On utilise le champ subject pour marquer que c'est un lead si le champ type n'existe pas
     const leadSubject = subject 
       ? `[LEAD] ${subject.trim()}` 
       : '[LEAD] Lead ajouté manuellement';
@@ -7553,8 +7573,8 @@ router.post('/leads', asyncHandler(async (req, res) => {
     };
     
     // Ajouter sender_id et sender_type si l'admin est identifié
-    if (adminId) {
-      leadData.sender_id = adminId;
+    if (adminDatabaseId) {
+      leadData.sender_id = adminDatabaseId;
       leadData.sender_type = 'admin';
     }
     
@@ -7622,7 +7642,110 @@ router.post('/leads', asyncHandler(async (req, res) => {
 
     console.log('✅ Lead créé avec succès:', lead?.id);
 
-    // Créer une notification admin pour ce lead (comme pour les messages de contact publics)
+    // Traiter les participants si fournis
+    const enrichedParticipants: Array<{
+      user_id: string;
+      user_type: 'admin' | 'expert' | 'client' | 'apporteur';
+      user_email?: string;
+      user_name?: string;
+    }> = [];
+
+    if (participants && Array.isArray(participants) && participants.length > 0) {
+      for (const participant of participants) {
+        if (!participant.user_id || !participant.user_type) {
+          console.warn('⚠️ Participant invalide ignoré:', participant);
+          continue;
+        }
+
+        try {
+          let tableName: string;
+          let selectFields: string;
+          
+          if (participant.user_type === 'admin') {
+            tableName = 'Admin';
+            selectFields = 'auth_user_id, email, first_name, last_name, name';
+          } else if (participant.user_type === 'expert') {
+            tableName = 'Expert';
+            selectFields = 'auth_user_id, email, first_name, last_name, name, company_name';
+          } else if (participant.user_type === 'client') {
+            tableName = 'Client';
+            selectFields = 'auth_user_id, email, company_name, name, first_name, last_name';
+          } else if (participant.user_type === 'apporteur') {
+            tableName = 'ApporteurAffaires';
+            selectFields = 'auth_user_id, email, first_name, last_name, name';
+          } else {
+            console.warn(`⚠️ Type de participant inconnu: ${participant.user_type}`);
+            continue;
+          }
+
+          const { data: participantDataRaw, error: participantError } = await supabaseAdmin
+            .from(tableName)
+            .select(selectFields)
+            .eq('id', participant.user_id)
+            .single();
+
+          if (participantError || !participantDataRaw) {
+            console.error(`❌ Erreur récupération participant ${participant.user_type}:`, participantError);
+            continue;
+          }
+
+          // Typer explicitement les données du participant pour éviter les erreurs TypeScript
+          // Utiliser une double assertion pour forcer le typage
+          const participantInfo = participantDataRaw as unknown as {
+            auth_user_id?: string;
+            email?: string;
+            first_name?: string;
+            last_name?: string;
+            name?: string;
+            company_name?: string;
+          };
+
+          // Construire le nom complet
+          let participantName: string | undefined;
+          if (participantInfo.first_name && participantInfo.last_name) {
+            participantName = `${participantInfo.first_name} ${participantInfo.last_name}`.trim();
+          } else if (participantInfo.name) {
+            participantName = participantInfo.name;
+          } else if (participantInfo.company_name) {
+            participantName = participantInfo.company_name;
+          } else {
+            participantName = participantInfo.email;
+          }
+
+          // Utiliser auth_user_id comme user_id pour les notifications
+          const authUserId = participantInfo.auth_user_id || participant.user_id;
+
+          enrichedParticipants.push({
+            user_id: authUserId,
+            user_type: participant.user_type,
+            user_email: participantInfo.email,
+            user_name: participantName
+          });
+
+          // Insérer dans lead_participants avec auth_user_id
+          const { error: insertError } = await supabaseAdmin
+            .from('lead_participants')
+            .insert({
+              contact_message_id: lead.id,
+              user_id: authUserId,
+              user_type: participant.user_type,
+              user_email: participantInfo.email,
+              user_name: participantName,
+              created_at: new Date().toISOString()
+            });
+
+          if (insertError) {
+            console.error(`❌ Erreur insertion participant ${participant.user_type} dans lead_participants:`, insertError);
+          } else {
+            console.log(`✅ Participant ${participant.user_type} ajouté au lead`);
+          }
+        } catch (participantErr) {
+          console.error(`❌ Erreur traitement participant:`, participantErr);
+        }
+      }
+    }
+
+    // Créer une notification pour ce lead
     try {
       const { AdminNotificationService } = await import('../services/admin-notification-service');
       await AdminNotificationService.notifyNewContactMessage({
@@ -7631,9 +7754,13 @@ router.post('/leads', asyncHandler(async (req, res) => {
         email: email.trim().toLowerCase(),
         phone: phone ? phone.trim() : null,
         subject: leadSubject,
-        message: contexte.trim()
+        message: contexte.trim(),
+        sender_id: adminDatabaseId || undefined,
+        sender_type: adminDatabaseId ? 'admin' : undefined,
+        participants: enrichedParticipants.length > 0 ? enrichedParticipants : undefined,
+        contexte: contexte.trim()
       });
-      console.log('✅ Notification admin créée pour le lead');
+      console.log('✅ Notification créée pour le lead');
     } catch (notifError) {
       console.error('❌ Erreur création notification lead:', notifError);
       // On continue même si la notification échoue
@@ -7652,6 +7779,121 @@ router.post('/leads', asyncHandler(async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
+    });
+  }
+}));
+
+// GET /api/admin/admins - Liste des admins pour sélection participants
+router.get('/admins/select', asyncHandler(async (req, res) => {
+  try {
+    const { data: admins, error } = await supabaseClient
+      .from('Admin')
+      .select('id, auth_user_id, email, first_name, last_name, name, is_active')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('❌ Erreur récupération admins:', error);
+      throw error;
+    }
+
+    const formattedAdmins = (admins || []).map(admin => ({
+      id: admin.auth_user_id || admin.id, // Utiliser auth_user_id pour les notifications
+      name: admin.first_name && admin.last_name 
+        ? `${admin.first_name} ${admin.last_name}`.trim()
+        : admin.name || admin.email || 'Admin',
+      email: admin.email,
+      type: 'admin'
+    }));
+
+    return res.json({
+      success: true,
+      data: formattedAdmins
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur route admins/select:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des admins'
+    });
+  }
+}));
+
+// GET /api/admin/clients/select - Liste des clients pour sélection participants
+router.get('/clients/select', asyncHandler(async (req, res) => {
+  try {
+    const { data: clients, error } = await supabaseClient
+      .from('Client')
+      .select('id, auth_user_id, email, company_name, name, first_name, last_name, statut')
+      .eq('statut', 'actif')
+      .order('company_name', { ascending: true })
+      .limit(500); // Limiter pour éviter trop de données
+
+    if (error) {
+      console.error('❌ Erreur récupération clients:', error);
+      throw error;
+    }
+
+    const formattedClients = (clients || []).map(client => ({
+      id: client.auth_user_id || client.id, // Utiliser auth_user_id pour les notifications
+      name: client.company_name || 
+            (client.first_name && client.last_name ? `${client.first_name} ${client.last_name}`.trim() : null) ||
+            client.name || 
+            client.email || 
+            'Client',
+      email: client.email,
+      type: 'client'
+    }));
+
+    return res.json({
+      success: true,
+      data: formattedClients
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur route clients/select:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des clients'
+    });
+  }
+}));
+
+// GET /api/admin/apporteurs/select - Liste des apporteurs pour sélection participants
+router.get('/apporteurs/select', asyncHandler(async (req, res) => {
+  try {
+    const { data: apporteurs, error } = await supabaseClient
+      .from('ApporteurAffaires')
+      .select('id, auth_user_id, email, first_name, last_name, name, is_active')
+      .eq('is_active', true)
+      .order('last_name', { ascending: true })
+      .limit(500);
+
+    if (error) {
+      console.error('❌ Erreur récupération apporteurs:', error);
+      throw error;
+    }
+
+    const formattedApporteurs = (apporteurs || []).map(apporteur => ({
+      id: apporteur.auth_user_id || apporteur.id, // Utiliser auth_user_id pour les notifications
+      name: apporteur.first_name && apporteur.last_name
+        ? `${apporteur.first_name} ${apporteur.last_name}`.trim()
+        : apporteur.name || apporteur.email || 'Apporteur',
+      email: apporteur.email,
+      type: 'apporteur'
+    }));
+
+    return res.json({
+      success: true,
+      data: formattedApporteurs
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur route apporteurs/select:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des apporteurs'
     });
   }
 }));

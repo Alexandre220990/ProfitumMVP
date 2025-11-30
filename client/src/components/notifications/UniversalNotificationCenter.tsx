@@ -105,7 +105,7 @@ export function UniversalNotificationCenter({
   } = useSupabaseNotifications();
   
   // État local
-  const [filter, setFilter] = useState<'all' | 'unread' | 'archived' | 'late' | 'events' | 'contact_requests'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'archived' | 'late' | 'events' | 'contact_requests' | 'leads_to_treat'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showPreferences, setShowPreferences] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -293,6 +293,17 @@ export function UniversalNotificationCenter({
     return n.notification_type === 'contact_message' || 
            n.notification_type === 'expert_contact_request';
   }).length;
+  
+  const leadsToTreatCount = enrichedNotifications.filter((n) => {
+    if (n.status === 'archived') return false;
+    return n.notification_type === 'lead_to_treat';
+  }).length;
+  
+  const leadsToTreatUnreadCount = enrichedNotifications.filter((n) => {
+    if (n.status === 'archived') return false;
+    const isUnread = n.status === 'unread' || (!n.is_read && n.status !== 'read');
+    return n.notification_type === 'lead_to_treat' && isUnread;
+  }).length;
 
   // Filtrage dynamique selon le rôle
   const filteredNotifications = useMemo(() => {
@@ -331,6 +342,10 @@ export function UniversalNotificationCenter({
         // Filtrer uniquement les notifications de demande de contact
         matchesFilter = (notification.notification_type === 'contact_message' || 
                         notification.notification_type === 'expert_contact_request') &&
+                       notification.status !== 'archived';
+      } else if (filter === 'leads_to_treat') {
+        // Filtrer uniquement les notifications de leads à traiter
+        matchesFilter = notification.notification_type === 'lead_to_treat' && 
                        notification.status !== 'archived';
       } else if (filter === 'all') {
         matchesFilter = notification.status !== 'archived';
@@ -1476,6 +1491,21 @@ export function UniversalNotificationCenter({
                       <span>Demandes de contact</span>
                     </div>
                     <Badge variant="secondary" className="ml-2">{contactRequestCount}</Badge>
+                  </button>
+                  <button
+                    onClick={() => setFilter('leads_to_treat')}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                      filter === 'leads_to_treat' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"
+                    )}
+                  >
+                    <div className="flex items-center">
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      <span>Leads à traiter</span>
+                    </div>
+                    <Badge variant="secondary" className="ml-2">
+                      {leadsToTreatUnreadCount > 0 ? leadsToTreatUnreadCount : leadsToTreatCount}
+                    </Badge>
                   </button>
                   <button
                     onClick={() => setFilter('archived')}

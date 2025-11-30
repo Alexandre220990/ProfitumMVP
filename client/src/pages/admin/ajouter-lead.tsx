@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { 
   Mail, 
   Phone, 
@@ -11,7 +12,9 @@ import {
   MessageSquare, 
   Send,
   CheckCircle2,
-  ArrowLeft
+  ArrowLeft,
+  X,
+  Users
 } from "lucide-react";
 import { toast } from "sonner";
 import { config } from "@/config/env";
@@ -20,13 +23,89 @@ export default function AjouterLeadPage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  // Charger les utilisateurs disponibles pour la sélection
+  useEffect(() => {
+    const loadUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        const token = localStorage.getItem('token');
+        
+        // Charger experts
+        const expertsRes = await fetch(`${config.API_URL}/api/admin/experts/all`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (expertsRes.ok) {
+          const expertsData = await expertsRes.json();
+          const experts = (expertsData.data?.experts || []).map((expert: any) => ({
+            id: expert.auth_user_id || expert.id,
+            name: expert.first_name && expert.last_name
+              ? `${expert.first_name} ${expert.last_name}`.trim()
+              : expert.name || expert.company_name || expert.email || 'Expert',
+            email: expert.email,
+            type: 'expert'
+          }));
+          setAvailableUsers(prev => ({ ...prev, experts }));
+        }
+        
+        // Charger admins
+        const adminsRes = await fetch(`${config.API_URL}/api/admin/admins/select`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (adminsRes.ok) {
+          const adminsData = await adminsRes.json();
+          setAvailableUsers(prev => ({ ...prev, admins: adminsData.data || [] }));
+        }
+        
+        // Charger clients
+        const clientsRes = await fetch(`${config.API_URL}/api/admin/clients/select`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (clientsRes.ok) {
+          const clientsData = await clientsRes.json();
+          setAvailableUsers(prev => ({ ...prev, clients: clientsData.data || [] }));
+        }
+        
+        // Charger apporteurs
+        const apporteursRes = await fetch(`${config.API_URL}/api/admin/apporteurs/select`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (apporteursRes.ok) {
+          const apporteursData = await apporteursRes.json();
+          setAvailableUsers(prev => ({ ...prev, apporteurs: apporteursData.data || [] }));
+        }
+      } catch (error) {
+        console.error('Erreur chargement utilisateurs:', error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    
+    loadUsers();
+  }, []);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     subject: "",
-    contexte: ""
+    contexte: "",
+    participants: [] as Array<{ user_id: string; user_type: 'admin' | 'expert' | 'client' | 'apporteur' }>
   });
+  
+  const [availableUsers, setAvailableUsers] = useState<{
+    experts: Array<{ id: string; name: string; email: string; type: string }>;
+    admins: Array<{ id: string; name: string; email: string; type: string }>;
+    clients: Array<{ id: string; name: string; email: string; type: string }>;
+    apporteurs: Array<{ id: string; name: string; email: string; type: string }>;
+  }>({
+    experts: [],
+    admins: [],
+    clients: [],
+    apporteurs: []
+  });
+  
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [showParticipantSelect, setShowParticipantSelect] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -69,7 +148,8 @@ export default function AjouterLeadPage() {
           email: formData.email,
           phone: formData.phone || null,
           subject: formData.subject || null,
-          contexte: formData.contexte
+          contexte: formData.contexte,
+          participants: formData.participants.length > 0 ? formData.participants : undefined
         }),
       });
 
@@ -89,7 +169,8 @@ export default function AjouterLeadPage() {
           email: "",
           phone: "",
           subject: "",
-          contexte: ""
+          contexte: "",
+          participants: []
         });
       } else {
         throw new Error(result.message || 'Erreur lors de l\'enregistrement du lead');
@@ -255,6 +336,228 @@ export default function AjouterLeadPage() {
                       className="w-full min-h-[100px]"
                       rows={4}
                     />
+                  </div>
+
+                  {/* Participants */}
+                  <div>
+                    <Label className="flex items-center gap-1.5 mb-1.5 text-sm">
+                      <Users className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Participants (optionnel)</span>
+                    </Label>
+                    
+                    {/* Participants sélectionnés */}
+                    {formData.participants.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {formData.participants.map((participant, index) => {
+                          const user = [
+                            ...availableUsers.experts,
+                            ...availableUsers.admins,
+                            ...availableUsers.clients,
+                            ...availableUsers.apporteurs
+                          ].find(u => u.id === participant.user_id && u.type === participant.user_type);
+                          
+                          return (
+                            <Badge
+                              key={`${participant.user_id}-${participant.user_type}-${index}`}
+                              variant="secondary"
+                              className="flex items-center gap-1 px-2 py-1"
+                            >
+                              <span className="text-xs">{user?.name || `${participant.user_type}`}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    participants: prev.participants.filter((_, i) => i !== index)
+                                  }));
+                                }}
+                                className="ml-1 hover:bg-slate-300 rounded-full p-0.5"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
+                    
+                    {/* Bouton pour ouvrir la sélection */}
+                    <div className="relative">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowParticipantSelect(!showParticipantSelect)}
+                        className="w-full justify-start"
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        {formData.participants.length > 0 
+                          ? `${formData.participants.length} participant(s) sélectionné(s)`
+                          : "Ajouter des participants"}
+                      </Button>
+                      
+                      {/* Menu de sélection */}
+                      {showParticipantSelect && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-10" 
+                            onClick={() => setShowParticipantSelect(false)}
+                          />
+                          <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+                            {loadingUsers ? (
+                              <div className="p-4 text-center text-sm text-slate-500">
+                                Chargement...
+                              </div>
+                            ) : (
+                              <div className="p-2">
+                                {/* Experts */}
+                                <div className="mb-2">
+                                  <div className="text-xs font-semibold text-slate-600 px-2 py-1">Experts</div>
+                                  {availableUsers.experts.map(expert => {
+                                    const isSelected = formData.participants.some(
+                                      p => p.user_id === expert.id && p.user_type === 'expert'
+                                    );
+                                    return (
+                                      <button
+                                        key={expert.id}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            setFormData(prev => ({
+                                              ...prev,
+                                              participants: prev.participants.filter(
+                                                p => !(p.user_id === expert.id && p.user_type === 'expert')
+                                              )
+                                            }));
+                                          } else {
+                                            setFormData(prev => ({
+                                              ...prev,
+                                              participants: [...prev.participants, { user_id: expert.id, user_type: 'expert' }]
+                                            }));
+                                          }
+                                        }}
+                                        className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-100 ${
+                                          isSelected ? 'bg-blue-50' : ''
+                                        }`}
+                                      >
+                                        {expert.name} {isSelected && '✓'}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                
+                                {/* Admins */}
+                                <div className="mb-2">
+                                  <div className="text-xs font-semibold text-slate-600 px-2 py-1">Admins</div>
+                                  {availableUsers.admins.map(admin => {
+                                    const isSelected = formData.participants.some(
+                                      p => p.user_id === admin.id && p.user_type === 'admin'
+                                    );
+                                    return (
+                                      <button
+                                        key={admin.id}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            setFormData(prev => ({
+                                              ...prev,
+                                              participants: prev.participants.filter(
+                                                p => !(p.user_id === admin.id && p.user_type === 'admin')
+                                              )
+                                            }));
+                                          } else {
+                                            setFormData(prev => ({
+                                              ...prev,
+                                              participants: [...prev.participants, { user_id: admin.id, user_type: 'admin' }]
+                                            }));
+                                          }
+                                        }}
+                                        className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-100 ${
+                                          isSelected ? 'bg-blue-50' : ''
+                                        }`}
+                                      >
+                                        {admin.name} {isSelected && '✓'}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                
+                                {/* Clients */}
+                                <div className="mb-2">
+                                  <div className="text-xs font-semibold text-slate-600 px-2 py-1">Clients</div>
+                                  {availableUsers.clients.map(client => {
+                                    const isSelected = formData.participants.some(
+                                      p => p.user_id === client.id && p.user_type === 'client'
+                                    );
+                                    return (
+                                      <button
+                                        key={client.id}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            setFormData(prev => ({
+                                              ...prev,
+                                              participants: prev.participants.filter(
+                                                p => !(p.user_id === client.id && p.user_type === 'client')
+                                              )
+                                            }));
+                                          } else {
+                                            setFormData(prev => ({
+                                              ...prev,
+                                              participants: [...prev.participants, { user_id: client.id, user_type: 'client' }]
+                                            }));
+                                          }
+                                        }}
+                                        className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-100 ${
+                                          isSelected ? 'bg-blue-50' : ''
+                                        }`}
+                                      >
+                                        {client.name} {isSelected && '✓'}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                
+                                {/* Apporteurs */}
+                                <div className="mb-2">
+                                  <div className="text-xs font-semibold text-slate-600 px-2 py-1">Apporteurs</div>
+                                  {availableUsers.apporteurs.map(apporteur => {
+                                    const isSelected = formData.participants.some(
+                                      p => p.user_id === apporteur.id && p.user_type === 'apporteur'
+                                    );
+                                    return (
+                                      <button
+                                        key={apporteur.id}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            setFormData(prev => ({
+                                              ...prev,
+                                              participants: prev.participants.filter(
+                                                p => !(p.user_id === apporteur.id && p.user_type === 'apporteur')
+                                              )
+                                            }));
+                                          } else {
+                                            setFormData(prev => ({
+                                              ...prev,
+                                              participants: [...prev.participants, { user_id: apporteur.id, user_type: 'apporteur' }]
+                                            }));
+                                          }
+                                        }}
+                                        className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-100 ${
+                                          isSelected ? 'bg-blue-50' : ''
+                                        }`}
+                                      >
+                                        {apporteur.name} {isSelected && '✓'}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Bouton d'envoi */}

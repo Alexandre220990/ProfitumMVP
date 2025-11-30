@@ -277,6 +277,42 @@ export class AdminNotificationService {
   }
 
   /**
+   * Récupérer l'auth_user_id d'un utilisateur depuis sa table
+   */
+  private static async getAuthUserId(userId: string, userType: 'admin' | 'expert' | 'client' | 'apporteur'): Promise<string | null> {
+    try {
+      let tableName: string;
+      if (userType === 'admin') {
+        tableName = 'Admin';
+      } else if (userType === 'expert') {
+        tableName = 'Expert';
+      } else if (userType === 'client') {
+        tableName = 'Client';
+      } else if (userType === 'apporteur') {
+        tableName = 'ApporteurAffaires';
+      } else {
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('auth_user_id')
+        .eq('id', userId)
+        .single();
+
+      if (error || !data) {
+        console.error(`❌ Erreur récupération auth_user_id pour ${userType}:`, error);
+        return null;
+      }
+
+      return data.auth_user_id || null;
+    } catch (error) {
+      console.error(`❌ Erreur getAuthUserId pour ${userType}:`, error);
+      return null;
+    }
+  }
+
+  /**
    * Notifier les admins : Nouveau message de contact
    */
   static async notifyNewContactMessage(data: {
@@ -286,86 +322,301 @@ export class AdminNotificationService {
     phone?: string | null;
     subject?: string | null;
     message: string;
+    sender_id?: string | null;
+    sender_type?: 'admin' | 'expert' | 'client' | 'apporteur' | null;
+    participants?: Array<{
+      user_id: string;
+      user_type: 'admin' | 'expert' | 'client' | 'apporteur';
+      user_email?: string;
+      user_name?: string;
+    }>;
+    contexte?: string;
   }): Promise<{ success: boolean; notification_ids: string[] }> {
     try {
-      const adminIds = await this.getAdminIds();
-      
-      if (adminIds.length === 0) {
-        return { success: false, notification_ids: [] };
-      }
-
       const notificationIds: string[] = [];
-
-      // Créer une notification globale dans AdminNotification (table globale)
-      const { data: adminNotification, error: adminNotifError } = await supabase
-        .from('AdminNotification')
-        .insert({
-          type: 'contact_message',
-          title: `📧 Nouveau message de contact`,
-          message: `${data.name} (${data.email}) vous a envoyé un message${data.subject ? ` : ${data.subject}` : ''}`,
-          priority: NOTIFICATION_SLA_CONFIG.contact_message.defaultPriority,
-          status: 'unread',
-          is_read: false,
-          action_url: `/admin/contact/${data.contact_message_id}`,
-          action_label: 'Voir le message',
-          metadata: {
-            contact_message_id: data.contact_message_id,
-            name: data.name,
-            email: data.email,
-            phone: data.phone,
-            subject: data.subject,
-            message: data.message,
-            action_required: 'view_contact',
-            sla: {
-              targetHours: NOTIFICATION_SLA_CONFIG.contact_message.targetHours,
-              acceptableHours: NOTIFICATION_SLA_CONFIG.contact_message.acceptableHours,
-              criticalHours: NOTIFICATION_SLA_CONFIG.contact_message.criticalHours
-            }
-          },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (!adminNotifError && adminNotification) {
-        notificationIds.push(adminNotification.id);
-      }
-
-      // Créer aussi une notification dans la table 'notification' pour chaque admin
-      // (pour la route /api/notifications/admin qui lit depuis cette table)
-      const title = `📧 Nouveau message de contact`;
-      const message = `${data.name} (${data.email}) vous a envoyé un message${data.subject ? ` : ${data.subject}` : ''}`;
-      
-      // Utiliser le SLA pour déterminer la priorité
       const slaConfig = NOTIFICATION_SLA_CONFIG.contact_message;
       const priority = slaConfig.defaultPriority;
+
+      // Extraire le contexte (message ou contexte fourni)
+      const contexte = data.contexte || data.message;
       
-      for (const adminId of adminIds) {
-        const createdAt = new Date().toISOString();
-        const slaStatus = calculateSLAStatus('contact_message', createdAt);
+      // Construire le message de contact avec téléphone si disponible
+      const contactInfo = `${data.name}${data.phone ? ` - ${data.phone}` : ''}`;
+      const contactDetails = `Contact: ${contactInfo} - ${data.email}`;
+
+      // Logique conditionnelle selon le type de lead
+      if (data.sender_id && data.sender_type) {
+        // Lead créé par un utilisateur (admin, expert, client, apporteur)
         
-        const { data: userNotification, error: userNotifError } = await supabase
-          .from('notification')
+        if (data.sender_type === 'admin') {
+          // Lead créé par admin
+          const senderAuthUserId = await this.getAuthUserId(data.sender_id, 'admin');
+          
+          if (!senderAuthUserId) {
+            console.error('❌ Impossible de récupérer auth_user_id pour le sender admin');
+            return { success: false, notification_ids: [] };
+          }
+
+          // Notification pour le sender (admin)
+          const title = `📋 Lead à traiter : ${contexte}`;
+          const message = `Contexte: ${contexte} - ${contactDetails}`;
+          
+          const createdAt = new Date().toISOString();
+          const slaStatus = calculateSLAStatus('contact_message', createdAt);
+          
+          const { data: senderNotification, error: senderError } = await supabase
+            .from('notification')
+            .insert({
+              user_id: senderAuthUserId,
+              user_type: 'admin',
+              title: title,
+              message: message,
+              notification_type: 'lead_to_treat',
+              priority: priority,
+              is_read: false,
+              status: 'unread',
+              action_url: `/admin/contact/${data.contact_message_id}`,
+              action_data: {
+                contact_message_id: data.contact_message_id,
+                name: data.name,
+                email: data.email,
+                phone: data.phone,
+                subject: data.subject,
+                message: data.message,
+                contexte: contexte,
+                action_required: 'view_lead'
+              },
+              metadata: {
+                contact_message_id: data.contact_message_id,
+                name: data.name,
+                email: data.email,
+                phone: data.phone,
+                subject: data.subject,
+                message: data.message,
+                contexte: contexte,
+                action_required: 'view_lead',
+                sla: {
+                  targetHours: slaConfig.targetHours,
+                  acceptableHours: slaConfig.acceptableHours,
+                  criticalHours: slaConfig.criticalHours,
+                  status: slaStatus.status,
+                  hoursRemaining: slaStatus.hoursRemaining
+                }
+              },
+              created_at: createdAt,
+              updated_at: createdAt
+            })
+            .select()
+            .single();
+
+          if (!senderError && senderNotification) {
+            notificationIds.push(senderNotification.id);
+            
+            // 📡 Envoyer via SSE en temps réel
+            const sse = getSSEService();
+            if (sse) {
+              sse.sendNotificationToUser(senderAuthUserId, senderNotification);
+            }
+          }
+
+          // Notifications pour les participants si fournis
+          if (data.participants && data.participants.length > 0) {
+            for (const participant of data.participants) {
+              // Récupérer auth_user_id si pas déjà fourni
+              let participantAuthUserId = participant.user_id;
+              
+              // Si user_id n'est pas un auth_user_id, le récupérer depuis la table
+              if (participant.user_type !== 'admin') {
+                const authUserId = await this.getAuthUserId(participant.user_id, participant.user_type);
+                if (authUserId) {
+                  participantAuthUserId = authUserId;
+                } else {
+                  console.warn(`⚠️ Impossible de récupérer auth_user_id pour participant ${participant.user_type}:${participant.user_id}`);
+                  continue;
+                }
+              }
+
+              const participantTitle = `📋 Lead à traiter : ${contexte}`;
+              const participantMessage = `Contexte: ${contexte} - ${contactDetails}`;
+              
+              // Déterminer l'action_url selon le type de participant
+              let actionUrl = `/admin/contact/${data.contact_message_id}`;
+              if (participant.user_type === 'expert') {
+                actionUrl = `/expert/leads/${data.contact_message_id}`;
+              } else if (participant.user_type === 'client') {
+                actionUrl = `/leads/${data.contact_message_id}`;
+              } else if (participant.user_type === 'apporteur') {
+                actionUrl = `/apporteur/leads/${data.contact_message_id}`;
+              }
+
+              const createdAt = new Date().toISOString();
+              const slaStatus = calculateSLAStatus('contact_message', createdAt);
+              
+              const { data: participantNotification, error: participantError } = await supabase
+                .from('notification')
+                .insert({
+                  user_id: participantAuthUserId,
+                  user_type: participant.user_type,
+                  title: participantTitle,
+                  message: participantMessage,
+                  notification_type: 'lead_to_treat',
+                  priority: priority,
+                  is_read: false,
+                  status: 'unread',
+                  action_url: actionUrl,
+                  action_data: {
+                    contact_message_id: data.contact_message_id,
+                    name: data.name,
+                    email: data.email,
+                    phone: data.phone,
+                    subject: data.subject,
+                    message: data.message,
+                    contexte: contexte,
+                    action_required: 'view_lead'
+                  },
+                  metadata: {
+                    contact_message_id: data.contact_message_id,
+                    name: data.name,
+                    email: data.email,
+                    phone: data.phone,
+                    subject: data.subject,
+                    message: data.message,
+                    contexte: contexte,
+                    action_required: 'view_lead',
+                    sla: {
+                      targetHours: slaConfig.targetHours,
+                      acceptableHours: slaConfig.acceptableHours,
+                      criticalHours: slaConfig.criticalHours,
+                      status: slaStatus.status,
+                      hoursRemaining: slaStatus.hoursRemaining
+                    }
+                  },
+                  created_at: createdAt,
+                  updated_at: createdAt
+                })
+                .select()
+                .single();
+
+              if (!participantError && participantNotification) {
+                notificationIds.push(participantNotification.id);
+                
+                // 📡 Envoyer via SSE en temps réel
+                const sse = getSSEService();
+                if (sse) {
+                  sse.sendNotificationToUser(participantAuthUserId, participantNotification);
+                }
+              }
+            }
+          }
+
+          // 📡 Rafraîchir KPI
+          const sse = getSSEService();
+          if (sse) {
+            sse.sendKPIRefresh();
+          }
+
+        } else {
+          // Lead créé par expert/client/apporteur → Notifier UNIQUEMENT tous les admins
+          const adminIds = await this.getAdminIds();
+          
+          if (adminIds.length === 0) {
+            return { success: false, notification_ids: [] };
+          }
+
+          const title = `📋 Lead à traiter : ${contexte}`;
+          const message = `Contexte: ${contexte} - ${contactDetails}`;
+          
+          for (const adminId of adminIds) {
+            const createdAt = new Date().toISOString();
+            const slaStatus = calculateSLAStatus('contact_message', createdAt);
+            
+            const { data: adminNotification, error: adminError } = await supabase
+              .from('notification')
+              .insert({
+                user_id: adminId,
+                user_type: 'admin',
+                title: title,
+                message: message,
+                notification_type: 'lead_to_treat',
+                priority: priority,
+                is_read: false,
+                status: 'unread',
+                action_url: `/admin/contact/${data.contact_message_id}`,
+                action_data: {
+                  contact_message_id: data.contact_message_id,
+                  name: data.name,
+                  email: data.email,
+                  phone: data.phone,
+                  subject: data.subject,
+                  message: data.message,
+                  contexte: contexte,
+                  sender_id: data.sender_id,
+                  sender_type: data.sender_type,
+                  action_required: 'view_lead'
+                },
+                metadata: {
+                  contact_message_id: data.contact_message_id,
+                  name: data.name,
+                  email: data.email,
+                  phone: data.phone,
+                  subject: data.subject,
+                  message: data.message,
+                  contexte: contexte,
+                  sender_id: data.sender_id,
+                  sender_type: data.sender_type,
+                  action_required: 'view_lead',
+                  sla: {
+                    targetHours: slaConfig.targetHours,
+                    acceptableHours: slaConfig.acceptableHours,
+                    criticalHours: slaConfig.criticalHours,
+                    status: slaStatus.status,
+                    hoursRemaining: slaStatus.hoursRemaining
+                  }
+                },
+                created_at: createdAt,
+                updated_at: createdAt
+              })
+              .select()
+              .single();
+
+            if (!adminError && adminNotification) {
+              notificationIds.push(adminNotification.id);
+              
+              // 📡 Envoyer via SSE en temps réel
+              const sse = getSSEService();
+              if (sse) {
+                sse.sendNotificationToUser(adminId, adminNotification);
+              }
+            }
+          }
+
+          // 📡 Rafraîchir KPI
+          const sse = getSSEService();
+          if (sse) {
+            sse.sendKPIRefresh();
+          }
+        }
+
+      } else {
+        // Lead public classique (sans sender_id) → Notifier tous les admins avec format classique
+        const adminIds = await this.getAdminIds();
+        
+        if (adminIds.length === 0) {
+          return { success: false, notification_ids: [] };
+        }
+
+        // Créer une notification globale dans AdminNotification (table globale)
+        const { data: adminNotification, error: adminNotifError } = await supabase
+          .from('AdminNotification')
           .insert({
-            user_id: adminId,
-            user_type: 'admin',
-            title: title,
-            message: message,
-            notification_type: 'contact_message',
+            type: 'contact_message',
+            title: `📧 Nouveau message de contact`,
+            message: `${data.name} (${data.email}) vous a envoyé un message${data.subject ? ` : ${data.subject}` : ''}`,
             priority: priority,
-            is_read: false,
             status: 'unread',
+            is_read: false,
             action_url: `/admin/contact/${data.contact_message_id}`,
-            action_data: {
-              contact_message_id: data.contact_message_id,
-              name: data.name,
-              email: data.email,
-              phone: data.phone,
-              subject: data.subject,
-              message: data.message,
-              action_required: 'view_contact'
-            },
+            action_label: 'Voir le message',
             metadata: {
               contact_message_id: data.contact_message_id,
               name: data.name,
@@ -377,32 +628,85 @@ export class AdminNotificationService {
               sla: {
                 targetHours: slaConfig.targetHours,
                 acceptableHours: slaConfig.acceptableHours,
-                criticalHours: slaConfig.criticalHours,
-                status: slaStatus.status,
-                hoursRemaining: slaStatus.hoursRemaining
+                criticalHours: slaConfig.criticalHours
               }
             },
-            created_at: createdAt,
-            updated_at: createdAt
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           })
           .select()
           .single();
 
-        if (!userNotifError && userNotification) {
-          notificationIds.push(userNotification.id);
+        if (!adminNotifError && adminNotification) {
+          notificationIds.push(adminNotification.id);
         }
-      }
 
-      // 📡 Envoyer via SSE en temps réel à tous les admins
-      const sse = getSSEService();
-      if (sse) {
-        // Envoyer la notification AdminNotification à tous les admins connectés
-        if (adminNotification) {
-          for (const adminId of adminIds) {
-            sse.sendNotificationToUser(adminId, adminNotification);
+        // Créer aussi une notification dans la table 'notification' pour chaque admin
+        const title = `📧 Nouveau message de contact`;
+        const messageText = `${data.name} (${data.email}) vous a envoyé un message${data.subject ? ` : ${data.subject}` : ''}`;
+        
+        for (const adminId of adminIds) {
+          const createdAt = new Date().toISOString();
+          const slaStatus = calculateSLAStatus('contact_message', createdAt);
+          
+          const { data: userNotification, error: userNotifError } = await supabase
+            .from('notification')
+            .insert({
+              user_id: adminId,
+              user_type: 'admin',
+              title: title,
+              message: messageText,
+              notification_type: 'contact_message',
+              priority: priority,
+              is_read: false,
+              status: 'unread',
+              action_url: `/admin/contact/${data.contact_message_id}`,
+              action_data: {
+                contact_message_id: data.contact_message_id,
+                name: data.name,
+                email: data.email,
+                phone: data.phone,
+                subject: data.subject,
+                message: data.message,
+                action_required: 'view_contact'
+              },
+              metadata: {
+                contact_message_id: data.contact_message_id,
+                name: data.name,
+                email: data.email,
+                phone: data.phone,
+                subject: data.subject,
+                message: data.message,
+                action_required: 'view_contact',
+                sla: {
+                  targetHours: slaConfig.targetHours,
+                  acceptableHours: slaConfig.acceptableHours,
+                  criticalHours: slaConfig.criticalHours,
+                  status: slaStatus.status,
+                  hoursRemaining: slaStatus.hoursRemaining
+                }
+              },
+              created_at: createdAt,
+              updated_at: createdAt
+            })
+            .select()
+            .single();
+
+          if (!userNotifError && userNotification) {
+            notificationIds.push(userNotification.id);
           }
         }
-        sse.sendKPIRefresh();
+
+        // 📡 Envoyer via SSE en temps réel à tous les admins
+        const sse = getSSEService();
+        if (sse) {
+          if (adminNotification) {
+            for (const adminId of adminIds) {
+              sse.sendNotificationToUser(adminId, adminNotification);
+            }
+          }
+          sse.sendKPIRefresh();
+        }
       }
 
       return {
