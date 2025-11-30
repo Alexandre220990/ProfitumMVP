@@ -137,3 +137,4 @@ server/public
 vite.config.ts.*
 *.tar.gz
 .vercel
+server/.env.firebase
