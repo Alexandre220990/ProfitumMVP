@@ -192,7 +192,7 @@ export class NotificationTriggers {
       const productTag = this.computeProductTag(data.title, metadata, data.event_title);
       const decoratedTitle = this.decorateTitleWithProductTag(data.title, productTag);
 
-      const { error } = await supabase
+      const { data: notification, error } = await supabase
         .from('notification')
         .insert({
           user_id: data.user_id,
@@ -209,7 +209,9 @@ export class NotificationTriggers {
           action_data: actionData,
           metadata,
           created_at: new Date().toISOString()
-        });
+        })
+        .select()
+        .single();
 
       if (error) {
         console.error('❌ Erreur création notification:', error);
@@ -217,6 +219,10 @@ export class NotificationTriggers {
       }
 
       console.log(`✅ Notification créée: ${data.notification_type} pour ${data.user_type} ${data.user_id}`);
+
+      // ✅ Envoyer automatiquement email et push notification
+      await this.sendNotificationChannels(notification, data);
+
       return true;
     } catch (error) {
       console.error('❌ Erreur createNotification:', error);
@@ -231,7 +237,7 @@ export class NotificationTriggers {
     try {
       const metadata = this.buildMetadata(data.metadata, data.priority);
 
-      const { error } = await supabase
+      const { data: adminNotification, error } = await supabase
         .from('AdminNotification')
         .insert({
           type: data.type,
@@ -244,7 +250,9 @@ export class NotificationTriggers {
           action_url: data.action_url,
           action_label: data.action_label,
           created_at: new Date().toISOString()
-        });
+        })
+        .select()
+        .single();
 
       if (error) {
         console.error('❌ Erreur création notification admin:', error);
@@ -252,11 +260,383 @@ export class NotificationTriggers {
       }
 
       console.log(`✅ Notification admin créée: ${data.type}`);
+
+      // ✅ Envoyer automatiquement email et push à tous les admins
+      await this.sendAdminNotificationChannels(adminNotification, data);
+
       return true;
     } catch (error) {
       console.error('❌ Erreur createAdminNotification:', error);
       return false;
     }
+  }
+
+  // ============================================================================
+  // ENVOI AUTOMATIQUE EMAIL ET PUSH
+  // ============================================================================
+
+  /**
+   * Envoyer la notification via tous les canaux (email + push)
+   */
+  private static async sendNotificationChannels(notification: any, data: NotificationData): Promise<void> {
+    try {
+      // 1. Envoyer l'email (toujours)
+      await this.sendNotificationEmail(notification, data);
+
+      // 2. Envoyer la push notification (si device enregistré)
+      await this.sendNotificationPush(notification, data);
+    } catch (error) {
+      console.error('❌ Erreur envoi canaux notification:', error);
+      // Ne pas faire échouer la création de la notification si l'envoi échoue
+    }
+  }
+
+  /**
+   * Envoyer un email pour la notification
+   */
+  private static async sendNotificationEmail(notification: any, data: NotificationData): Promise<void> {
+    try {
+      const { EmailService } = await import('./EmailService');
+      
+      // Récupérer l'email de l'utilisateur
+      let userEmail = '';
+      
+      if (data.user_type === 'admin') {
+        const { data: admin } = await supabase
+          .from('Admin')
+          .select('email')
+          .eq('auth_user_id', data.user_id)
+          .single();
+        userEmail = admin?.email || '';
+      } else if (data.user_type === 'expert') {
+        const { data: expert } = await supabase
+          .from('Expert')
+          .select('email')
+          .eq('auth_user_id', data.user_id)
+          .single();
+        userEmail = expert?.email || '';
+      } else if (data.user_type === 'client') {
+        const { data: client } = await supabase
+          .from('Client')
+          .select('email')
+          .eq('id', data.user_id)
+          .single();
+        userEmail = client?.email || '';
+      } else if (data.user_type === 'apporteur') {
+        const { data: apporteur } = await supabase
+          .from('ApporteurAffaires')
+          .select('email')
+          .eq('id', data.user_id)
+          .single();
+        userEmail = apporteur?.email || '';
+      }
+
+      if (!userEmail) {
+        console.warn(`⚠️ Email non trouvé pour ${data.user_type}:${data.user_id}`);
+        return;
+      }
+
+      // Bloquer les emails temporaires
+      if (userEmail.includes('@profitum.temp') || userEmail.includes('temp_')) {
+        console.log(`⛔ Email temporaire bloqué: ${userEmail}`);
+        return;
+      }
+
+      // Générer le template email
+      const subject = `🔔 ${data.title}`;
+      const html = this.generateEmailTemplate(notification, data);
+      const text = `${data.title}\n\n${data.message}${data.action_url ? `\n\nVoir les détails: ${process.env.FRONTEND_URL || 'https://app.profitum.fr'}${data.action_url}` : ''}`;
+
+      // Envoyer l'email
+      await EmailService.sendDailyReportEmail(userEmail, subject, html, text);
+      
+      console.log(`✅ Email notification envoyé à ${userEmail}`);
+    } catch (error) {
+      console.error('❌ Erreur envoi email notification:', error);
+    }
+  }
+
+  /**
+   * Envoyer une push notification (si device enregistré)
+   */
+  private static async sendNotificationPush(notification: any, data: NotificationData): Promise<void> {
+    try {
+      // Récupérer les devices actifs de l'utilisateur
+      const { data: devices, error } = await supabase
+        .from('UserDevices')
+        .select('id, device_token, active, device_type')
+        .eq('user_id', data.user_id)
+        .eq('active', true)
+        .eq('device_type', 'web');
+
+      if (error || !devices || devices.length === 0) {
+        // Pas de device enregistré, pas de push
+        return;
+      }
+
+      // Importer web-push
+      const webpush = await import('web-push');
+
+      // Récupérer les clés VAPID depuis les variables d'environnement
+      const vapidPublicKey = process.env.FIREBASE_VAPID_KEY || process.env.VITE_FIREBASE_VAPID_KEY;
+      const vapidPrivateKey = process.env.FIREBASE_VAPID_PRIVATE_KEY;
+
+      if (!vapidPublicKey || !vapidPrivateKey) {
+        console.warn('⚠️ Clés VAPID non configurées, push notifications désactivées');
+        return;
+      }
+
+      webpush.setVapidDetails(
+        'mailto:support@profitum.fr',
+        vapidPublicKey,
+        vapidPrivateKey
+      );
+
+      // Envoyer à tous les devices actifs
+      const pushPromises = devices.map(async (device) => {
+        try {
+          if (!device.device_token) {
+            return;
+          }
+
+          const subscription = JSON.parse(device.device_token);
+          
+          const payload = JSON.stringify({
+            title: data.title,
+            body: data.message,
+            icon: '/images/logo.png',
+            badge: '/images/logo.png',
+            tag: data.notification_type || 'default',
+            requireInteraction: data.priority === 'urgent' || data.priority === 'high',
+            data: {
+              notification_id: notification.id,
+              notification_type: data.notification_type,
+              action_url: data.action_url || '/',
+              priority: data.priority
+            }
+          });
+
+          await webpush.sendNotification(subscription, payload);
+          console.log(`✅ Push envoyée à device ${device.id}`);
+        } catch (error: any) {
+          console.error(`❌ Erreur push device ${device.id}:`, error?.message || error);
+          
+          // Si le token est invalide, désactiver le device
+          if (error?.statusCode === 410 || error?.statusCode === 404) {
+            await supabase
+              .from('UserDevices')
+              .update({ active: false })
+              .eq('id', device.id);
+            console.log(`🔒 Device ${device.id} désactivé (token invalide)`);
+          }
+        }
+      });
+
+      await Promise.allSettled(pushPromises);
+    } catch (error) {
+      console.error('❌ Erreur envoi push notification:', error);
+    }
+  }
+
+  /**
+   * Envoyer les notifications admin à tous les admins (email + push)
+   */
+  private static async sendAdminNotificationChannels(adminNotification: any, data: AdminNotificationData): Promise<void> {
+    try {
+      // Récupérer tous les admins actifs
+      const { data: admins, error } = await supabase
+        .from('Admin')
+        .select('id, auth_user_id, email')
+        .eq('is_active', true)
+        .not('auth_user_id', 'is', null);
+
+      if (error || !admins || admins.length === 0) {
+        console.warn('⚠️ Aucun admin actif trouvé');
+        return;
+      }
+
+      // Envoyer à chaque admin
+      for (const admin of admins) {
+        if (!admin.auth_user_id || !admin.email) continue;
+
+        // Envoyer l'email
+        try {
+          const { EmailService } = await import('./EmailService');
+          
+          // Bloquer les emails temporaires
+          if (admin.email.includes('@profitum.temp') || admin.email.includes('temp_')) {
+            continue;
+          }
+
+          const subject = `🔔 ${data.title}`;
+          const html = this.generateAdminEmailTemplate(adminNotification, data);
+          const text = `${data.title}\n\n${data.message}${data.action_url ? `\n\nVoir les détails: ${process.env.FRONTEND_URL || 'https://app.profitum.fr'}${data.action_url}` : ''}`;
+
+          await EmailService.sendDailyReportEmail(admin.email, subject, html, text);
+          console.log(`✅ Email admin envoyé à ${admin.email}`);
+        } catch (error) {
+          console.error(`❌ Erreur envoi email admin ${admin.id}:`, error);
+        }
+
+        // Envoyer la push notification
+        try {
+          await this.sendNotificationPush(
+            { id: adminNotification.id, ...adminNotification },
+            {
+              user_id: admin.auth_user_id,
+              user_type: 'admin',
+              title: data.title,
+              message: data.message,
+              notification_type: data.type,
+              priority: data.priority,
+              action_url: data.action_url
+            }
+          );
+        } catch (error) {
+          console.error(`❌ Erreur envoi push admin ${admin.id}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur envoi canaux notification admin:', error);
+    }
+  }
+
+  /**
+   * Générer le template HTML pour l'email de notification
+   */
+  private static generateEmailTemplate(notification: any, data: NotificationData): string {
+    const frontendUrl = process.env.FRONTEND_URL || 'https://app.profitum.fr';
+    const actionUrl = data.action_url ? `${frontendUrl}${data.action_url}` : null;
+    
+    const priorityColors: Record<string, string> = {
+      urgent: '#dc2626',
+      high: '#f59e0b',
+      medium: '#3b82f6',
+      low: '#6b7280'
+    };
+    
+    const priorityColor = priorityColors[data.priority] || priorityColors.medium;
+
+    return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${data.title}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f3f4f6; margin: 0; padding: 0;">
+  <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+    <div style="background: linear-gradient(135deg, ${priorityColor} 0%, ${this.darkenColor(priorityColor, 20)} 100%); color: white; padding: 30px; text-align: center;">
+      <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${data.title}</h1>
+    </div>
+    
+    <div style="padding: 40px 30px;">
+      <p style="font-size: 16px; color: #1f2937; margin-bottom: 24px;">${data.message}</p>
+      
+      ${actionUrl ? `
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${actionUrl}" style="display: inline-block; padding: 14px 28px; background-color: ${priorityColor}; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+          Voir les détails
+        </a>
+      </div>
+      ` : ''}
+      
+      <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-top: 24px;">
+        <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.6;">
+          <strong>Type:</strong> ${data.notification_type}<br>
+          <strong>Priorité:</strong> ${data.priority}<br>
+          ${data.event_title ? `<strong>Événement:</strong> ${data.event_title}<br>` : ''}
+        </p>
+      </div>
+    </div>
+    
+    <div style="background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+      <p style="font-size: 13px; color: #6b7280; margin: 0; line-height: 1.6;">
+        Cet email a été envoyé automatiquement par Profitum.<br>
+        Vous recevez cet email car vous avez une notification dans votre centre de notifications.
+      </p>
+      <p style="font-size: 13px; color: #6b7280; margin-top: 12px;">
+        <a href="${frontendUrl}" style="color: ${priorityColor}; text-decoration: none;">Accéder à la plateforme</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    `.trim();
+  }
+
+  /**
+   * Générer le template HTML pour l'email de notification admin
+   */
+  private static generateAdminEmailTemplate(adminNotification: any, data: AdminNotificationData): string {
+    const frontendUrl = process.env.FRONTEND_URL || 'https://app.profitum.fr';
+    const actionUrl = data.action_url ? `${frontendUrl}${data.action_url}` : null;
+    
+    const priorityColors: Record<string, string> = {
+      urgent: '#dc2626',
+      high: '#f59e0b',
+      medium: '#3b82f6',
+      low: '#6b7280'
+    };
+    
+    const priorityColor = priorityColors[data.priority] || priorityColors.medium;
+
+    return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${data.title}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f3f4f6; margin: 0; padding: 0;">
+  <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+    <div style="background: linear-gradient(135deg, ${priorityColor} 0%, ${this.darkenColor(priorityColor, 20)} 100%); color: white; padding: 30px; text-align: center;">
+      <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${data.title}</h1>
+    </div>
+    
+    <div style="padding: 40px 30px;">
+      <p style="font-size: 16px; color: #1f2937; margin-bottom: 24px;">${data.message}</p>
+      
+      ${actionUrl ? `
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${actionUrl}" style="display: inline-block; padding: 14px 28px; background-color: ${priorityColor}; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+          ${data.action_label || 'Voir les détails'}
+        </a>
+      </div>
+      ` : ''}
+      
+      <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-top: 24px;">
+        <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.6;">
+          <strong>Type:</strong> ${data.type}<br>
+          <strong>Priorité:</strong> ${data.priority}<br>
+        </p>
+      </div>
+    </div>
+    
+    <div style="background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+      <p style="font-size: 13px; color: #6b7280; margin: 0; line-height: 1.6;">
+        Notification admin automatique - Profitum<br>
+        <a href="${frontendUrl}/admin" style="color: ${priorityColor}; text-decoration: none;">Accéder au panneau admin</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    `.trim();
+  }
+
+  /**
+   * Fonction utilitaire pour assombrir une couleur hex
+   */
+  private static darkenColor(color: string, percent: number): string {
+    const num = parseInt(color.replace('#', ''), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.max(0, Math.min(255, (num >> 16) - amt));
+    const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) - amt));
+    const B = Math.max(0, Math.min(255, (num & 0x0000FF) - amt));
+    return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
   }
 
   // ============================================================================
