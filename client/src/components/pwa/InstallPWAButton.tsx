@@ -31,8 +31,9 @@ export function InstallPWAButton() {
       localStorage.setItem('pwa_user_type', user.type);
       
       // Définir l'URL de démarrage selon le type
+      // Pour les admins, utiliser l'URL absolue www.profitum.app/connect-admin
       const startUrls: Record<string, string> = {
-        'admin': '/connect-admin',
+        'admin': 'https://www.profitum.app/connect-admin',
         'client': user.id ? `/dashboard/client/${user.id}` : '/dashboard/client',
         'expert': '/expert/dashboard',
         'apporteur': '/apporteur/dashboard'
@@ -139,10 +140,21 @@ export function InstallPWAButton() {
     );
   }
 
+  // Bouton spécial pour les admins qui redirige vers www.profitum.app/connect-admin
+  const handleAdminInstall = () => {
+    // Stocker l'URL absolue pour les admins
+    localStorage.setItem('pwa_user_type', 'admin');
+    localStorage.setItem('pwa_start_url', 'https://www.profitum.app/connect-admin');
+    
+    // Rediriger directement vers www.profitum.app/connect-admin
+    window.location.href = 'https://www.profitum.app/connect-admin';
+  };
+
   // Sur Android ou Desktop, afficher le bouton d'installation
   if (isInstallable || platform === 'android' || platform === 'desktop') {
     const hasDeferredPrompt = !!deferredPrompt;
     const canInstall = isInstallable || platform === 'desktop';
+    const isAdmin = user?.type === 'admin';
     
     return (
       <Card className="border-blue-200 bg-blue-50">
@@ -155,7 +167,26 @@ export function InstallPWAButton() {
             Installez Profitum sur votre appareil pour un accès rapide
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {/* Bouton spécial pour les admins */}
+          {isAdmin && (
+            <div className="space-y-2">
+              <Button
+                onClick={handleAdminInstall}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                size="sm"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Installer pour Admin (www.profitum.app/connect-admin)
+              </Button>
+              <p className="text-xs text-purple-700 text-center">
+                ⚡ Bouton spécial admin : redirige directement vers la page de connexion admin
+              </p>
+              <div className="border-t border-purple-200 my-2"></div>
+            </div>
+          )}
+          
+          {/* Bouton d'installation standard */}
           <Button
             onClick={handleInstall}
             disabled={installing}
@@ -170,7 +201,7 @@ export function InstallPWAButton() {
             ) : (
               <>
                 <Download className="w-4 h-4 mr-2" />
-                Installer l'app
+                {isAdmin ? 'Installer l\'app (standard)' : 'Installer l\'app'}
               </>
             )}
           </Button>

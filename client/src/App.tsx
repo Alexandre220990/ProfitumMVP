@@ -178,8 +178,19 @@ function App() {
       
       if (pwaStartUrl && pwaStartUrl !== '/') {
         console.log(`🚀 PWA démarrée, redirection vers ${pwaStartUrl} (type: ${pwaUserType})`);
-        // Utiliser window.location.href pour une redirection complète
-        window.location.href = pwaStartUrl;
+        
+        // Si c'est une URL absolue (commence par http:// ou https://), utiliser directement
+        // Sinon, construire l'URL complète
+        if (pwaStartUrl.startsWith('http://') || pwaStartUrl.startsWith('https://')) {
+          window.location.href = pwaStartUrl;
+        } else {
+          // Pour les admins, rediriger vers www.profitum.app/connect-admin
+          if (pwaUserType === 'admin' && pwaStartUrl === '/connect-admin') {
+            window.location.href = 'https://www.profitum.app/connect-admin';
+          } else {
+            window.location.href = pwaStartUrl;
+          }
+        }
         return;
       }
     }
