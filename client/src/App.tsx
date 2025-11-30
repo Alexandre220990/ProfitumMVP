@@ -153,6 +153,19 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { Analytics } from "@vercel/analytics/react";
 
 function App() {
+  // Enregistrer le Service Worker au démarrage pour la PWA
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('✅ Service Worker enregistré:', registration);
+        })
+        .catch((error) => {
+          console.warn('⚠️ Erreur enregistrement Service Worker:', error);
+        });
+    }
+  }, []);
+
   // Démarrer le service de rappels automatiques
   useEffect(() => {
     reminderService.start();

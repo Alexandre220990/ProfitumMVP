@@ -298,9 +298,97 @@ router.get('/vapid-public-key', (req, res) => {
 // ============================================================================
 
 router.post('/subscribe', enhancedAuthMiddleware, async (req: Request, res: Response) => {
-  // Rediriger vers /register
-  req.url = '/register';
-  return router.handle(req, res);
+  // Appeler directement le handler de /register
+  const user = (req as AuthenticatedRequest).user;
+  const { fcm_token, device_info } = req.body;
+
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié'
+    });
+  }
+
+  if (!fcm_token) {
+    return res.status(400).json({
+      success: false,
+      message: 'Token FCM requis'
+    });
+  }
+
+  // Réutiliser la logique de /register
+  try {
+    const { data: existingDevice, error: checkError } = await supabase
+      .from('UserDevices')
+      .select('id, fcm_token, active')
+      .eq('user_id', user.id)
+      .eq('fcm_token', fcm_token)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('❌ Erreur vérification device existant:', checkError);
+    }
+
+    if (existingDevice) {
+      if (!existingDevice.active) {
+        const { error: updateError } = await supabase
+          .from('UserDevices')
+          .update({
+            active: true,
+            last_used_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingDevice.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: 'Token FCM déjà enregistré',
+        data: { device_id: existingDevice.id, already_registered: true }
+      });
+    }
+
+    const { data: newDevice, error: insertError } = await supabase
+      .from('UserDevices')
+      .insert({
+        user_id: user.id,
+        user_type: user.type,
+        fcm_token: fcm_token,
+        device_type: device_info?.platform || 'web',
+        device_name: device_info?.user_agent || 'Web Browser',
+        platform: 'web',
+        browser: getBrowserFromUserAgent(device_info?.user_agent),
+        os: device_info?.platform || 'Unknown',
+        app_version: '1.0.0',
+        active: true,
+        metadata: device_info || {},
+        last_used_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      throw insertError;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Token FCM enregistré avec succès',
+      data: { device_id: newDevice.id }
+    });
+  } catch (error) {
+    console.error('❌ Erreur enregistrement token FCM:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de l\'enregistrement du token'
+    });
+  }
 });
 
 // ============================================================================
@@ -309,9 +397,49 @@ router.post('/subscribe', enhancedAuthMiddleware, async (req: Request, res: Resp
 // ============================================================================
 
 router.post('/unsubscribe', enhancedAuthMiddleware, async (req: Request, res: Response) => {
-  // Rediriger vers /unregister
-  req.url = '/unregister';
-  return router.handle(req, res);
+  // Appeler directement le handler de /unregister
+  const user = (req as AuthenticatedRequest).user;
+  const { fcm_token } = req.body;
+
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié'
+    });
+  }
+
+  if (!fcm_token) {
+    return res.status(400).json({
+      success: false,
+      message: 'Token FCM requis'
+    });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('UserDevices')
+      .update({
+        active: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', user.id)
+      .eq('fcm_token', fcm_token);
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Token FCM désenregistré'
+    });
+  } catch (error) {
+    console.error('❌ Erreur désenregistrement token FCM:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors du désenregistrement'
+    });
+  }
 });
 
 // ============================================================================
