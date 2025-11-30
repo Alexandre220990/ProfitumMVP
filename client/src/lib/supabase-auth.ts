@@ -128,24 +128,59 @@ export const logoutFromSupabase = async (): Promise<void> => { try {
 
 /**
  * Vérifier si l'utilisateur est connecté
+ * Essaie automatiquement de rafraîchir la session si elle est expirée
  */
 export const checkSupabaseAuth = async (): Promise<AuthResponse> => { 
   try {
     console.log('🔍 Vérification de la session Supabase...');
     
     // D'abord vérifier la session actuelle
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    let { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    if (sessionError) {
-      console.error('❌ Erreur session Supabase:', sessionError);
-      return {
-        success: false, 
-        message: 'Erreur de session'
-      };
+    // Si erreur ou pas de session, essayer de rafraîchir
+    if (sessionError || !session) {
+      console.log('⚠️ Pas de session active, tentative de rafraîchissement...');
+      
+      const refreshResult = await supabase.auth.refreshSession();
+      
+      if (refreshResult.data?.session && !refreshResult.error) {
+        console.log('✅ Session rafraîchie avec succès');
+        session = refreshResult.data.session;
+        sessionError = null;
+      } else {
+        console.log('❌ Impossible de rafraîchir la session:', refreshResult.error?.message);
+        return {
+          success: false, 
+          message: refreshResult.error?.message || 'Session expirée'
+        };
+      }
+    }
+
+    // Vérifier si la session est expirée
+    if (session?.expires_at) {
+      const expiresAt = session.expires_at * 1000; // Convertir en millisecondes
+      const now = Date.now();
+      
+      if (expiresAt < now) {
+        console.log('⚠️ Session expirée, tentative de rafraîchissement...');
+        
+        const refreshResult = await supabase.auth.refreshSession();
+        
+        if (refreshResult.data?.session && !refreshResult.error) {
+          console.log('✅ Session rafraîchie avec succès après expiration');
+          session = refreshResult.data.session;
+        } else {
+          console.log('❌ Impossible de rafraîchir la session expirée:', refreshResult.error?.message);
+          return {
+            success: false, 
+            message: 'Session expirée et impossible de rafraîchir'
+          };
+        }
+      }
     }
 
     if (!session) {
-      console.log('❌ Aucune session active');
+      console.log('❌ Aucune session active après rafraîchissement');
       return {
         success: false, 
         message: 'Utilisateur non authentifié'
@@ -157,9 +192,48 @@ export const checkSupabaseAuth = async (): Promise<AuthResponse> => {
 
     if (userError || !user) {
       console.error('❌ Erreur utilisateur Supabase:', userError);
+      
+      // Si l'erreur est liée au token, essayer de rafraîchir une dernière fois
+      if (userError?.message?.includes('token') || userError?.message?.includes('expired')) {
+        console.log('🔄 Tentative de rafraîchissement suite à erreur token...');
+        const refreshResult = await supabase.auth.refreshSession();
+        
+        if (refreshResult.data?.session && !refreshResult.error) {
+          session = refreshResult.data.session;
+          // Réessayer de récupérer l'utilisateur
+          const retryUser = await supabase.auth.getUser();
+          if (retryUser.data?.user && !retryUser.error) {
+            const authUser: AuthUser = { 
+              id: retryUser.data.user.id, 
+              email: retryUser.data.user.email || '', 
+              type: (retryUser.data.user.user_metadata?.type as 'client' | 'expert' | 'admin') || 'client', 
+              username: retryUser.data.user.user_metadata?.username || retryUser.data.user.email?.split('@')[0], 
+              company_name: retryUser.data.user.user_metadata?.company_name, 
+              siren: retryUser.data.user.user_metadata?.siren, 
+              specializations: retryUser.data.user.user_metadata?.specializations, 
+              experience: retryUser.data.user.user_metadata?.experience, 
+              location: retryUser.data.user.user_metadata?.location, 
+              description: retryUser.data.user.user_metadata?.description 
+            };
+            
+            localStorage.setItem('supabase_token', session.access_token);
+            localStorage.setItem('supabase_refresh_token', session.refresh_token || '');
+            localStorage.setItem('token', session.access_token);
+            
+            return { 
+              success: true, 
+              data: {
+                token: session.access_token,
+                user: authUser 
+              }
+            };
+          }
+        }
+      }
+      
       return {
         success: false, 
-        message: 'Utilisateur non trouvé'
+        message: userError?.message || 'Utilisateur non trouvé'
       };
     }
 
@@ -181,7 +255,7 @@ export const checkSupabaseAuth = async (): Promise<AuthResponse> => {
 
     // Mettre à jour les tokens dans localStorage
     localStorage.setItem('supabase_token', session.access_token);
-    localStorage.setItem('supabase_refresh_token', session.refresh_token);
+    localStorage.setItem('supabase_refresh_token', session.refresh_token || '');
     localStorage.setItem('token', session.access_token);
 
     return { 
@@ -194,9 +268,48 @@ export const checkSupabaseAuth = async (): Promise<AuthResponse> => {
 
   } catch (error) { 
     console.error('❌ Erreur lors de la vérification de l\'authentification: ', error);
+    
+    // Dernière tentative de rafraîchissement en cas d'erreur inattendue
+    try {
+      console.log('🔄 Dernière tentative de rafraîchissement...');
+      const refreshResult = await supabase.auth.refreshSession();
+      
+      if (refreshResult.data?.session && !refreshResult.error) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const authUser: AuthUser = { 
+            id: user.id, 
+            email: user.email || '', 
+            type: (user.user_metadata?.type as 'client' | 'expert' | 'admin') || 'client', 
+            username: user.user_metadata?.username || user.email?.split('@')[0], 
+            company_name: user.user_metadata?.company_name, 
+            siren: user.user_metadata?.siren, 
+            specializations: user.user_metadata?.specializations, 
+            experience: user.user_metadata?.experience, 
+            location: user.user_metadata?.location, 
+            description: user.user_metadata?.description 
+          };
+          
+          localStorage.setItem('supabase_token', refreshResult.data.session.access_token);
+          localStorage.setItem('supabase_refresh_token', refreshResult.data.session.refresh_token || '');
+          localStorage.setItem('token', refreshResult.data.session.access_token);
+          
+          return { 
+            success: true, 
+            data: {
+              token: refreshResult.data.session.access_token,
+              user: authUser 
+            }
+          };
+        }
+      }
+    } catch (refreshError) {
+      console.error('❌ Échec du rafraîchissement final:', refreshError);
+    }
+    
     return {
       success: false, 
-      message: 'Erreur lors de la vérification'
+      message: error instanceof Error ? error.message : 'Erreur lors de la vérification'
     };
   }
 };

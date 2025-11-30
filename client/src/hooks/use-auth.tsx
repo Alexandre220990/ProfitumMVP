@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { loginWithSupabase, registerWithSupabase, logoutFromSupabase, checkSupabaseAuth } from '@/lib/supabase-auth';
 import { loginClient, loginExpert, loginApporteur } from '@/lib/auth-distinct';
 import { UserType, LoginCredentials } from '@/types/api';
+import { supabase } from '@/lib/supabase';
+import { useSessionRefresh } from './use-session-refresh';
 
 interface AuthContextType {
   user: UserType | null;
@@ -21,6 +23,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  
+  // Utiliser le hook de refresh de session
+  useSessionRefresh();
 
   const checkAuth = async (shouldNavigate: boolean = true): Promise<boolean> => {
     try {
@@ -242,6 +247,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Écouter les changements d'état d'authentification Supabase
+  useEffect(() => {
+    console.log('👂 Configuration du listener onAuthStateChange...');
+    
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔔 Événement auth Supabase:', event, {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        email: session?.user?.email
+      });
+
+      switch (event) {
+        case 'SIGNED_IN':
+          console.log('✅ Utilisateur connecté via onAuthStateChange');
+          // Rafraîchir les tokens dans localStorage
+          if (session?.access_token) {
+            localStorage.setItem('supabase_token', session.access_token);
+            localStorage.setItem('supabase_refresh_token', session.refresh_token || '');
+            localStorage.setItem('token', session.access_token);
+          }
+          // Vérifier l'authentification pour mettre à jour l'état utilisateur
+          await checkAuth(false);
+          break;
+
+        case 'SIGNED_OUT':
+          console.log('👋 Utilisateur déconnecté via onAuthStateChange');
+          setUser(null);
+          localStorage.removeItem('token');
+          localStorage.removeItem('supabase_token');
+          localStorage.removeItem('supabase_refresh_token');
+          break;
+
+        case 'TOKEN_REFRESHED':
+          console.log('🔄 Token rafraîchi via onAuthStateChange');
+          // Mettre à jour les tokens dans localStorage
+          if (session?.access_token) {
+            localStorage.setItem('supabase_token', session.access_token);
+            localStorage.setItem('supabase_refresh_token', session.refresh_token || '');
+            localStorage.setItem('token', session.access_token);
+            console.log('✅ Tokens mis à jour dans localStorage');
+          }
+          // Vérifier l'authentification pour s'assurer que l'utilisateur est toujours valide
+          await checkAuth(false);
+          break;
+
+        case 'USER_UPDATED':
+          console.log('👤 Utilisateur mis à jour via onAuthStateChange');
+          // Vérifier l'authentification pour mettre à jour les données utilisateur
+          await checkAuth(false);
+          break;
+
+        case 'PASSWORD_RECOVERY':
+          console.log('🔑 Récupération de mot de passe');
+          // Pas besoin de faire quoi que ce soit ici
+          break;
+
+        default:
+          console.log('ℹ️ Événement auth non géré:', event);
+      }
+    });
+
+    // Cleanup
+    return () => {
+      console.log('🧹 Nettoyage du listener onAuthStateChange');
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
