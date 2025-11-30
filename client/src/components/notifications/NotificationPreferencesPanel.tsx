@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Bell, Settings, Save, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Bell, Settings, Save, Loader2, Info } from 'lucide-react';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { NotificationTypeSettings } from './NotificationTypeSettings';
 import { SLASettings } from './SLASettings';
@@ -88,6 +89,12 @@ export function NotificationPreferencesPanel() {
           </TabsList>
 
           <TabsContent value="types" className="mt-6">
+            <Alert className="mb-4 bg-blue-50 border-blue-200">
+              <Info className="w-4 h-4 text-blue-600" />
+              <AlertDescription className="text-blue-800 text-sm">
+                Les notifications push ne pourront être activées qu'en téléchargeant l'application mobile.
+              </AlertDescription>
+            </Alert>
             <NotificationTypeSettings
               preferences={preferences}
               onUpdateChannel={updateChannel}
