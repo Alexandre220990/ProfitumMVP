@@ -4,14 +4,118 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Profitum</title>
-    <link rel="manifest" href="/manifest.json" />
+    <!-- Manifest sera chargé dynamiquement par le script ci-dessous -->
+    <link rel="manifest" id="pwa-manifest" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="96x96" href="/images/icon-96x96.png" />
     <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
-    <meta name="theme-color" content="#2563eb" />
+    <meta name="theme-color" content="#2563eb" id="pwa-theme-color" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Profitum" />
+    <meta name="apple-mobile-web-app-title" content="Profitum" id="pwa-apple-title" />
+    
+    <!-- Script pour charger le manifest dynamiquement selon le type d'utilisateur -->
+    <script>
+      (function() {
+        // Fonction pour déterminer le type d'utilisateur
+        function getUserType() {
+          // Vérifier localStorage (utilisé lors de l'installation PWA)
+          const pwaUserType = localStorage.getItem('pwa_user_type');
+          if (pwaUserType && ['client', 'expert', 'apporteur', 'admin'].includes(pwaUserType)) {
+            return pwaUserType;
+          }
+          
+          // Vérifier l'URL pour détecter les admins
+          if (window.location.pathname.includes('/connect-admin') || 
+              window.location.pathname.includes('/admin')) {
+            return 'admin';
+          }
+          
+          // Par défaut, utiliser "client"
+          return 'client';
+        }
+        
+        // Fonction pour mettre à jour les métadonnées Apple
+        function updateAppleMetadata(userType) {
+          const appNames = {
+            client: 'Profitum Client',
+            expert: 'Profitum Expert',
+            apporteur: 'Profitum Sales',
+            admin: 'Profitum Admin'
+          };
+          
+          const appName = appNames[userType] || 'Profitum Client';
+          
+          // Mettre à jour le titre Apple
+          const appleTitle = document.getElementById('pwa-apple-title');
+          if (appleTitle) {
+            appleTitle.setAttribute('content', appName);
+          }
+          
+          // Mettre à jour le titre de la page
+          document.title = appName;
+        }
+        
+        // Fonction pour charger le manifest
+        function loadManifest(userType) {
+          const manifestLink = document.getElementById('pwa-manifest');
+          if (!manifestLink) {
+            console.error('Élément manifest non trouvé');
+            return;
+          }
+          
+          // Construire l'URL du manifest
+          const manifestUrl = `/api/manifest/${userType}`;
+          
+          // Mettre à jour le href du manifest
+          manifestLink.setAttribute('href', manifestUrl);
+          
+          // Charger le manifest pour mettre à jour les métadonnées
+          fetch(manifestUrl)
+            .then(response => response.json())
+            .then(manifest => {
+              // Mettre à jour le theme-color
+              const themeColorMeta = document.getElementById('pwa-theme-color');
+              if (themeColorMeta && manifest.theme_color) {
+                themeColorMeta.setAttribute('content', manifest.theme_color);
+              }
+              
+              // Mettre à jour les métadonnées Apple
+              updateAppleMetadata(userType);
+              
+              console.log('✅ Manifest chargé pour type:', userType, 'Nom:', manifest.name);
+            })
+            .catch(error => {
+              console.error('Erreur lors du chargement du manifest:', error);
+              // En cas d'erreur, utiliser le manifest par défaut
+              manifestLink.setAttribute('href', '/manifest.json');
+            });
+        }
+        
+        // Charger le manifest au chargement de la page
+        const userType = getUserType();
+        loadManifest(userType);
+        
+        // Écouter les changements de localStorage pour mettre à jour le manifest
+        // (utile si l'utilisateur se connecte après le chargement de la page)
+        window.addEventListener('storage', function(e) {
+          if (e.key === 'pwa_user_type') {
+            const newUserType = e.newValue;
+            if (newUserType && ['client', 'expert', 'apporteur', 'admin'].includes(newUserType)) {
+              loadManifest(newUserType);
+            }
+          }
+        });
+        
+        // Exposer une fonction globale pour mettre à jour le manifest depuis React
+        window.updatePWAManifest = function(newUserType) {
+          if (newUserType && ['client', 'expert', 'apporteur', 'admin'].includes(newUserType)) {
+            localStorage.setItem('pwa_user_type', newUserType);
+            loadManifest(newUserType);
+          }
+        };
+      })();
+    </script>
     <!-- Script de redirection PWA ADMIN - DOIT ÊTRE EXÉCUTÉ EN PREMIER -->
     <script>
       // Redirection IMMÉDIATE pour les admins en mode PWA

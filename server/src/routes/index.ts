@@ -31,6 +31,7 @@ import staticAssetsRoutes from "./static-assets";
 import unifiedMessagingRoutes from "./unified-messaging";
 import adminCandidaturesRoutes from "./admin-candidatures";
 import apporteurRegisterRoutes from "./apporteur-register";
+import manifestRoutes from "./manifest";
 import { enhancedAuthMiddleware, requireUserType } from "../middleware/auth-enhanced";
 import * as fs from 'fs';
 import * as path from 'path';
@@ -99,6 +100,9 @@ router.use('/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRout
 
 // Routes des assets statiques
 router.use('/', staticAssetsRoutes);
+
+// Routes du manifest PWA dynamique
+router.use('/', manifestRoutes);
 
 // Routes de messagerie unifiée
 router.use('/messaging', enhancedAuthMiddleware, unifiedMessagingRoutes);

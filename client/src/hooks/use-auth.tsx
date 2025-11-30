@@ -50,6 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       console.log('✅ Utilisateur authentifié:', user.email, user.type);
       
+      // Mettre à jour le manifest PWA selon le type d'utilisateur
+      if (typeof window !== 'undefined' && (window as any).updatePWAManifest) {
+        (window as any).updatePWAManifest(user.type);
+        // Stocker le type d'utilisateur dans localStorage pour l'installation PWA
+        localStorage.setItem('pwa_user_type', user.type);
+      }
+      
       // Rediriger vers le dashboard approprié selon le type d'utilisateur (seulement si demandé)
       if (shouldNavigate) {
         console.log('🔀 Redirection utilisateur (checkAuth):', { type: user.type, email: user.email });
@@ -281,6 +288,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('token');
           localStorage.removeItem('supabase_token');
           localStorage.removeItem('supabase_refresh_token');
+          // Réinitialiser le manifest PWA à "client" par défaut
+          if (typeof window !== 'undefined' && (window as any).updatePWAManifest) {
+            (window as any).updatePWAManifest('client');
+            localStorage.setItem('pwa_user_type', 'client');
+          }
           break;
 
         case 'TOKEN_REFRESHED':
@@ -318,6 +330,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Mettre à jour le manifest PWA quand l'utilisateur change
+  useEffect(() => {
+    if (user?.type && typeof window !== 'undefined') {
+      // Mettre à jour le manifest selon le type d'utilisateur
+      if ((window as any).updatePWAManifest) {
+        (window as any).updatePWAManifest(user.type);
+        localStorage.setItem('pwa_user_type', user.type);
+        console.log('✅ Manifest PWA mis à jour pour type:', user.type);
+      }
+    } else if (!user && typeof window !== 'undefined') {
+      // Si pas d'utilisateur, utiliser "client" par défaut
+      if ((window as any).updatePWAManifest) {
+        (window as any).updatePWAManifest('client');
+        localStorage.setItem('pwa_user_type', 'client');
+      }
+    }
+  }, [user?.type]);
 
   return (
     <AuthContext.Provider
