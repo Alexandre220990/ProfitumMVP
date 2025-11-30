@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { config } from '@/config/env';
 import { NotificationPreferencesPanel } from '@/components/notifications/NotificationPreferencesPanel';
 import { InstallPWAButton } from '@/components/pwa/InstallPWAButton';
+import { InstallPWAAdminButton } from '@/components/pwa/InstallPWAAdminButton';
 
 export default function AdminProfil() {
   const navigate = useNavigate();
@@ -191,7 +192,29 @@ export default function AdminProfil() {
                   <Smartphone className="w-4 h-4 mr-2 text-blue-600" />
                   Application mobile
                 </h3>
-                <InstallPWAButton />
+                
+                {/* Bouton pour installer l'app ADMIN (redirige vers /connect-admin) */}
+                <div className="mb-4">
+                  <InstallPWAAdminButton />
+                </div>
+                
+                {/* Séparateur */}
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-gray-200"></span>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-gray-500">Ou</span>
+                  </div>
+                </div>
+                
+                {/* Bouton pour installer l'app standard (pour client/expert/apporteur) */}
+                <div>
+                  <p className="text-xs text-gray-600 mb-2 text-center">
+                    Installer l'app standard pour accéder en tant que client/expert/apporteur
+                  </p>
+                  <InstallPWAButton />
+                </div>
               </div>
 
               <Tabs defaultValue="info" className="w-full">
