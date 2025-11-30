@@ -363,6 +363,7 @@ export class AdminNotificationService {
           
           const createdAt = new Date().toISOString();
           const slaStatus = calculateSLAStatus('contact_message', createdAt);
+          const dueAt = new Date(new Date(createdAt).getTime() + slaConfig.targetHours * 60 * 60 * 1000).toISOString();
           
           const { data: senderNotification, error: senderError } = await supabase
             .from('notification')
@@ -401,6 +402,14 @@ export class AdminNotificationService {
                   criticalHours: slaConfig.criticalHours,
                   status: slaStatus.status,
                   hoursRemaining: slaStatus.hoursRemaining
+                },
+                due_at: dueAt,
+                sla_hours: slaConfig.targetHours,
+                escalation_level: 0,
+                reminders_sent: {
+                  '24h': false,
+                  '48h': false,
+                  '120h': false
                 }
               },
               created_at: createdAt,
@@ -451,6 +460,7 @@ export class AdminNotificationService {
 
               const createdAt = new Date().toISOString();
               const slaStatus = calculateSLAStatus('contact_message', createdAt);
+              const dueAt = new Date(new Date(createdAt).getTime() + slaConfig.targetHours * 60 * 60 * 1000).toISOString();
               
               const { data: participantNotification, error: participantError } = await supabase
                 .from('notification')
@@ -489,6 +499,14 @@ export class AdminNotificationService {
                       criticalHours: slaConfig.criticalHours,
                       status: slaStatus.status,
                       hoursRemaining: slaStatus.hoursRemaining
+                    },
+                    due_at: dueAt,
+                    sla_hours: slaConfig.targetHours,
+                    escalation_level: 0,
+                    reminders_sent: {
+                      '24h': false,
+                      '48h': false,
+                      '120h': false
                     }
                   },
                   created_at: createdAt,
@@ -529,6 +547,7 @@ export class AdminNotificationService {
           for (const adminId of adminIds) {
             const createdAt = new Date().toISOString();
             const slaStatus = calculateSLAStatus('contact_message', createdAt);
+            const dueAt = new Date(new Date(createdAt).getTime() + slaConfig.targetHours * 60 * 60 * 1000).toISOString();
             
             const { data: adminNotification, error: adminError } = await supabase
               .from('notification')
@@ -571,6 +590,14 @@ export class AdminNotificationService {
                     criticalHours: slaConfig.criticalHours,
                     status: slaStatus.status,
                     hoursRemaining: slaStatus.hoursRemaining
+                  },
+                  due_at: dueAt,
+                  sla_hours: slaConfig.targetHours,
+                  escalation_level: 0,
+                  reminders_sent: {
+                    '24h': false,
+                    '48h': false,
+                    '120h': false
                   }
                 },
                 created_at: createdAt,
@@ -648,6 +675,7 @@ export class AdminNotificationService {
         for (const adminId of adminIds) {
           const createdAt = new Date().toISOString();
           const slaStatus = calculateSLAStatus('contact_message', createdAt);
+          const dueAt = new Date(new Date(createdAt).getTime() + slaConfig.targetHours * 60 * 60 * 1000).toISOString();
           
           const { data: userNotification, error: userNotifError } = await supabase
             .from('notification')
@@ -684,6 +712,14 @@ export class AdminNotificationService {
                   criticalHours: slaConfig.criticalHours,
                   status: slaStatus.status,
                   hoursRemaining: slaStatus.hoursRemaining
+                },
+                due_at: dueAt,
+                sla_hours: slaConfig.targetHours,
+                escalation_level: 0,
+                reminders_sent: {
+                  '24h': false,
+                  '48h': false,
+                  '120h': false
                 }
               },
               created_at: createdAt,

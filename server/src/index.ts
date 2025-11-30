@@ -104,6 +104,7 @@ import { startCalendarRemindersCron } from './cron/calendar-reminders';
 import { startRefundRemindersCron } from './cron/refund-reminder';
 import { startActionTypeRemindersCron } from './cron/action-type-reminders';
 import { startDailyActivityReportCron } from './cron/daily-activity-report';
+import { startNotificationEscalationCron } from './cron/notification-escalation';
 import routes from './routes';
 
 // Routes apporteurs d'affaires
@@ -829,6 +830,14 @@ server.listen(PORT, HOST, () => {
     // Envoi automatique du rapport d'activité quotidien à tous les admins à 20h
   } catch (error) {
     console.error('❌ Erreur démarrage cron job rapports d\'activité quotidiens:', error);
+  }
+
+  // Démarrer le cron job pour l'escalade des notifications
+  try {
+    startNotificationEscalationCron();
+    // Escalade automatique des notifications selon les SLA (contact_message, lead_to_treat, etc.)
+  } catch (error) {
+    console.error('❌ Erreur démarrage cron job escalade notifications:', error);
   }
   
   // monitoringSystem.recordAuditLog({
