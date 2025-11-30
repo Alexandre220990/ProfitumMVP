@@ -636,19 +636,22 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 router.get('/preferences', asyncHandler(async (req, res) => {
   try {
     const userId = (req as any).user.id;
+    const userType = (req as any).user.type; // ✅ Récupérer user_type
 
     const { data: preferences, error } = await supabaseClient
       .from('UserNotificationPreferences')
       .select('*')
       .eq('user_id', userId)
+      .eq('user_type', userType) // ✅ Filtrer par user_type
       .single();
 
     if (error && error.code !== 'PGRST116') {
       throw error;
     }
 
-    // Préférences par défaut si aucune n'existe
+    // Préférences par défaut si aucune n'existe (tout activé par défaut)
     const defaultPreferences = {
+      user_type: userType, // ✅ Inclure user_type dans les défauts
       email_enabled: true,
       push_enabled: true,
       sms_enabled: false,
@@ -658,7 +661,290 @@ router.get('/preferences', asyncHandler(async (req, res) => {
       timezone: 'Europe/Paris',
       language: 'fr',
       priority_filter: ['low', 'medium', 'high', 'urgent'],
-      type_filter: []
+      type_filter: [],
+      // Tous les types de notifications activés par défaut avec email + push
+      notification_types: {
+        contact_message: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        lead_to_treat: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        rdv_sla_reminder: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        daily_activity_report: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        // Types d'actions (exemples - à compléter selon tous les actionTypes)
+        expert_pending_acceptance_reminder: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        expert_pending_acceptance_escalated: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        expert_pending_acceptance_critical: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        documents_pending_validation_reminder: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        documents_pending_validation_escalated: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        documents_pending_validation_critical: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        client_no_response_critical_reminder: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        client_no_response_critical_escalated: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        client_no_response_critical_critical: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        audit_to_complete_reminder: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        audit_to_complete_escalated: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        audit_to_complete_critical: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        documents_requested_reminder: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        documents_requested_escalated: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        documents_requested_critical: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        relance_needed_reminder: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        relance_needed_escalated: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        relance_needed_critical: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        complementary_docs_received_reminder: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        complementary_docs_received_escalated: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        complementary_docs_received_critical: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        first_review_needed_reminder: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        first_review_needed_escalated: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        first_review_needed_critical: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        validation_final_pending_reminder: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        validation_final_pending_escalated: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        },
+        validation_final_pending_critical: {
+          enabled: true,
+          channels: { push: true, email: true },
+          slaChannels: {
+            target: { push: true, email: true },
+            acceptable: { push: true, email: true },
+            critical: { push: true, email: true }
+          }
+        }
+      }
     };
 
     return res.json({
@@ -694,6 +980,7 @@ router.put('/preferences', asyncHandler(async (req, res) => {
     // Préparer les données à sauvegarder
     const dataToSave: any = {
       ...updates,
+      user_type: userType, // ✅ Ajouter user_type
       updated_at: new Date().toISOString()
     };
 
@@ -715,6 +1002,7 @@ router.put('/preferences', asyncHandler(async (req, res) => {
         .from('UserNotificationPreferences')
         .update(dataToSave)
         .eq('user_id', userId)
+        .eq('user_type', userType) // ✅ Ajouter user_type dans la condition
         .select()
         .single();
 
@@ -726,6 +1014,7 @@ router.put('/preferences', asyncHandler(async (req, res) => {
         .from('UserNotificationPreferences')
         .insert({
           user_id: userId,
+          user_type: userType, // ✅ Ajouter user_type lors de la création
           ...dataToSave
         })
         .select()

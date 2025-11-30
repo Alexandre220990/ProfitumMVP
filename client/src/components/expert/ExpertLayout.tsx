@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
-import { useNotificationBadge } from '@/hooks/use-notification-badge';
+import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
 import { Badge } from '@/components/ui/badge';
 import { TypeSwitcher } from '@/components/TypeSwitcher';
 import { 
@@ -41,7 +41,7 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { badgeCount } = useMessagingBadge();
-  const { unreadCount: notificationsCount } = useNotificationBadge();
+  const { unreadCount: notificationsCount } = useSupabaseNotifications();
 
   // États pour les badges dynamiques
   const [pendingAffaires] = useState(0);

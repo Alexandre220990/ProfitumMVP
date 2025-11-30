@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
-import { useNotificationBadge } from '@/hooks/use-notification-badge';
+import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
 import ApporteurAuthGuard from './ApporteurAuthGuard';
 import { NotificationSlider } from './NotificationSlider';
 import { Badge } from '@/components/ui/badge';
@@ -40,8 +40,8 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
   const userData = user || {} as any;
   const { badgeCount } = useMessagingBadge();
   
-  // Hook pour les notifications avec compteur en temps réel
-  const { unreadCount: notificationsCount } = useNotificationBadge();
+  // Hook pour les notifications avec compteur en temps réel (compteur global du centre de notifications)
+  const { unreadCount: notificationsCount } = useSupabaseNotifications();
 
   const handleLogout = () => {
     localStorage.removeItem('token');

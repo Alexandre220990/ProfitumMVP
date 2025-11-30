@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { EmailService } from './EmailService';
 import { SecureLinkService } from './secure-link-service';
+import { NotificationPreferencesChecker } from './notification-preferences-checker';
 
 const supabase = createClient(
   process.env.SUPABASE_URL || '',
@@ -203,43 +204,70 @@ export class RDVSlaReminderService {
         return;
       }
 
+      // Déterminer le niveau SLA selon le threshold
+      const slaLevel = threshold === '120h' ? 'critical' 
+        : threshold === '48h' ? 'acceptable' : 'target';
+
       // Créer une notification et envoyer un email à chaque admin
       for (const admin of admins) {
         if (!admin.auth_user_id) continue;
 
-        // Créer la notification in-app
-        await supabase.from('notification').insert({
-          user_id: admin.auth_user_id,
-          user_type: 'admin',
-          title: reminderMessage,
-          message: `RDV prévu le ${rdvDate} à ${rdvTime} - Expert: ${expertName}`,
-          notification_type: 'rdv_sla_reminder',
-          priority: reminderPriority,
-          is_read: false,
-          status: 'unread',
-          action_url: `/admin/agenda-admin?rdvId=${rdv.id}`,
-          action_data: {
-            rdv_id: rdv.id,
-            threshold: threshold,
-            days_elapsed: daysElapsed,
-            hours_elapsed: Math.floor(hoursElapsed)
-          },
-          metadata: {
-            rdv_id: rdv.id,
-            threshold: threshold,
-            days_elapsed: daysElapsed,
-            hours_elapsed: Math.floor(hoursElapsed),
-            client_name: clientName,
-            expert_name: expertName,
-            scheduled_date: rdv.scheduled_date,
-            scheduled_time: rdv.scheduled_time
-          },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+        // Vérifier les préférences avant d'envoyer
+        const shouldSendInApp = await NotificationPreferencesChecker.shouldSendInApp(
+          admin.auth_user_id,
+          'admin',
+          'rdv_sla_reminder'
+        );
 
-        // Envoyer l'email à l'admin
+        const shouldSendEmail = await NotificationPreferencesChecker.shouldSendEmail(
+          admin.auth_user_id,
+          'admin',
+          'rdv_sla_reminder',
+          slaLevel
+        );
+
+        // Créer la notification in-app si autorisée
+        if (shouldSendInApp) {
+          await supabase.from('notification').insert({
+            user_id: admin.auth_user_id,
+            user_type: 'admin',
+            title: reminderMessage,
+            message: `RDV prévu le ${rdvDate} à ${rdvTime} - Expert: ${expertName}`,
+            notification_type: 'rdv_sla_reminder',
+            priority: reminderPriority,
+            is_read: false,
+            status: 'unread',
+            action_url: `/admin/agenda-admin?rdvId=${rdv.id}`,
+            action_data: {
+              rdv_id: rdv.id,
+              threshold: threshold,
+              days_elapsed: daysElapsed,
+              hours_elapsed: Math.floor(hoursElapsed)
+            },
+            metadata: {
+              rdv_id: rdv.id,
+              threshold: threshold,
+              days_elapsed: daysElapsed,
+              hours_elapsed: Math.floor(hoursElapsed),
+              client_name: clientName,
+              expert_name: expertName,
+              scheduled_date: rdv.scheduled_date,
+              scheduled_time: rdv.scheduled_time
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        } else {
+          console.log(`⏭️ [RDV SLA Reminder] Notification in-app non créée pour ${admin.email} - préférences désactivées`);
+        }
+
+        // Envoyer l'email à l'admin si autorisé
         if (admin.email && !admin.email.includes('@profitum.temp') && !admin.email.includes('temp_')) {
+          if (!shouldSendEmail) {
+            console.log(`⏭️ [RDV SLA Reminder] Email non envoyé à ${admin.email} - préférences utilisateur désactivées pour rdv_sla_reminder (${threshold})`);
+            continue;
+          }
+
           try {
             const { subject, html, text } = this.generateReminderEmailTemplate(
               rdv,

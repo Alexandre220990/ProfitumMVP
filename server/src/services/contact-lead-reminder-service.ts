@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { Database } from '../types/supabase';
 import { NOTIFICATION_SLA_CONFIG, calculateSLAStatus } from '../config/notification-sla-config';
 import { EmailService } from './EmailService';
+import { SecureLinkService } from './secure-link-service';
+import { NotificationPreferencesChecker } from './notification-preferences-checker';
 
 const supabase = createClient(
   process.env.SUPABASE_URL || '',
@@ -245,8 +247,25 @@ export class ContactLeadReminderService {
         }
       }
 
-      // Si c'est un admin, lui envoyer l'email
+      // Si c'est un admin, vérifier les préférences avant d'envoyer l'email
       if (notification.user_type === 'admin' && userEmail) {
+        const notificationType = notification.notification_type; // 'contact_message' ou 'lead_to_treat'
+        const slaLevel = threshold === '120h' ? 'critical' 
+          : threshold === '48h' ? 'acceptable' : 'target';
+
+        // Vérifier les préférences utilisateur
+        const shouldSendEmail = await NotificationPreferencesChecker.shouldSendEmail(
+          notification.user_id,
+          notification.user_type as 'admin',
+          notificationType,
+          slaLevel
+        );
+
+        if (!shouldSendEmail) {
+          console.log(`⏭️ [ContactLead Reminder] Email non envoyé - préférences utilisateur désactivées pour ${notificationType} (${threshold})`);
+          return;
+        }
+
         const { subject, html, text } = this.generateReminderEmailTemplate(
           notification,
           threshold,
@@ -257,6 +276,7 @@ export class ContactLeadReminderService {
         );
 
         await EmailService.sendDailyReportEmail(userEmail, subject, html, text);
+        console.log(`✅ [ContactLead Reminder] Email envoyé à ${userEmail} pour ${notificationType} (${threshold})`);
       }
     } catch (error) {
       console.error('❌ [ContactLead Reminder] Erreur envoi email rappel:', error);
@@ -306,7 +326,14 @@ export class ContactLeadReminderService {
       ? `${icon} ${typeLabel} en attente depuis ${daysElapsed} jour${daysElapsed > 1 ? 's' : ''}`
       : `${icon} Rappel : ${typeLabel} à traiter`;
 
-    const actionUrl = `${process.env.FRONTEND_URL || 'https://app.profitum.fr'}/admin/contact/${metadata.contact_message_id}`;
+    const actionPath = `/admin/contact/${metadata.contact_message_id}`;
+    const actionLink = SecureLinkService.generateSmartLinkHTML(
+      'Voir et traiter la demande',
+      actionPath,
+      undefined,
+      undefined,
+      'cta-button'
+    );
     
     const html = `
 <!DOCTYPE html>
@@ -334,9 +361,9 @@ export class ContactLeadReminderService {
       max-width: 600px;
       margin: 40px auto;
       background: #ffffff;
-      border-radius: 12px;
+      border-radius: 24px;
       overflow: hidden;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     }
     .header {
       background: linear-gradient(135deg, ${urgencyColor} 0%, ${this.darkenColor(urgencyColor, 20)} 100%);
@@ -420,7 +447,7 @@ export class ContactLeadReminderService {
     }
     .cta-button {
       display: inline-block;
-      background: ${urgencyColor};
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       padding: 16px 32px;
       border-radius: 8px;
@@ -429,10 +456,12 @@ export class ContactLeadReminderService {
       font-size: 16px;
       margin: 32px 0;
       text-align: center;
-      transition: background-color 0.2s;
+      box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
     }
     .cta-button:hover {
-      background: ${this.darkenColor(urgencyColor, 10)};
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
     }
     .cta-container {
       text-align: center;
@@ -540,9 +569,7 @@ export class ContactLeadReminderService {
       </div>
       
       <div class="cta-container">
-        <a href="${actionUrl}" class="cta-button">
-          Voir et traiter la demande
-        </a>
+        ${actionLink}
       </div>
     </div>
     
@@ -574,7 +601,7 @@ Délai écoulé : ${daysElapsed} jour${daysElapsed > 1 ? 's' : ''} (${threshold}
 
 ${metadata.contexte ? `Contexte : ${metadata.contexte}` : ''}
 
-Voir la demande : ${actionUrl}
+Voir la demande : ${process.env.FRONTEND_URL || 'https://app.profitum.fr'}${actionPath}
     `.trim();
 
     return { subject, html, text };

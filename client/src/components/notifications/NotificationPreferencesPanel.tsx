@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Bell, Settings, Save, Loader2, Info } from 'lucide-react';
+import { Bell, Settings, Save, Loader2, Info, Smartphone } from 'lucide-react';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { NotificationTypeSettings } from './NotificationTypeSettings';
 import { SLASettings } from './SLASettings';
+import { NotificationActivationTutorial } from './NotificationActivationTutorial';
 
 export function NotificationPreferencesPanel() {
   const {
@@ -73,26 +74,38 @@ export function NotificationPreferencesPanel() {
         </div>
       </CardHeader>
 
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="types">
-              <Bell className="w-4 h-4 mr-2" />
-              Types de notifications
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 h-auto">
+            <TabsTrigger value="activation" className="text-xs sm:text-sm">
+              <Smartphone className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Activation</span>
+              <span className="sm:hidden">Activer</span>
+            </TabsTrigger>
+            <TabsTrigger value="types" className="text-xs sm:text-sm">
+              <Bell className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Types</span>
+              <span className="sm:hidden">Types</span>
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="sla">
-                <Settings className="w-4 h-4 mr-2" />
-                Durées SLA
+              <TabsTrigger value="sla" className="text-xs sm:text-sm col-span-2 sm:col-span-1">
+                <Settings className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Durées SLA</span>
+                <span className="sm:hidden">SLA</span>
               </TabsTrigger>
             )}
           </TabsList>
+
+          <TabsContent value="activation" className="mt-6">
+            <NotificationActivationTutorial />
+          </TabsContent>
 
           <TabsContent value="types" className="mt-6">
             <Alert className="mb-4 bg-blue-50 border-blue-200">
               <Info className="w-4 h-4 text-blue-600" />
               <AlertDescription className="text-blue-800 text-sm">
-                Les notifications push ne pourront être activées qu'en téléchargeant l'application mobile.
+                Configurez vos préférences de notifications par type et par canal (email, push).
+                Les notifications push nécessitent l'activation dans votre navigateur (voir l'onglet "Activation").
               </AlertDescription>
             </Alert>
             <NotificationTypeSettings

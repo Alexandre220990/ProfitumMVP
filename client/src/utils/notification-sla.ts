@@ -112,6 +112,216 @@ export const NOTIFICATION_SLA_CONFIG: Record<string, NotificationSLA> = {
     defaultPriority: 'high',
     description: 'Validation des documents sous 24h'
   },
+  lead_to_treat: {
+    targetHours: 24,
+    acceptableHours: 48,
+    criticalHours: 120,
+    defaultPriority: 'high',
+    description: 'Lead à traiter sous 24h'
+  },
+  rdv_sla_reminder: {
+    targetHours: 24,
+    acceptableHours: 48,
+    criticalHours: 120,
+    defaultPriority: 'high',
+    description: 'RDV non traité - rappel selon SLA'
+  },
+  daily_activity_report: {
+    targetHours: 24,
+    acceptableHours: 48,
+    criticalHours: 72,
+    defaultPriority: 'medium',
+    description: 'Rapport d\'activité quotidien envoyé à 20h'
+  },
+  expert_pending_acceptance_reminder: {
+    targetHours: 12,
+    acceptableHours: 24,
+    criticalHours: 48,
+    defaultPriority: 'high',
+    description: 'Acceptation du dossier par l\'expert sous 12h - Rappel'
+  },
+  expert_pending_acceptance_escalated: {
+    targetHours: 24,
+    acceptableHours: 48,
+    criticalHours: 72,
+    defaultPriority: 'high',
+    description: 'Acceptation du dossier par l\'expert - Escalade'
+  },
+  expert_pending_acceptance_critical: {
+    targetHours: 48,
+    acceptableHours: 72,
+    criticalHours: 120,
+    defaultPriority: 'urgent',
+    description: 'Acceptation du dossier par l\'expert - Critique'
+  },
+  documents_pending_validation_reminder: {
+    targetHours: 24,
+    acceptableHours: 48,
+    criticalHours: 72,
+    defaultPriority: 'high',
+    description: 'Validation des documents sous 24h - Rappel'
+  },
+  documents_pending_validation_escalated: {
+    targetHours: 48,
+    acceptableHours: 72,
+    criticalHours: 120,
+    defaultPriority: 'high',
+    description: 'Validation des documents - Escalade'
+  },
+  documents_pending_validation_critical: {
+    targetHours: 72,
+    acceptableHours: 120,
+    criticalHours: 168,
+    defaultPriority: 'urgent',
+    description: 'Validation des documents - Critique'
+  },
+  client_no_response_critical_reminder: {
+    targetHours: 360,
+    acceptableHours: 480,
+    criticalHours: 600,
+    defaultPriority: 'urgent',
+    description: 'Client sans réponse depuis 15 jours - Rappel'
+  },
+  client_no_response_critical_escalated: {
+    targetHours: 480,
+    acceptableHours: 600,
+    criticalHours: 720,
+    defaultPriority: 'urgent',
+    description: 'Client sans réponse depuis 20 jours - Escalade'
+  },
+  client_no_response_critical_critical: {
+    targetHours: 600,
+    acceptableHours: 720,
+    criticalHours: 840,
+    defaultPriority: 'urgent',
+    description: 'Client sans réponse depuis 25 jours - Critique'
+  },
+  audit_to_complete_reminder: {
+    targetHours: 168,
+    acceptableHours: 336,
+    criticalHours: 504,
+    defaultPriority: 'medium',
+    description: 'Audit technique en cours depuis 7 jours - Rappel'
+  },
+  audit_to_complete_escalated: {
+    targetHours: 336,
+    acceptableHours: 504,
+    criticalHours: 672,
+    defaultPriority: 'high',
+    description: 'Audit technique en cours depuis 14 jours - Escalade'
+  },
+  audit_to_complete_critical: {
+    targetHours: 504,
+    acceptableHours: 672,
+    criticalHours: 840,
+    defaultPriority: 'urgent',
+    description: 'Audit technique en cours depuis 21 jours - Critique'
+  },
+  documents_requested_reminder: {
+    targetHours: 120,
+    acceptableHours: 240,
+    criticalHours: 360,
+    defaultPriority: 'medium',
+    description: 'Documents demandés depuis 5 jours - Rappel'
+  },
+  documents_requested_escalated: {
+    targetHours: 240,
+    acceptableHours: 360,
+    criticalHours: 480,
+    defaultPriority: 'high',
+    description: 'Documents demandés depuis 10 jours - Escalade'
+  },
+  documents_requested_critical: {
+    targetHours: 360,
+    acceptableHours: 480,
+    criticalHours: 600,
+    defaultPriority: 'urgent',
+    description: 'Documents demandés depuis 15 jours - Critique'
+  },
+  relance_needed_reminder: {
+    targetHours: 168,
+    acceptableHours: 240,
+    criticalHours: 336,
+    defaultPriority: 'medium',
+    description: 'Relance nécessaire après 7 jours sans contact - Rappel'
+  },
+  relance_needed_escalated: {
+    targetHours: 240,
+    acceptableHours: 336,
+    criticalHours: 480,
+    defaultPriority: 'high',
+    description: 'Relance nécessaire après 10 jours sans contact - Escalade'
+  },
+  relance_needed_critical: {
+    targetHours: 336,
+    acceptableHours: 480,
+    criticalHours: 720,
+    defaultPriority: 'urgent',
+    description: 'Relance nécessaire après 14 jours sans contact - Critique'
+  },
+  complementary_docs_received_reminder: {
+    targetHours: 24,
+    acceptableHours: 48,
+    criticalHours: 72,
+    defaultPriority: 'medium',
+    description: 'Documents complémentaires reçus il y a 24h - À examiner'
+  },
+  complementary_docs_received_escalated: {
+    targetHours: 48,
+    acceptableHours: 72,
+    criticalHours: 120,
+    defaultPriority: 'high',
+    description: 'Documents complémentaires reçus il y a 48h - Examen requis'
+  },
+  complementary_docs_received_critical: {
+    targetHours: 72,
+    acceptableHours: 120,
+    criticalHours: 168,
+    defaultPriority: 'urgent',
+    description: 'Documents complémentaires reçus il y a 3 jours - Examen urgent'
+  },
+  first_review_needed_reminder: {
+    targetHours: 24,
+    acceptableHours: 48,
+    criticalHours: 72,
+    defaultPriority: 'medium',
+    description: 'Première revue du nouveau dossier depuis 24h - Rappel'
+  },
+  first_review_needed_escalated: {
+    targetHours: 48,
+    acceptableHours: 72,
+    criticalHours: 120,
+    defaultPriority: 'high',
+    description: 'Première revue du nouveau dossier depuis 48h - Escalade'
+  },
+  first_review_needed_critical: {
+    targetHours: 72,
+    acceptableHours: 120,
+    criticalHours: 168,
+    defaultPriority: 'urgent',
+    description: 'Première revue du nouveau dossier depuis 72h - Critique'
+  },
+  validation_final_pending_reminder: {
+    targetHours: 72,
+    acceptableHours: 168,
+    criticalHours: 240,
+    defaultPriority: 'medium',
+    description: 'Validation finale en attente depuis 3 jours - Rappel'
+  },
+  validation_final_pending_escalated: {
+    targetHours: 168,
+    acceptableHours: 240,
+    criticalHours: 336,
+    defaultPriority: 'high',
+    description: 'Validation finale en attente depuis 7 jours - Escalade'
+  },
+  validation_final_pending_critical: {
+    targetHours: 240,
+    acceptableHours: 336,
+    criticalHours: 480,
+    defaultPriority: 'urgent',
+    description: 'Validation finale en attente depuis 10 jours - Critique'
+  },
   default: {
     targetHours: 48,
     acceptableHours: 96,

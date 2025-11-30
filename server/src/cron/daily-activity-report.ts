@@ -5,7 +5,7 @@
 
 import cron from 'node-cron';
 import { supabase } from '../lib/supabase';
-import { DailyActivityReportService } from '../services/daily-activity-report-service';
+import { DailyActivityReportServiceV2 } from '../services/daily-activity-report-service-v2';
 
 /**
  * Envoyer le rapport d'activité quotidien à tous les admins actifs
@@ -37,9 +37,18 @@ async function sendDailyReportsToAllAdmins() {
       admins.map(async (admin) => {
         try {
           const adminName = admin.name || admin.email || 'Administrateur';
-          const success = await DailyActivityReportService.sendDailyReport(
+          // Récupérer l'auth_user_id pour les liens sécurisés
+          const { data: adminData } = await supabase
+            .from('Admin')
+            .select('auth_user_id')
+            .eq('id', admin.id)
+            .single();
+          
+          const success = await DailyActivityReportServiceV2.sendDailyReport(
             admin.email,
-            adminName
+            adminName,
+            adminData?.auth_user_id,
+            'admin'
           );
 
           if (success) {

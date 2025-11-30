@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../types/supabase';
 import { DossierTimelineService } from './dossier-timeline-service';
+import { EmailService } from './EmailService';
+import { SecureLinkService } from './secure-link-service';
+import { NotificationPreferencesChecker } from './notification-preferences-checker';
 
 const supabase = createClient(
   process.env.SUPABASE_URL || '',
@@ -344,6 +347,21 @@ const ACTION_TYPE_SLA_CONFIG: Record<string, ActionTypeSLA> = {
 
 export class ActionTypeReminderService {
   /**
+   * Génère le type de notification selon l'actionType et le type de rappel
+   * Format: {actionType}_{reminderLevel}
+   */
+  private static getNotificationType(actionType: string, reminderType: string): string {
+    const suffixMap: Record<string, string> = {
+      'reminder': 'reminder',
+      'reminder_escalated': 'escalated',
+      'reminder_critical': 'critical',
+      'reminder_escalation_max': 'critical'
+    };
+    
+    const suffix = suffixMap[reminderType] || 'reminder';
+    return `${actionType}_${suffix}`;
+  }
+  /**
    * Vérifier et envoyer les relances pour tous les actionType
    */
   async checkAndSendReminders(): Promise<void> {
@@ -650,24 +668,37 @@ export class ActionTypeReminderService {
 
     // Envoyer à l'expert si nécessaire
     if (reminderConfig.notifyExpert && expert?.auth_user_id) {
-      await supabase.from('notification').insert({
-        user_id: expert.auth_user_id,
-        user_type: 'expert',
-        title: `⏰ ${reminderConfig.type === 'reminder_critical' ? 'Action urgente' : 'Rappel'} - ${produitNom}`,
-        message: `${message} - ${clientName}`,
-        notification_type: reminderConfig.type,
-        priority: reminderConfig.priority,
-        is_read: false,
-        action_url: `/expert/dossier/${dossier.id}`,
-        action_data: {
-          client_produit_id: dossier.id,
-          action_type: dossier.actionType,
-          days_since_action: daysSinceAction,
-          reminder_type: reminderConfig.type
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
+      const notificationType = ActionTypeReminderService.getNotificationType(dossier.actionType, reminderConfig.type);
+      
+      // Vérifier les préférences avant d'envoyer
+      const shouldSendInApp = await NotificationPreferencesChecker.shouldSendInApp(
+        expert.auth_user_id,
+        'expert',
+        notificationType
+      );
+
+      if (shouldSendInApp) {
+        await supabase.from('notification').insert({
+          user_id: expert.auth_user_id,
+          user_type: 'expert',
+          title: `⏰ ${reminderConfig.type === 'reminder_critical' ? 'Action urgente' : 'Rappel'} - ${produitNom}`,
+          message: `${message} - ${clientName}`,
+          notification_type: notificationType,
+          priority: reminderConfig.priority,
+          is_read: false,
+          action_url: `/expert/dossier/${dossier.id}`,
+          action_data: {
+            client_produit_id: dossier.id,
+            action_type: dossier.actionType,
+            days_since_action: daysSinceAction,
+            reminder_type: reminderConfig.type
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      } else {
+        console.log(`⏭️ Notification in-app non créée pour expert ${expert.auth_user_id} - préférences désactivées pour ${notificationType}`);
+      }
     }
 
     // Envoyer au client si nécessaire
@@ -680,55 +711,120 @@ export class ActionTypeReminderService {
         .single();
 
       if (clientAuth?.auth_user_id) {
-        await supabase.from('notification').insert({
-          user_id: clientAuth.auth_user_id,
-          user_type: 'client',
-          title: `ℹ️ Information - ${produitNom}`,
-          message: message,
-          notification_type: reminderConfig.type,
-          priority: reminderConfig.priority === 'critical' ? 'high' : 'medium',
-          is_read: false,
-          action_url: `/produits/${dossier.ProduitEligible?.id || dossier.produitId}/${dossier.id}`,
-          action_data: {
-            client_produit_id: dossier.id,
-            action_type: dossier.actionType,
-            days_since_action: daysSinceAction
-          },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+        const notificationType = ActionTypeReminderService.getNotificationType(dossier.actionType, reminderConfig.type);
+        
+        // Vérifier les préférences avant d'envoyer
+        const shouldSendInApp = await NotificationPreferencesChecker.shouldSendInApp(
+          clientAuth.auth_user_id,
+          'client',
+          notificationType
+        );
+
+        if (shouldSendInApp) {
+          await supabase.from('notification').insert({
+            user_id: clientAuth.auth_user_id,
+            user_type: 'client',
+            title: `ℹ️ Information - ${produitNom}`,
+            message: message,
+            notification_type: notificationType,
+            priority: reminderConfig.priority === 'critical' ? 'high' : 'medium',
+            is_read: false,
+            action_url: `/produits/${dossier.ProduitEligible?.id || dossier.produitId}/${dossier.id}`,
+            action_data: {
+              client_produit_id: dossier.id,
+              action_type: dossier.actionType,
+              days_since_action: daysSinceAction
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        } else {
+          console.log(`⏭️ Notification in-app non créée pour client ${clientAuth.auth_user_id} - préférences désactivées pour ${notificationType}`);
+        }
       }
     }
 
     // Envoyer à l'admin si nécessaire
     if (reminderConfig.notifyAdmin) {
-      // Récupérer tous les admins
+      // Récupérer tous les admins actifs avec leurs emails
       const { data: admins } = await supabase
         .from('Admin')
-        .select('auth_user_id')
+        .select('auth_user_id, email, name')
+        .eq('is_active', true)
         .not('auth_user_id', 'is', null);
 
       if (admins) {
+        // Générer le type de notification selon l'actionType et le type de rappel
+        const notificationType = ActionTypeReminderService.getNotificationType(dossier.actionType, reminderConfig.type);
+        
+        // Déterminer le niveau SLA selon la priorité
+        const slaLevel = reminderConfig.priority === 'critical' ? 'critical' 
+          : reminderConfig.priority === 'high' ? 'acceptable' : 'target';
+
         for (const admin of admins) {
           if (admin.auth_user_id) {
-            await supabase.from('notification').insert({
-              user_id: admin.auth_user_id,
-              user_type: 'admin',
-              title: `⚠️ Escalade - ${produitNom}`,
-              message: `${message} - Client: ${clientName}, Expert: ${expert?.name || 'N/A'}`,
-              notification_type: reminderConfig.type,
-              priority: reminderConfig.priority,
-              is_read: false,
-              action_url: `/admin/dossiers/${dossier.id}`,
-              action_data: {
-                client_produit_id: dossier.id,
-                action_type: dossier.actionType,
-                days_since_action: daysSinceAction,
-                escalation: true
-              },
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
+            // Vérifier les préférences avant d'envoyer
+            const shouldSendInApp = await NotificationPreferencesChecker.shouldSendInApp(
+              admin.auth_user_id,
+              'admin',
+              notificationType
+            );
+
+            const shouldSendEmail = await NotificationPreferencesChecker.shouldSendEmail(
+              admin.auth_user_id,
+              'admin',
+              notificationType,
+              slaLevel
+            );
+
+            // Créer la notification in-app si autorisée
+            if (shouldSendInApp) {
+              await supabase.from('notification').insert({
+                user_id: admin.auth_user_id,
+                user_type: 'admin',
+                title: `⚠️ Escalade - ${produitNom}`,
+                message: `${message} - Client: ${clientName}, Expert: ${expert?.name || 'N/A'}`,
+                notification_type: notificationType,
+                priority: reminderConfig.priority,
+                is_read: false,
+                action_url: `/admin/dossiers/${dossier.id}`,
+                action_data: {
+                  client_produit_id: dossier.id,
+                  action_type: dossier.actionType,
+                  days_since_action: daysSinceAction,
+                  escalation: true
+                },
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+            } else {
+              console.log(`⏭️ Notification in-app non créée pour ${admin.email} - préférences désactivées pour ${notificationType}`);
+            }
+
+            // Envoyer l'email à l'admin si autorisé
+            if (admin.email && !admin.email.includes('@profitum.temp') && !admin.email.includes('temp_')) {
+              if (!shouldSendEmail) {
+                console.log(`⏭️ Email non envoyé à ${admin.email} - préférences utilisateur désactivées pour ${notificationType}`);
+                continue;
+              }
+
+              try {
+                const { subject, html, text } = this.generateActionReminderEmailTemplate(
+                  dossier,
+                  reminderConfig,
+                  daysSinceAction,
+                  clientName,
+                  expert?.name || 'N/A',
+                  produitNom,
+                  admin.name || 'Administrateur'
+                );
+
+                await EmailService.sendDailyReportEmail(admin.email, subject, html, text);
+                console.log(`✅ Email action reminder envoyé à ${admin.email} pour dossier ${dossier.id}`);
+              } catch (error) {
+                console.error(`❌ Erreur envoi email action reminder à ${admin.email}:`, error);
+              }
+            }
           }
         }
       }
@@ -766,6 +862,332 @@ export class ActionTypeReminderService {
     }
 
     console.log(`✅ Relance envoyée pour dossier ${dossier.id} (${dossier.actionType}, J+${daysSinceAction})`);
+  }
+
+  /**
+   * Génère le template email pour les rappels d'actions à effectuer
+   */
+  private generateActionReminderEmailTemplate(
+    dossier: any,
+    reminderConfig: ReminderConfig,
+    daysSinceAction: number,
+    clientName: string,
+    expertName: string,
+    produitNom: string,
+    adminName: string
+  ): { subject: string; html: string; text: string } {
+    // Déterminer le niveau d'urgence et les couleurs
+    let urgencyColor: string;
+    let urgencyBg: string;
+    let icon: string;
+    
+    if (reminderConfig.priority === 'critical' || reminderConfig.type === 'reminder_critical' || reminderConfig.type === 'reminder_escalation_max') {
+      urgencyColor = '#dc2626';
+      urgencyBg = '#fef2f2';
+      icon = '🚨';
+    } else if (reminderConfig.priority === 'high' || reminderConfig.type === 'reminder_escalated') {
+      urgencyColor = '#f59e0b';
+      urgencyBg = '#fffbeb';
+      icon = '⚠️';
+    } else {
+      urgencyColor = '#3b82f6';
+      urgencyBg = '#eff6ff';
+      icon = '📋';
+    }
+
+    const actionTypeLabels: Record<string, string> = {
+      expert_pending_acceptance: 'Acceptation expert en attente',
+      client_documents_pending: 'Documents client en attente',
+      expert_analysis_pending: 'Analyse expert en attente',
+      refund_request_pending: 'Demande de remboursement en attente',
+      other: 'Action en attente'
+    };
+
+    const actionLabel = actionTypeLabels[dossier.actionType] || 'Action en attente';
+
+    const subject = reminderConfig.priority === 'critical' 
+      ? `${icon} URGENT : ${actionLabel} - ${produitNom} (J+${daysSinceAction})`
+      : reminderConfig.priority === 'high'
+      ? `${icon} ${actionLabel} - ${produitNom} (J+${daysSinceAction})`
+      : `${icon} Rappel : ${actionLabel} - ${produitNom}`;
+
+    const actionPath = `/admin/dossiers/${dossier.id}`;
+    const actionLink = SecureLinkService.generateSmartLinkHTML(
+      'Voir et traiter le dossier',
+      actionPath,
+      undefined,
+      undefined,
+      'cta-button'
+    );
+    
+    const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>${subject}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #1f2937;
+      background-color: #f3f4f6;
+      padding: 0;
+      margin: 0;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #ffffff;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    .header {
+      background: linear-gradient(135deg, ${urgencyColor} 0%, ${this.darkenColor(urgencyColor, 20)} 100%);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .header-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .header-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .header-subtitle {
+      font-size: 16px;
+      opacity: 0.95;
+      font-weight: 400;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .greeting {
+      font-size: 18px;
+      color: #1f2937;
+      margin-bottom: 24px;
+      font-weight: 500;
+    }
+    .alert-box {
+      background: ${urgencyBg};
+      border-left: 4px solid ${urgencyColor};
+      border-radius: 8px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+    .alert-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: ${urgencyColor};
+      margin-bottom: 8px;
+    }
+    .alert-text {
+      font-size: 14px;
+      color: #4b5563;
+      line-height: 1.6;
+    }
+    .info-card {
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .info-row {
+      display: flex;
+      padding: 12px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .info-row:last-child {
+      border-bottom: none;
+    }
+    .info-label {
+      font-weight: 600;
+      color: #6b7280;
+      width: 140px;
+      font-size: 14px;
+    }
+    .info-value {
+      color: #1f2937;
+      font-size: 14px;
+      flex: 1;
+    }
+    .cta-button {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      margin: 32px 0;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+    }
+    .cta-container {
+      text-align: center;
+    }
+    .footer {
+      background: #f9fafb;
+      padding: 30px;
+      text-align: center;
+      border-top: 1px solid #e5e7eb;
+    }
+    .footer-text {
+      font-size: 13px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+    .footer-link {
+      color: ${urgencyColor};
+      text-decoration: none;
+    }
+    .time-badge {
+      display: inline-block;
+      background: ${urgencyColor};
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    @media only screen and (max-width: 600px) {
+      .email-container {
+        margin: 0;
+        border-radius: 0;
+      }
+      .content {
+        padding: 30px 20px;
+      }
+      .info-row {
+        flex-direction: column;
+      }
+      .info-label {
+        width: 100%;
+        margin-bottom: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="header">
+      <div class="header-icon">${icon}</div>
+      <div class="header-title">Action à effectuer</div>
+      <div class="header-subtitle">Délai écoulé : ${daysSinceAction} jour${daysSinceAction > 1 ? 's' : ''}</div>
+    </div>
+    
+    <div class="content">
+      <div class="greeting">
+        Bonjour ${adminName || 'Administrateur'},
+      </div>
+      
+      <div class="alert-box">
+        <div class="alert-title">
+          ${reminderConfig.priority === 'critical' ? 'Action urgente requise' : reminderConfig.priority === 'high' ? 'Action importante requise' : 'Rappel d\'action'}
+        </div>
+        <div class="alert-text">
+          Une action nécessite votre attention depuis ${daysSinceAction} jour${daysSinceAction > 1 ? 's' : ''}.
+          ${reminderConfig.priority === 'critical' ? ' Cette action dépasse le délai critique et nécessite un traitement immédiat.' : ''}
+        </div>
+      </div>
+      
+      <div class="info-card">
+        <div class="info-row">
+          <div class="info-label">Type d'action</div>
+          <div class="info-value">${actionLabel}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Produit</div>
+          <div class="info-value">${produitNom}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Client</div>
+          <div class="info-value">${clientName}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Expert</div>
+          <div class="info-value">${expertName}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Délai écoulé</div>
+          <div class="info-value">
+            ${daysSinceAction} jour${daysSinceAction > 1 ? 's' : ''}
+            <span class="time-badge">J+${daysSinceAction}</span>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Message</div>
+          <div class="info-value">${reminderConfig.messageTemplate}</div>
+        </div>
+      </div>
+      
+      <div class="cta-container">
+        ${actionLink}
+      </div>
+    </div>
+    
+    <div class="footer">
+      <div class="footer-text">
+        <p>Cet email a été envoyé automatiquement par le système de rappels Profitum.</p>
+        <p style="margin-top: 12px;">
+          <a href="${process.env.FRONTEND_URL || 'https://app.profitum.fr'}" class="footer-link">Accéder à la plateforme</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    const text = `
+${subject}
+
+Bonjour ${adminName || 'Administrateur'},
+
+Une action nécessite votre attention :
+
+Type d'action : ${actionLabel}
+Produit : ${produitNom}
+Client : ${clientName}
+Expert : ${expertName}
+Délai écoulé : ${daysSinceAction} jour${daysSinceAction > 1 ? 's' : ''} (J+${daysSinceAction})
+Message : ${reminderConfig.messageTemplate}
+
+Voir le dossier : ${process.env.FRONTEND_URL || 'https://app.profitum.fr'}${actionPath}
+    `.trim();
+
+    return { subject, html, text };
+  }
+
+  /**
+   * Fonction utilitaire pour assombrir une couleur hex
+   */
+  private darkenColor(color: string, percent: number): string {
+    const num = parseInt(color.replace('#', ''), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.max(0, Math.min(255, (num >> 16) - amt));
+    const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) - amt));
+    const B = Math.max(0, Math.min(255, (num & 0x0000FF) - amt));
+    return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
   }
 
   /**

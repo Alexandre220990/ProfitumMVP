@@ -216,10 +216,11 @@ export class CalendarReminderService {
    */
   async createDefaultReminders(eventId: string): Promise<void> {
     try {
+      // Rappels uniquement : 15min avant et au démarrage (0min)
+      // Le rappel 24h avant est géré par le rapport quotidien de 20h
       const defaultReminders = [
-        { reminder_type: 'email', minutes_before: 1440 }, // 24h avant
-        { reminder_type: 'email', minutes_before: 60 },   // 1h avant
-        { reminder_type: 'email', minutes_before: 15 }    // 15min avant
+        { reminder_type: 'email', minutes_before: 15 },   // 15min avant
+        { reminder_type: 'email', minutes_before: 0 }     // Au démarrage (00mn)
       ];
 
       for (const reminder of defaultReminders) {

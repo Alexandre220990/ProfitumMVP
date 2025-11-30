@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
 import { TypeSwitcher } from '@/components/TypeSwitcher';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
-import { useNotificationBadge } from '@/hooks/use-notification-badge';
+import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
 import { 
   Home,
   BarChart3,
@@ -42,7 +42,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { badgeCount } = useMessagingBadge();
-  const { unreadCount: notificationsCount } = useNotificationBadge();
+  const { unreadCount: notificationsCount } = useSupabaseNotifications();
 
   // États pour les badges dynamiques
   const [newDocuments, setNewDocuments] = useState(0);
