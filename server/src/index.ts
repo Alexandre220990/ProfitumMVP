@@ -105,6 +105,7 @@ import { startRefundRemindersCron } from './cron/refund-reminder';
 import { startActionTypeRemindersCron } from './cron/action-type-reminders';
 import { startDailyActivityReportCron } from './cron/daily-activity-report';
 import { startNotificationEscalationCron } from './cron/notification-escalation';
+import { startRDVSlaRemindersCron } from './cron/rdv-sla-reminders';
 import routes from './routes';
 
 // Routes apporteurs d'affaires
@@ -121,6 +122,7 @@ import rdvRoutes from './routes/rdv';
 // Routes test email - uniquement en dev
 import testEmailRoutes from './routes/test-email';
 import publicUploadRoutes from './routes/public-upload';
+import redirectRoutes from './routes/redirect';
 import expertDemoRequestRoutes from './routes/expert/demo-request';
 import contactRoutes from './routes/contact';
 import expertDocumentsRoutes from './routes/expert-documents';
@@ -315,6 +317,10 @@ console.log('📤 Route upload publique montée sur /api/upload (PUBLIQUE)');
 // 📧 ROUTE DE CONTACT PUBLIQUE - Pour formulaire de contact public
 app.use('/api/contact', publicRouteLogger, contactRoutes);
 console.log('📧 Route contact publique montée sur /api/contact (PUBLIQUE)');
+
+// 🔗 ROUTE DE REDIRECTION INTELLIGENTE - PUBLIQUE (pour deep linking dans les emails)
+app.use('/api/redirect', publicRouteLogger, redirectRoutes);
+console.log('🔗 Route redirection intelligente montée sur /api/redirect (PUBLIQUE)');
 
 // 📋 ROUTE DEMANDE EXPERT - PUBLIQUE (pas d'authentification requise)
 app.use('/api/expert/demo-request', publicRouteLogger, expertDemoRequestRoutes);
@@ -838,6 +844,14 @@ server.listen(PORT, HOST, () => {
     // Escalade automatique des notifications selon les SLA (contact_message, lead_to_treat, etc.)
   } catch (error) {
     console.error('❌ Erreur démarrage cron job escalade notifications:', error);
+  }
+
+  // Démarrer le cron job pour les rappels SLA des RDV
+  try {
+    startRDVSlaRemindersCron();
+    // Rappels automatiques pour les RDV non traités selon les SLA (24h, 48h, 120h)
+  } catch (error) {
+    console.error('❌ Erreur démarrage cron job rappels SLA RDV:', error);
   }
   
   // monitoringSystem.recordAuditLog({
