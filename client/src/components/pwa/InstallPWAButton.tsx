@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Download, Smartphone, CheckCircle, AlertCircle, Share2, ArrowUp } from 'lucide-react';
+import { Download, Smartphone, CheckCircle, AlertCircle, Share2 } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
@@ -187,7 +187,7 @@ export function InstallPWAButton() {
               </AlertDescription>
             </Alert>
           )}
-          {!canInstall && platform !== 'ios' && (
+          {!canInstall && (
             <p className="text-xs text-gray-600 mt-2 text-center">
               L'installation nécessite Chrome ou Edge avec HTTPS activé.
             </p>
