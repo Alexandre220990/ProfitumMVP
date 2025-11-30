@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Download, Smartphone, CheckCircle, AlertCircle, Share2, ArrowUp } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 
 /**
@@ -16,12 +17,35 @@ import { toast } from 'sonner';
  */
 export function InstallPWAButton() {
   const { isInstallable, isInstalled, installing, platform, deferredPrompt, install } = usePWAInstall();
+  const { user } = useAuth();
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   const handleInstall = async () => {
     if (platform === 'ios') {
       setShowIOSInstructions(true);
       return;
+    }
+
+    // AVANT l'installation, stocker le type d'utilisateur et l'URL de démarrage
+    if (user?.type) {
+      localStorage.setItem('pwa_user_type', user.type);
+      
+      // Définir l'URL de démarrage selon le type
+      const startUrls: Record<string, string> = {
+        'admin': '/connect-admin',
+        'client': user.id ? `/dashboard/client/${user.id}` : '/dashboard/client',
+        'expert': '/expert/dashboard',
+        'apporteur': '/apporteur/dashboard'
+      };
+      
+      const startUrl = startUrls[user.type] || '/';
+      localStorage.setItem('pwa_start_url', startUrl);
+      
+      console.log(`📱 Installation PWA pour type ${user.type}, start_url: ${startUrl}`);
+    } else {
+      // Si pas d'utilisateur connecté, utiliser '/' par défaut
+      localStorage.setItem('pwa_user_type', 'guest');
+      localStorage.setItem('pwa_start_url', '/');
     }
 
     const success = await install();

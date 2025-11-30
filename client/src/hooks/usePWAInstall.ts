@@ -153,6 +153,14 @@ export function usePWAInstall() {
 
     // Gérer l'événement appinstalled (quand l'app est installée)
     const handleAppInstalled = () => {
+      // Confirmer que le type et l'URL sont bien stockés
+      const userType = localStorage.getItem('pwa_user_type');
+      const startUrl = localStorage.getItem('pwa_start_url');
+      
+      if (userType && startUrl) {
+        console.log(`✅ PWA installée pour type ${userType}, start_url: ${startUrl}`);
+      }
+      
       setState((prev) => ({
         ...prev,
         isInstalled: true,

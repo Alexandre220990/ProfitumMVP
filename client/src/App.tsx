@@ -166,6 +166,25 @@ function App() {
     }
   }, []);
 
+  // Redirection PWA au démarrage selon le type d'utilisateur enregistré
+  useEffect(() => {
+    // Vérifier si on est en mode PWA (standalone)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         (window.navigator as any).standalone === true;
+    
+    if (isStandalone && window.location.pathname === '/') {
+      const pwaStartUrl = localStorage.getItem('pwa_start_url');
+      const pwaUserType = localStorage.getItem('pwa_user_type');
+      
+      if (pwaStartUrl && pwaStartUrl !== '/') {
+        console.log(`🚀 PWA démarrée, redirection vers ${pwaStartUrl} (type: ${pwaUserType})`);
+        // Utiliser window.location.href pour une redirection complète
+        window.location.href = pwaStartUrl;
+        return;
+      }
+    }
+  }, []);
+
   // Démarrer le service de rappels automatiques
   useEffect(() => {
     reminderService.start();

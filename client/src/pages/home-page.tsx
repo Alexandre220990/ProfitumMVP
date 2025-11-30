@@ -21,6 +21,7 @@ import {
 import ProcessSteps from "@/components/ProcessSteps";
 import PublicHeader from '@/components/PublicHeader';
 import { CATEGORIES } from "@/data/categories";
+import { useAuth } from "@/hooks/use-auth";
 
 // ============================================================================
 // CONSTANTES ET DONNÉES
@@ -697,14 +698,54 @@ const FooterSection = () => (
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { user, isLoading } = useAuth();
   
   useEffect(() => {
     console.log("HomePage monté avec succès");
     
+    // Vérifier si on est en mode PWA standalone
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         (window.navigator as any).standalone === true;
+    
+    if (isStandalone && !isLoading) {
+      const pwaStartUrl = localStorage.getItem('pwa_start_url');
+      const pwaUserType = localStorage.getItem('pwa_user_type');
+      
+      // Si on a une URL de démarrage PWA enregistrée et qu'on est sur la page d'accueil
+      if (pwaStartUrl && pwaStartUrl !== '/' && window.location.pathname === '/') {
+        console.log(`🔀 Redirection PWA vers ${pwaStartUrl} (type: ${pwaUserType})`);
+        navigate(pwaStartUrl, { replace: true });
+        return;
+      }
+      
+      // Si admin et pas encore redirigé, rediriger vers connect-admin
+      if (user?.type === 'admin' && window.location.pathname === '/') {
+        console.log('🔀 Utilisateur admin détecté en PWA, redirection vers /connect-admin');
+        navigate('/connect-admin', { replace: true });
+        return;
+      }
+      
+      // Si autre type d'utilisateur connecté, rediriger vers son dashboard
+      if (user?.type && window.location.pathname === '/') {
+        const dashboardUrls: Record<string, string> = {
+          'client': user.id ? `/dashboard/client/${user.id}` : '/dashboard/client',
+          'expert': '/expert/dashboard',
+          'apporteur': '/apporteur/dashboard'
+        };
+        
+        const dashboardUrl = dashboardUrls[user.type];
+        if (dashboardUrl) {
+          console.log(`🔀 Utilisateur ${user.type} détecté en PWA, redirection vers ${dashboardUrl}`);
+          navigate(dashboardUrl, { replace: true });
+          return;
+        }
+      }
+    }
+    
     return () => {
       console.log("HomePage démonté");
     };
-  }, []);
+  }, [user, isLoading, navigate]);
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden">
