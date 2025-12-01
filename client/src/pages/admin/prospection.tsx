@@ -37,7 +37,8 @@ import {
   Mail as MailIcon,
   Edit2,
   Pause,
-  RotateCcw
+  RotateCcw,
+  Sparkles
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { cn } from "@/lib/utils";
@@ -160,7 +161,6 @@ export default function ProspectionAdmin() {
   const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
   const [sequenceConfigs, setSequenceConfigs] = useState<Map<string, {
     email: string;
-    startDate: string | null;
     steps: Array<{
       id: string;
       stepNumber: number;
@@ -206,6 +206,11 @@ export default function ProspectionAdmin() {
     company_name: '',
     siren: ''
   });
+
+  // États pour la génération IA
+  const [showAIContextModal, setShowAIContextModal] = useState(false);
+  const [aiContext, setAiContext] = useState('');
+  const [generatingAI, setGeneratingAI] = useState(false);
 
   // Charger les données
   useEffect(() => {
@@ -594,7 +599,6 @@ export default function ProspectionAdmin() {
       const prospect = prospects.find(p => p.id === id);
       newConfigs.set(id, {
         email: prospect?.email || '',
-        startDate: null,
         steps: getDefaultSequence(),
         ready: false
       });
@@ -683,6 +687,104 @@ export default function ProspectionAdmin() {
     toast.success('Template appliqué');
   };
 
+  const openAIContextModal = () => {
+    const currentProspect = getCurrentProspect();
+    if (!currentProspect) {
+      toast.error('Aucun prospect sélectionné');
+      return;
+    }
+
+    const config = sequenceConfigs.get(currentProspect.id);
+    if (!config || config.steps.length === 0) {
+      toast.error('Veuillez d\'abord ajouter au moins un email à la séquence');
+      return;
+    }
+
+    // Réinitialiser le contexte et ouvrir le modal
+    setAiContext('');
+    setShowAIContextModal(true);
+  };
+
+  const generateAISequence = async () => {
+    const currentProspect = getCurrentProspect();
+    if (!currentProspect) {
+      toast.error('Aucun prospect sélectionné');
+      return;
+    }
+
+    const seqConfig = sequenceConfigs.get(currentProspect.id);
+    if (!seqConfig || seqConfig.steps.length === 0) {
+      toast.error('Veuillez d\'abord ajouter au moins un email à la séquence');
+      return;
+    }
+
+    try {
+      setGeneratingAI(true);
+      setShowAIContextModal(false);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+
+      // Préparer les informations du prospect
+      const prospectInfo = {
+        company_name: currentProspect.company_name,
+        siren: currentProspect.siren,
+        firstname: currentProspect.firstname,
+        lastname: currentProspect.lastname,
+        email: seqConfig.email || currentProspect.email
+      };
+
+      // Préparer les étapes avec leurs délais
+      const steps = seqConfig.steps.map(step => ({
+        stepNumber: step.stepNumber,
+        delayDays: step.delayDays
+      }));
+
+      const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-sequence`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prospectInfo,
+          steps,
+          context: aiContext.trim() || undefined // Envoyer undefined si vide
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        toast.error(result.error || 'Erreur lors de la génération par IA');
+        return;
+      }
+
+      // Mettre à jour tous les sujets et corps des emails
+      const updatedConfigs = new Map(sequenceConfigs);
+      const updatedConfig = { ...seqConfig };
+
+      result.data.steps.forEach((generatedStep: any) => {
+        const stepIndex = updatedConfig.steps.findIndex(
+          s => s.stepNumber === generatedStep.stepNumber
+        );
+        if (stepIndex !== -1) {
+          updatedConfig.steps[stepIndex].subject = generatedStep.subject;
+          updatedConfig.steps[stepIndex].body = generatedStep.body;
+        }
+      });
+
+      updatedConfigs.set(currentProspect.id, updatedConfig);
+      setSequenceConfigs(updatedConfigs);
+
+      toast.success('Séquence générée par IA avec succès !');
+      setAiContext(''); // Réinitialiser le contexte après génération
+    } catch (error: any) {
+      console.error('Erreur génération IA:', error);
+      toast.error('Erreur lors de la génération par IA');
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
   const saveCurrentProspectSequence = () => {
     const currentProspect = getCurrentProspect();
     if (!currentProspect) return;
@@ -734,10 +836,8 @@ export default function ProspectionAdmin() {
 
       for (const [prospectId, seqConfig] of readyConfigs) {
         try {
-          // Créer une séquence temporaire pour ce prospect
-          const startDate = seqConfig.startDate 
-            ? new Date(seqConfig.startDate).toISOString()
-            : globalStartDate!;
+          // Utiliser toujours la date globale (startDate retiré)
+          const startDate = globalStartDate!;
 
           // Calculer les dates d'envoi
           const scheduledEmails: any[] = [];
@@ -1143,7 +1243,6 @@ export default function ProspectionAdmin() {
     const updatedConfigs = new Map(sequenceConfigs);
     updatedConfigs.set(currentProspect.id, {
       email: currentProspect.email,
-      startDate: null,
       steps: steps,
       ready: true
     });
@@ -2567,7 +2666,6 @@ export default function ProspectionAdmin() {
                   const prospect = getCurrentProspect()!;
                   const config = sequenceConfigs.get(prospect.id) || {
                     email: prospect.email,
-                    startDate: null,
                     steps: getDefaultSequence(),
                     ready: false
                   };
@@ -2594,29 +2692,6 @@ export default function ProspectionAdmin() {
                         {prospect.company_name && (
                           <div className="text-sm text-gray-600">{prospect.company_name}</div>
                         )}
-                      </div>
-
-                      {/* Date de démarrage */}
-                      <div>
-                        <Label htmlFor="start-date">Date de démarrage (optionnel)</Label>
-                        <Input
-                          id="start-date"
-                          type="date"
-                          value={config.startDate || ''}
-                          onChange={(e) => {
-                            const updatedConfigs = new Map(sequenceConfigs);
-                            updatedConfigs.set(prospect.id, {
-                              ...config,
-                              startDate: e.target.value || null
-                            });
-                            setSequenceConfigs(updatedConfigs);
-                          }}
-                          min={new Date().toISOString().split('T')[0]}
-                          className="mt-1"
-                        />
-                        <div className="text-xs text-gray-500 mt-1">
-                          Si non renseigné, la date actuelle sera utilisée
-                        </div>
                       </div>
 
                       {/* Charger une séquence sauvegardée */}
@@ -2649,14 +2724,35 @@ export default function ProspectionAdmin() {
                       <div>
                         <div className="flex items-center justify-between mb-3">
                           <Label className="text-base font-semibold">Emails de la séquence</Label>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addStepToSequence(prospect.id)}
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Ajouter un email
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={openAIContextModal}
+                              disabled={generatingAI || config.steps.length === 0}
+                              className="bg-purple-50 hover:bg-purple-100 border-purple-300"
+                            >
+                              {generatingAI ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                                  Génération...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="h-4 w-4 mr-1" />
+                                  Générer par IA
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addStepToSequence(prospect.id)}
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              Ajouter un email
+                            </Button>
+                          </div>
                         </div>
                         <div className="space-y-4">
                           {config.steps.sort((a, b) => a.stepNumber - b.stepNumber).map((step, index) => (
@@ -2872,6 +2968,83 @@ export default function ProspectionAdmin() {
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Contexte pour Génération IA */}
+      <Dialog open={showAIContextModal} onOpenChange={setShowAIContextModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Générer par IA - Contexte du mailing</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="ai-context">
+                Contexte du mailing (optionnel)
+              </Label>
+              <Textarea
+                id="ai-context"
+                value={aiContext}
+                onChange={(e) => setAiContext(e.target.value)}
+                placeholder="Précisez des éléments spécifiques, s'il s'agit d'une relance particulière, d'une demande particulière, etc. Ce contexte sera ajouté au prompt système pour personnaliser davantage les emails générés."
+                className="mt-2 min-h-[150px]"
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                Si ce champ reste vide, les emails seront générés avec le prompt système standard.
+              </div>
+            </div>
+
+            {getCurrentProspect() && (
+              <div className="bg-gray-50 p-3 rounded-lg space-y-1">
+                <div className="text-sm font-medium text-gray-700">Prospect cible :</div>
+                {getCurrentProspect()!.company_name && (
+                  <div className="text-sm text-gray-600">
+                    Entreprise: {getCurrentProspect()!.company_name}
+                  </div>
+                )}
+                {getCurrentProspect()!.siren && (
+                  <div className="text-sm text-gray-600">
+                    SIREN: {getCurrentProspect()!.siren}
+                  </div>
+                )}
+                {(getCurrentProspect()!.firstname || getCurrentProspect()!.lastname) && (
+                  <div className="text-sm text-gray-600">
+                    Décisionnaire: {getCurrentProspect()!.firstname} {getCurrentProspect()!.lastname}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAIContextModal(false);
+                  setAiContext('');
+                }}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={generateAISequence}
+                disabled={generatingAI}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {generatingAI ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Génération en cours...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Générer la séquence
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </DialogContent>

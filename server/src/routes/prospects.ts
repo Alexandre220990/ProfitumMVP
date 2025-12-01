@@ -2,8 +2,14 @@ import express from 'express';
 import { ProspectService } from '../services/ProspectService';
 import { ProspectEmailService } from '../services/ProspectEmailService';
 import { ProspectFilters } from '../types/prospects';
+import OpenAI from 'openai';
 
 const router = express.Router();
+
+// Initialiser OpenAI
+const openai = process.env.OPENAI_API_KEY 
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 // GET /api/prospects - Liste des prospects
 router.get('/', async (req, res) => {
@@ -546,6 +552,163 @@ router.post('/:id/restart-sequence', async (req, res) => {
     return res.status(201).json(result);
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/prospects/generate-ai-sequence - Générer une séquence d'emails avec IA
+router.post('/generate-ai-sequence', async (req, res) => {
+  try {
+    const { prospectInfo, steps, context } = req.body;
+
+    if (!prospectInfo || !steps || !Array.isArray(steps) || steps.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Informations prospect et étapes requises'
+      });
+    }
+
+    if (!openai) {
+      return res.status(500).json({
+        success: false,
+        error: 'Configuration OpenAI manquante. Veuillez configurer OPENAI_API_KEY.'
+      });
+    }
+
+    // Construire le prompt pour ChatGPT
+    const companyName = prospectInfo.company_name || 'l\'entreprise';
+    const decisionMaker = prospectInfo.firstname && prospectInfo.lastname
+      ? `${prospectInfo.firstname} ${prospectInfo.lastname}`
+      : prospectInfo.firstname || prospectInfo.lastname || 'le décisionnaire';
+    const siren = prospectInfo.siren ? ` (SIREN: ${prospectInfo.siren})` : '';
+
+    const stepsInfo = steps.map((step: any, index: number) => {
+      const stepType = index === 0 
+        ? 'email initial de prise de contact'
+        : index === steps.length - 1
+        ? 'dernière relance'
+        : 'relance';
+      
+      return `Étape ${step.stepNumber}: ${stepType} (délai: ${step.delayDays} jours après l'étape précédente)`;
+    }).join('\n');
+
+    // Prompt système de base
+    let systemPrompt = `Tu es un expert en prospection commerciale B2B pour une entreprise de financement et d'investissement.
+
+CONTEXTE:
+- Entreprise cible: ${companyName}${siren}
+- Décisionnaire: ${decisionMaker}
+- Email: ${prospectInfo.email || 'non renseigné'}
+
+OBJECTIF:
+Générer une séquence d'emails de prospection professionnelle, personnalisée et pertinente pour cette entreprise et ce décisionnaire.
+
+STRUCTURE DE LA SÉQUENCE:
+${stepsInfo}
+
+CONTRAINTES:
+- Les emails doivent être professionnels, concis et percutants
+- Personnaliser le contenu en fonction du nom de l'entreprise et du décisionnaire
+- Le premier email doit être une prise de contact initiale
+- Les emails suivants doivent être des relances progressives
+- Le dernier email doit être une dernière tentative de contact
+- Ne pas être trop insistant, rester professionnel
+- Adapter le ton selon le type d'entreprise (utiliser le SIREN si disponible pour comprendre le secteur)`;
+
+    // Ajouter le contexte personnalisé s'il est fourni
+    if (context && context.trim()) {
+      systemPrompt += `\n\nCONTEXTE SUPPLÉMENTAIRE FOURNI PAR L'ADMINISTRATEUR:
+${context.trim()}
+
+Ce contexte doit être pris en compte pour personnaliser davantage les emails. Intègre ces informations de manière naturelle et pertinente dans la séquence.`;
+    }
+
+    const userPrompt = `FORMAT DE RÉPONSE:
+Retourne un JSON avec cette structure exacte:
+{
+  "steps": [
+    {
+      "stepNumber": 1,
+      "subject": "Sujet de l'email",
+      "body": "Corps de l'email (peut contenir des sauts de ligne avec \\n)"
+    },
+    ...
+  ]
+}
+
+IMPORTANT: 
+- Ne modifie PAS les délais entre emails (delayDays)
+- Retourne UNIQUEMENT le JSON, sans texte avant ou après
+- Le corps des emails doit être en français, professionnel, et adapté au contexte`;
+
+    // Appeler ChatGPT
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o', // ou 'gpt-4-turbo' selon votre préférence
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        {
+          role: 'user',
+          content: userPrompt
+        }
+      ],
+      temperature: 0.7,
+      response_format: { type: 'json_object' }
+    });
+
+    const responseContent = completion.choices[0]?.message?.content;
+    if (!responseContent) {
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la génération par IA'
+      });
+    }
+
+    // Parser la réponse JSON
+    let generatedSteps;
+    try {
+      generatedSteps = JSON.parse(responseContent);
+    } catch (parseError) {
+      // Essayer d'extraire le JSON si la réponse contient du texte supplémentaire
+      const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        generatedSteps = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('Format de réponse invalide');
+      }
+    }
+
+    // Vérifier que la structure est correcte
+    if (!generatedSteps.steps || !Array.isArray(generatedSteps.steps)) {
+      return res.status(500).json({
+        success: false,
+        error: 'Format de réponse IA invalide'
+      });
+    }
+
+    // Mapper les résultats avec les délais originaux
+    const result = generatedSteps.steps.map((generatedStep: any, index: number) => {
+      const originalStep = steps.find((s: any) => s.stepNumber === generatedStep.stepNumber);
+      return {
+        stepNumber: generatedStep.stepNumber,
+        delayDays: originalStep?.delayDays || steps[index]?.delayDays || 0,
+        subject: generatedStep.subject || '',
+        body: generatedStep.body?.replace(/\\n/g, '\n') || ''
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: { steps: result }
+    });
+
+  } catch (error: any) {
+    console.error('Erreur génération IA:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur lors de la génération par IA'
+    });
   }
 });
 
