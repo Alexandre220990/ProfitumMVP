@@ -4,7 +4,10 @@ import { authApporteur, checkProspectOwnership, ApporteurRequest } from '../midd
 import { ApporteurService } from '../services/ApporteurService';
 import { ProspectService } from '../services/ProspectService';
 import { NotificationService } from '../services/NotificationService';
+import { EmailService } from '../services/EmailService';
+import { getExchangeEmailTemplate, getPresentationEmailTemplate } from '../templates/prospect-emails';
 import { createClient } from '@supabase/supabase-js';
+import * as nodemailer from 'nodemailer';
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -251,9 +254,24 @@ router.post('/prospects', async (req: any, res: any): Promise<void> => {
         const prospectData = req.body;
         const apporteurId = req.user!.database_id;
         
-        const result = await ProspectService.createProspect(apporteurId, prospectData);
+        // Créer le prospect dans la table Client avec status='prospect'
+        const { data: client, error } = await supabase
+            .from('Client')
+            .insert({
+                ...prospectData,
+                apporteur_id: apporteurId,
+                status: 'prospect',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
         
-        res.status(201).json({ success: true, data: result });
+        if (error) {
+            throw error;
+        }
+        
+        res.status(201).json({ success: true, data: client });
     } catch (error) {
         console.error('Erreur création prospect:', error);
         res.status(500).json({ 
@@ -279,12 +297,128 @@ router.post('/prospects/:prospectId/send-credentials', async (req: any, res: any
             return;
         }
         
-        const result = await ProspectService.sendProspectCredentials(prospectId, emailType, apporteurId);
+        // Récupérer le prospect (client)
+        const { data: prospect, error: prospectError } = await supabase
+            .from('Client')
+            .select('*')
+            .eq('id', prospectId)
+            .eq('apporteur_id', apporteurId)
+            .single();
         
-        if (result.success) {
-            res.json(result);
+        if (prospectError || !prospect) {
+            return res.status(404).json({
+                success: false,
+                error: 'Prospect non trouvé'
+            });
+        }
+        
+        // Récupérer l'apporteur
+        const { data: apporteur, error: apporteurError } = await supabase
+            .from('ApporteurAffaires')
+            .select('first_name, last_name, company_name')
+            .eq('id', apporteurId)
+            .single();
+        
+        if (apporteurError || !apporteur) {
+            return res.status(404).json({
+                success: false,
+                error: 'Apporteur non trouvé'
+            });
+        }
+        
+        // Créer le compte client si nécessaire
+        let credentials;
+        if (!prospect.auth_user_id) {
+            credentials = await EmailService.createClientAccount({
+                email: prospect.email,
+                name: prospect.name || prospect.company_name || '',
+                company_name: prospect.company_name || '',
+                phone_number: prospect.phone_number || '',
+                apporteur_id: apporteurId
+            });
+            
+            // Récupérer le client mis à jour avec l'auth_user_id
+            const { data: updatedClient } = await supabase
+                .from('Client')
+                .select('auth_user_id')
+                .eq('email', prospect.email)
+                .single();
+            
+            if (updatedClient?.auth_user_id) {
+                // Mettre à jour le prospect avec l'auth_user_id si ce n'est pas déjà fait
+                await supabase
+                    .from('Client')
+                    .update({ auth_user_id: updatedClient.auth_user_id })
+                    .eq('id', prospectId);
+            }
         } else {
-            res.status(500).json(result);
+            // Récupérer les identifiants existants - générer un nouveau mot de passe temporaire
+            const temporaryPassword = EmailService.generateTemporaryPassword();
+            // Réinitialiser le mot de passe de l'utilisateur
+            await supabase.auth.admin.updateUserById(prospect.auth_user_id, {
+                password: temporaryPassword
+            });
+            
+            credentials = {
+                email: prospect.email,
+                temporaryPassword: temporaryPassword,
+                loginUrl: `${process.env.FRONTEND_URL || 'https://www.profitum.app'}/client/login`
+            };
+        }
+        
+        // Sélectionner le template d'email
+        const apporteurName = `${apporteur.first_name || ''} ${apporteur.last_name || ''}`.trim() || apporteur.company_name || 'Votre apporteur';
+        const apporteurCompany = apporteur.company_name || '';
+        const prospectName = prospect.name || prospect.company_name || 'Cher client';
+        
+        const emailTemplate = emailType === 'exchange' 
+            ? getExchangeEmailTemplate({
+                prospectName,
+                prospectEmail: prospect.email,
+                temporaryPassword: credentials.temporaryPassword,
+                apporteurName,
+                apporteurCompany,
+                loginUrl: credentials.loginUrl
+            })
+            : getPresentationEmailTemplate({
+                prospectName,
+                prospectEmail: prospect.email,
+                temporaryPassword: credentials.temporaryPassword,
+                apporteurName,
+                apporteurCompany,
+                loginUrl: credentials.loginUrl
+            });
+        
+        // Envoyer l'email
+        try {
+            const transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: parseInt(process.env.SMTP_PORT || '587'),
+                secure: process.env.SMTP_SECURE === 'true',
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS
+                }
+            });
+            
+            await transporter.sendMail({
+                from: process.env.SMTP_FROM || process.env.SMTP_USER || 'Profitum <profitum.app@gmail.com>',
+                to: prospect.email,
+                subject: emailTemplate.subject,
+                html: emailTemplate.html,
+                text: emailTemplate.text
+            });
+            
+            res.json({
+                success: true,
+                message: 'Identifiants envoyés avec succès'
+            });
+        } catch (emailError: any) {
+            console.error('Erreur envoi email:', emailError);
+            res.status(500).json({
+                success: false,
+                error: `Erreur lors de l'envoi de l'email: ${emailError.message}`
+            });
         }
     } catch (error) {
         console.error('Erreur envoi identifiants:', error);
@@ -301,16 +435,45 @@ router.get('/prospects', async (req: any, res: any): Promise<void> => {
         const filters = req.query;
         const apporteurId = req.user!.database_id;
         
-        const result = await ProspectService.getProspects(apporteurId, filters);
+        // Construire la requête
+        let query = supabase
+            .from('Client')
+            .select('*')
+            .eq('apporteur_id', apporteurId)
+            .eq('status', 'prospect');
         
-        if (result.success) {
-            res.json(result);
-        } else {
-            res.status(500).json(result);
+        // Appliquer les filtres si nécessaire
+        if (filters.search) {
+            query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%`);
         }
+        
+        // Pagination
+        const page = parseInt(filters.page as string) || 1;
+        const limit = parseInt(filters.limit as string) || 20;
+        const offset = (page - 1) * limit;
+        
+        query = query.range(offset, offset + limit - 1);
+        query = query.order('created_at', { ascending: false });
+        
+        const { data: prospects, error, count } = await query;
+        
+        if (error) {
+            throw error;
+        }
+        
+        res.json({
+            success: true,
+            data: prospects || [],
+            total: count || 0,
+            page,
+            limit
+        });
     } catch (error) {
         console.error('Erreur récupération prospects:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération des prospects' });
+        res.status(500).json({ 
+            success: false,
+            error: 'Erreur lors de la récupération des prospects' 
+        });
     }
 });
 
@@ -318,12 +481,30 @@ router.get('/prospects', async (req: any, res: any): Promise<void> => {
 router.get('/prospects/:prospectId', checkProspectOwnership as any, async (req: any, res: any): Promise<void> => {
     try {
         const { prospectId } = req.params;
-        const prospect = await ProspectService.getProspectById(prospectId);
+        const apporteurId = req.user!.database_id;
+        
+        const { data: prospect, error } = await supabase
+            .from('Client')
+            .select('*')
+            .eq('id', prospectId)
+            .eq('apporteur_id', apporteurId)
+            .eq('status', 'prospect')
+            .single();
+        
+        if (error || !prospect) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Prospect non trouvé' 
+            });
+        }
         
         res.json({ success: true, data: prospect });
     } catch (error) {
         console.error('Erreur récupération prospect:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération du prospect' });
+        res.status(500).json({ 
+            success: false,
+            error: 'Erreur lors de la récupération du prospect' 
+        });
     }
 });
 
@@ -331,14 +512,34 @@ router.get('/prospects/:prospectId', checkProspectOwnership as any, async (req: 
 router.put('/prospects/:prospectId', checkProspectOwnership as any, async (req: any, res: any): Promise<void> => {
     try {
         const { prospectId } = req.params;
+        const apporteurId = req.user!.database_id;
         const updateData = req.body;
         
-        const prospect = await ProspectService.updateProspect(prospectId, updateData);
+        const { data: prospect, error } = await supabase
+            .from('Client')
+            .update({
+                ...updateData,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', prospectId)
+            .eq('apporteur_id', apporteurId)
+            .select()
+            .single();
+        
+        if (error || !prospect) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Prospect non trouvé ou erreur de mise à jour' 
+            });
+        }
         
         res.json({ success: true, data: prospect });
     } catch (error) {
         console.error('Erreur mise à jour prospect:', error);
-        res.status(500).json({ error: 'Erreur lors de la mise à jour du prospect' });
+        res.status(500).json({ 
+            success: false,
+            error: 'Erreur lors de la mise à jour du prospect' 
+        });
     }
 });
 
@@ -346,12 +547,26 @@ router.put('/prospects/:prospectId', checkProspectOwnership as any, async (req: 
 router.delete('/prospects/:prospectId', checkProspectOwnership as any, async (req: any, res: any): Promise<void> => {
     try {
         const { prospectId } = req.params;
-        await ProspectService.deleteProspect(prospectId);
+        const apporteurId = req.user!.database_id;
+        
+        const { error } = await supabase
+            .from('Client')
+            .delete()
+            .eq('id', prospectId)
+            .eq('apporteur_id', apporteurId)
+            .eq('status', 'prospect');
+        
+        if (error) {
+            throw error;
+        }
         
         res.json({ success: true, message: 'Prospect supprimé avec succès' });
     } catch (error) {
         console.error('Erreur suppression prospect:', error);
-        res.status(500).json({ error: 'Erreur lors de la suppression du prospect' });
+        res.status(500).json({ 
+            success: false,
+            error: 'Erreur lors de la suppression du prospect' 
+        });
     }
 });
 
@@ -432,12 +647,33 @@ router.post('/prospects/:prospectId/convert', checkProspectOwnership as any, asy
         const { prospectId } = req.params;
         const apporteurId = req.user!.database_id;
         
-        const result = await ProspectService.convertProspectToClient(prospectId, apporteurId);
+        // Mettre à jour le status de 'prospect' à 'client'
+        const { data: client, error } = await supabase
+            .from('Client')
+            .update({
+                status: 'client',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', prospectId)
+            .eq('apporteur_id', apporteurId)
+            .eq('status', 'prospect')
+            .select()
+            .single();
         
-        res.json({ success: true, data: result });
+        if (error || !client) {
+            return res.status(404).json({
+                success: false,
+                error: 'Prospect non trouvé ou erreur de conversion'
+            });
+        }
+        
+        res.json({ success: true, data: client });
     } catch (error) {
         console.error('Erreur conversion prospect:', error);
-        res.status(500).json({ error: 'Erreur lors de la conversion du prospect' });
+        res.status(500).json({ 
+            success: false,
+            error: 'Erreur lors de la conversion du prospect' 
+        });
     }
 });
 
