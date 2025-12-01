@@ -66,19 +66,18 @@ async function checkHighPriorityProspects() {
 
 /**
  * Démarrer le cron job
- * Exécution : Toutes les heures
+ * Exécution : Une fois par jour à 12:15
  */
 export function startProspectNotificationsCron() {
-  // Cron expression: 0 * * * * = Toutes les heures à la minute 0
-  cron.schedule('0 * * * *', async () => {
-    console.log('⏰ [CRON] Démarrage vérification notifications prospects');
+  // Cron expression: 15 12 * * * = Tous les jours à 12:15
+  cron.schedule('15 12 * * *', async () => {
+    console.log('⏰ [CRON] Démarrage vérification notifications prospects (quotidien 12:15)');
     await checkProspectsReadyForEmailing();
-    await checkHighPriorityProspects();
   }, {
     timezone: 'Europe/Paris'
   });
 
-  console.log('✅ Cron job notifications prospects activé (toutes les heures)');
+  console.log('✅ Cron job notifications prospects activé (tous les jours à 12:15)');
 }
 
 /**
