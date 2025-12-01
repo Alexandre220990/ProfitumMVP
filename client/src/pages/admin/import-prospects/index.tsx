@@ -321,12 +321,12 @@ export default function ImportProspects() {
                       {field.required && <span className="text-red-600 ml-1">*</span>}
                     </Label>
                     <Select
-                      value={mapping[field.value]?.excelColumn || ''}
+                      value={mapping[field.value]?.excelColumn || '__none__'}
                       onValueChange={(value) => {
                         setMapping({
                           ...mapping,
                           [field.value]: {
-                            excelColumn: value,
+                            excelColumn: value === '__none__' ? '' : value,
                             defaultValue: field.value === 'source' ? 'import_csv' : undefined
                           }
                         });
@@ -336,7 +336,7 @@ export default function ImportProspects() {
                         <SelectValue placeholder="Sélectionner une colonne" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Aucune colonne</SelectItem>
+                        <SelectItem value="__none__">Aucune colonne</SelectItem>
                         {fileData.columns.map((col) => (
                           <SelectItem key={col} value={col}>
                             {col}
