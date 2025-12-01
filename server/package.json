@@ -60,6 +60,7 @@
     "node-cron": "^4.2.1",
     "node-fetch": "^2.7.0",
     "nodemailer": "^7.0.5",
+    "openai": "^4.0.0",
     "pdfkit": "^0.17.1",
     "pg": "^8.11.3",
     "pizzip": "^3.2.0",
