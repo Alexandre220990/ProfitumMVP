@@ -211,6 +211,11 @@ export default function ProspectionAdmin() {
   const [showAIContextModal, setShowAIContextModal] = useState(false);
   const [aiContext, setAiContext] = useState('');
   const [generatingAI, setGeneratingAI] = useState(false);
+  
+  // États pour la génération IA des séquences génériques
+  const [showAIContextModalGeneric, setShowAIContextModalGeneric] = useState(false);
+  const [aiContextGeneric, setAiContextGeneric] = useState('');
+  const [generatingAIGeneric, setGeneratingAIGeneric] = useState(false);
 
   // Charger les données
   useEffect(() => {
@@ -785,6 +790,108 @@ export default function ProspectionAdmin() {
     }
   };
 
+  // Fonctions pour la génération IA des séquences génériques
+  const openAIContextModalGeneric = () => {
+    if (sequenceForm.steps.length === 0) {
+      toast.error('Veuillez d\'abord ajouter au moins un email à la séquence');
+      return;
+    }
+    setShowAIContextModalGeneric(true);
+  };
+
+  const generateAIGenericSequence = async () => {
+    if (sequenceForm.steps.length === 0) {
+      toast.error('Veuillez d\'abord ajouter au moins un email à la séquence');
+      return;
+    }
+
+    try {
+      setGeneratingAIGeneric(true);
+      setShowAIContextModalGeneric(false);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+
+      // Pour une séquence générique, on n'a pas de prospect spécifique
+      // On utilise des informations génériques
+      const prospectInfo = {
+        company_name: 'entreprise cible',
+        firstname: 'décisionnaire',
+        lastname: '',
+        email: 'email@entreprise.com'
+      };
+
+      // Préparer les étapes avec leurs délais
+      const steps = sequenceForm.steps.map(step => ({
+        stepNumber: step.stepNumber,
+        delayDays: step.delayDays
+      }));
+
+      const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-sequence`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prospectInfo,
+          steps,
+          context: aiContextGeneric.trim() || undefined
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        toast.error(result.error || 'Erreur lors de la génération par IA');
+        return;
+      }
+
+      // Mettre à jour tous les sujets et corps des emails
+      const updatedSteps = sequenceForm.steps.map(step => {
+        const generatedStep = result.data.steps.find((gs: any) => gs.stepNumber === step.stepNumber);
+        if (generatedStep) {
+          return {
+            ...step,
+            subject: generatedStep.subject,
+            body: generatedStep.body
+          };
+        }
+        return step;
+      });
+
+      setSequenceForm({
+        ...sequenceForm,
+        steps: updatedSteps
+      });
+
+      toast.success('Séquence générée par IA avec succès !');
+      setAiContextGeneric(''); // Réinitialiser le contexte après génération
+    } catch (error: any) {
+      console.error('Erreur génération IA:', error);
+      toast.error('Erreur lors de la génération par IA');
+    } finally {
+      setGeneratingAIGeneric(false);
+    }
+  };
+
+  const loadTemplateSequence = (sequence: any) => {
+    const steps = (sequence.prospect_email_sequence_steps || [])
+      .sort((a: any, b: any) => a.step_number - b.step_number)
+      .map((step: any, index: number) => ({
+        stepNumber: index + 1,
+        delayDays: step.delay_days,
+        subject: step.subject,
+        body: step.body
+      }));
+
+    setSequenceForm({
+      name: sequence.name,
+      description: sequence.description || '',
+      steps: steps
+    });
+    
+    toast.success(`Séquence "${sequence.name}" chargée dans le formulaire`);
+  };
+
   const saveCurrentProspectSequence = () => {
     const currentProspect = getCurrentProspect();
     if (!currentProspect) return;
@@ -930,7 +1037,7 @@ export default function ProspectionAdmin() {
     }
   };
 
-  const handleCreateSequence = () => {
+  const handleCreateSequence = async () => {
     setEditingSequence(null);
     setSequenceForm({
       name: '',
@@ -941,6 +1048,8 @@ export default function ProspectionAdmin() {
         { stepNumber: 3, delayDays: 7, subject: '', body: '' }
       ]
     });
+    // Charger les séquences sauvegardées pour les templates
+    await fetchSavedSequences();
     setShowSequenceForm(true);
   };
 
@@ -3050,8 +3159,81 @@ export default function ProspectionAdmin() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal Contexte pour Génération IA - Séquences Génériques */}
+      <Dialog open={showAIContextModalGeneric} onOpenChange={setShowAIContextModalGeneric}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Générer par IA - Contexte du mailing</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="ai-context-generic">
+                Contexte du mailing (optionnel)
+              </Label>
+              <Textarea
+                id="ai-context-generic"
+                value={aiContextGeneric}
+                onChange={(e) => setAiContextGeneric(e.target.value)}
+                placeholder="Précisez des éléments spécifiques, s'il s'agit d'une relance particulière, d'une demande particulière, le type d'entreprise cible, etc. Ce contexte sera ajouté au prompt système pour personnaliser davantage les emails générés."
+                className="mt-2 min-h-[150px]"
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                Si ce champ reste vide, les emails seront générés avec le prompt système standard pour une séquence générique.
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-3 rounded-lg space-y-1">
+              <div className="text-sm font-medium text-gray-700">Séquence générique :</div>
+              <div className="text-sm text-gray-600">
+                Cette séquence sera utilisable comme template pour tous les prospects. Les emails seront générés de manière générique mais professionnelle.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAIContextModalGeneric(false);
+                  setAiContextGeneric('');
+                }}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={generateAIGenericSequence}
+                disabled={generatingAIGeneric}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {generatingAIGeneric ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Génération en cours...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Générer la séquence
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal Création/Édition de Séquence */}
-      <Dialog open={showSequenceForm} onOpenChange={setShowSequenceForm}>
+      <Dialog 
+        open={showSequenceForm} 
+        onOpenChange={(open) => {
+          setShowSequenceForm(open);
+          // S'assurer qu'on reste sur le bon tab quand on ferme le modal
+          if (!open && activeTab === 'sequences') {
+            // Garder le tab sequences actif
+            setSearchParams({ tab: 'sequences' });
+          }
+        }}
+      >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -3089,14 +3271,57 @@ export default function ProspectionAdmin() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <Label className="text-base font-semibold">Emails de la séquence</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={addStepToForm}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Ajouter un email
-                </Button>
+                <div className="flex gap-2">
+                  {savedSequences.length > 0 && (
+                    <Select
+                      onValueChange={(value) => {
+                        const sequence = savedSequences.find(s => s.id === value);
+                        if (sequence) {
+                          loadTemplateSequence(sequence);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-auto min-w-[200px]">
+                        <SelectValue placeholder="Utiliser template existant" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {savedSequences.map((sequence) => (
+                          <SelectItem key={sequence.id} value={sequence.id}>
+                            <FileText className="h-3 w-3 inline mr-2" />
+                            {sequence.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openAIContextModalGeneric}
+                    disabled={generatingAIGeneric || sequenceForm.steps.length === 0}
+                    className="bg-purple-50 hover:bg-purple-100 border-purple-300"
+                  >
+                    {generatingAIGeneric ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                        Génération...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-1" />
+                        Générer par IA
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addStepToForm}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajouter un email
+                  </Button>
+                </div>
               </div>
               <div className="space-y-4">
                 {sequenceForm.steps.map((step, index) => (
