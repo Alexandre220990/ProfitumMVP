@@ -202,23 +202,37 @@ router.get(['/conversations', '/expert/conversations'], async (req, res) => {
 
             // Récupérer les infos utilisateur selon le type et les nouvelles colonnes métier
             let userData = null;
+            let participantType: 'client' | 'expert' | 'admin' | 'apporteur' = 'client';
             
             // Utiliser les colonnes métier si disponibles
             if (conv.client_id && participantId === conv.client_id) {
+              participantType = 'client';
               const { data } = await supabaseAdmin
                 .from('Client')
-                .select('id, name, email, company_name, is_active')
+                .select('id, first_name, last_name, email, company_name, is_active')
                 .eq('id', conv.client_id)
                 .single();
-              userData = data;
+              if (data) {
+                userData = {
+                  ...data,
+                  name: data.company_name || `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.email
+                };
+              }
             } else if (conv.expert_id && participantId === conv.expert_id) {
+              participantType = 'expert';
               const { data } = await supabaseAdmin
                 .from('Expert')
-                .select('id, name, email, company_name, is_active')
+                .select('id, first_name, last_name, email, company_name, is_active')
                 .eq('id', conv.expert_id)
                 .single();
-              userData = data;
+              if (data) {
+                userData = {
+                  ...data,
+                  name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.company_name || data.email
+                };
+              }
             } else if (conv.apporteur_id && participantId === conv.apporteur_id) {
+              participantType = 'apporteur';
               const { data } = await supabaseAdmin
                 .from('ApporteurAffaires')
                 .select('id, first_name, last_name, email, company_name, is_active')
@@ -227,25 +241,44 @@ router.get(['/conversations', '/expert/conversations'], async (req, res) => {
               if (data) {
                 userData = {
                   ...data,
-                  name: `${data.first_name} ${data.last_name}`
+                  name: data.company_name || `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.email
                 };
               }
+            } else if (participantId === '00000000-0000-0000-0000-000000000000') {
+              participantType = 'admin';
             } else {
               // Fallback: chercher dans toutes les tables
               const [clientRes, expertRes, apporteurRes] = await Promise.all([
-                supabaseAdmin.from('Client').select('id, name, email, company_name, is_active').eq('id', participantId).maybeSingle(),
-                supabaseAdmin.from('Expert').select('id, name, email, company_name, is_active').eq('id', participantId).maybeSingle(),
+                supabaseAdmin.from('Client').select('id, first_name, last_name, email, company_name, is_active').eq('id', participantId).maybeSingle(),
+                supabaseAdmin.from('Expert').select('id, first_name, last_name, email, company_name, is_active').eq('id', participantId).maybeSingle(),
                 supabaseAdmin.from('ApporteurAffaires').select('id, first_name, last_name, email, company_name, is_active').eq('id', participantId).maybeSingle()
               ]);
               
-              userData = clientRes.data || expertRes.data || 
-                (apporteurRes.data ? { ...apporteurRes.data, name: `${apporteurRes.data.first_name} ${apporteurRes.data.last_name}` } : null);
+              if (clientRes.data) {
+                participantType = 'client';
+                userData = {
+                  ...clientRes.data,
+                  name: clientRes.data.company_name || `${clientRes.data.first_name || ''} ${clientRes.data.last_name || ''}`.trim() || clientRes.data.email
+                };
+              } else if (expertRes.data) {
+                participantType = 'expert';
+                userData = {
+                  ...expertRes.data,
+                  name: `${expertRes.data.first_name || ''} ${expertRes.data.last_name || ''}`.trim() || expertRes.data.company_name || expertRes.data.email
+                };
+              } else if (apporteurRes.data) {
+                participantType = 'apporteur';
+                userData = {
+                  ...apporteurRes.data,
+                  name: apporteurRes.data.company_name || `${apporteurRes.data.first_name || ''} ${apporteurRes.data.last_name || ''}`.trim() || apporteurRes.data.email
+                };
+              }
             }
 
             return {
               id: participantId,
               name: userData?.name || 'Utilisateur',
-              type: authUser.type === 'client' ? 'expert' : 'client',
+              type: participantType,
               company: userData?.company_name,
               is_active: userData?.is_active !== false,
               avatar: null

@@ -86,6 +86,12 @@ const getPrimaryParticipant = (conversation: Conversation) => {
 };
 
 const formatConversationLabel = (conversation: Conversation): string => {
+  // ✅ FIX: Utiliser otherParticipant si disponible (pour les conversations admin)
+  if (conversation.otherParticipant?.name) {
+    return conversation.otherParticipant.name;
+  }
+
+  // Sinon, utiliser participants
   const participant = getPrimaryParticipant(conversation);
 
   if (participant) {
