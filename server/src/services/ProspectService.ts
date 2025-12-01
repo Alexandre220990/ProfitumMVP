@@ -1,621 +1,872 @@
 import { createClient } from '@supabase/supabase-js';
-import { 
-    ProspectFormData, 
-    ProspectResponse, 
-    ProspectFilters, 
-    ApiResponse,
-    CreateProspectResponse 
-} from '../types/apporteur';
-import { PasswordService } from './PasswordService';
-import { EmailService } from './EmailService';
-import { RDVService } from './RDVService';
-import { getExchangeEmailTemplate, getPresentationEmailTemplate } from '../templates/prospect-emails';
+import {
+  Prospect,
+  ProspectEmail,
+  CreateProspectInput,
+  UpdateProspectInput,
+  CreateProspectEmailInput,
+  UpdateProspectEmailInput,
+  ProspectFilters,
+  ProspectListResponse,
+  ProspectStats,
+  ApiResponse,
+  EnrichmentStatus,
+  AIStatus,
+  EmailingStatus
+} from '../types/prospects';
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export class ProspectService {
-    
-    // ===== CRÉATION PROSPECT =====
-    static async createProspect(apporteurId: string, prospectData: any): Promise<CreateProspectResponse> {
-        try {
-            console.log('🔍 ProspectService.createProspect - Données reçues:', prospectData);
-            console.log('🔍 ProspectService.createProspect - ApporteurId:', apporteurId);
-
-            // Validation des données obligatoires
-            if (!prospectData.company_name || !prospectData.name || !prospectData.email || !prospectData.phone_number) {
-                throw new Error('Données obligatoires manquantes (nom entreprise, nom, email, téléphone)');
-            }
-
-            // ÉTAPE 1: Générer un mot de passe provisoire sécurisé
-            console.log('🔐 Génération du mot de passe provisoire...');
-            const { plainPassword, hashedPassword } = await PasswordService.generateAndHashTemporaryPassword();
-            console.log('✅ Mot de passe provisoire généré (format: XXX-XXX-XXX)');
-
-            // ÉTAPE 2: Créer le compte Supabase Auth
-            console.log('👤 Création du compte Supabase Auth...');
-            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-                email: prospectData.email,
-                password: plainPassword,
-                email_confirm: true, // Email automatiquement confirmé
-                user_metadata: {
-                    name: prospectData.name,
-                    company_name: prospectData.company_name,
-                    phone_number: prospectData.phone_number,
-                    type: 'client',
-                    created_by: 'apporteur',
-                    apporteur_id: apporteurId,
-                    requires_password_change: true // Changement obligatoire à la première connexion
-                }
-            });
-
-            if (authError) {
-                console.error('❌ Erreur création compte Auth:', authError);
-                
-                // Si l'utilisateur existe déjà, on récupère son ID
-                if (authError.message.includes('already registered')) {
-                    throw new Error(`Un compte existe déjà avec l'email ${prospectData.email}. Veuillez utiliser un autre email.`);
-                }
-                throw authError;
-            }
-
-            if (!authData.user) {
-                throw new Error('Aucun utilisateur créé par Supabase Auth');
-            }
-
-            console.log('✅ Compte Supabase Auth créé:', authData.user.id);
-
-            // ÉTAPE 3: Créer le prospect dans la table Client avec status = 'prospect'
-            // ⚠️ SÉCURITÉ : Le mot de passe est UNIQUEMENT géré par Supabase Auth
-            // On stocke UNIQUEMENT temp_password pour l'envoi de l'email de bienvenue
-            const clientData = {
-                // Auth
-                auth_user_id: authData.user.id,
-                email: prospectData.email,
-                password: hashedPassword, // ✅ Ajouter le mot de passe haché pour satisfaire la contrainte NOT NULL
-                type: 'client', // Type = client (sera prospect via status)
-                
-                // Informations entreprise
-                company_name: prospectData.company_name,
-                siren: prospectData.siren || null,
-                address: prospectData.address || null,
-                website: prospectData.website || null,
-                
-                // Décisionnaire
-                name: prospectData.name,
-                phone_number: prospectData.phone_number,
-                decision_maker_position: prospectData.decision_maker_position || null,
-                
-                // Qualification
-                qualification_score: prospectData.qualification_score || 5,
-                interest_level: prospectData.interest_level || 'medium',
-                budget_range: prospectData.budget_range || '10k-50k',
-                timeline: prospectData.timeline || '1-3months',
-                
-                // Métadonnées
-                source: prospectData.source || 'apporteur',
-                notes: prospectData.notes || null,
-                status: 'prospect', // IMPORTANT: Marquer comme prospect
-                apporteur_id: apporteurId,
-                temp_password: plainPassword, // Stocker temporairement UNIQUEMENT pour l'email (sera supprimé après envoi)
-                
-                // Timestamps
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            };
-
-            console.log('📊 ProspectService.createProspect - Données à insérer dans Client');
-
-            const { data: prospect, error: clientError } = await supabase
-                .from('Client')
-                .insert(clientData)
-                .select('*')
-                .single();
-
-            if (clientError) {
-                console.error('❌ ProspectService.createProspect - Erreur Supabase:', clientError);
-                
-                // Supprimer le compte Auth si la création du Client échoue
-                console.log('🗑️ Suppression du compte Auth suite à l\'erreur...');
-                await supabase.auth.admin.deleteUser(authData.user.id);
-                
-                throw clientError;
-            }
-
-            console.log('✅ ProspectService.createProspect - Prospect créé:', prospect.id);
-
-            // Gérer les produits sélectionnés si présents
-            if (prospectData.selected_products && prospectData.selected_products.length > 0) {
-                console.log('🔍 ProspectService.createProspect - Gestion des produits sélectionnés');
-                const selectedProducts = prospectData.selected_products.filter((p: any) => p.selected);
-                
-                if (selectedProducts.length > 0) {
-                    const productLinks = selectedProducts.map((p: any) => ({
-                        clientId: prospect.id, // camelCase !
-                        produitId: p.id, // camelCase !
-                        notes: p.notes || null,
-                        priorite: p.priority === 'high' ? 1 : p.priority === 'low' ? 3 : 2, // Conversion priorité en nombre
-                        statut: 'eligible', // Statut par défaut
-                        montantFinal: p.estimated_amount || null, // Utiliser montantFinal
-                        metadata: {
-                            source: 'apporteur',
-                            priority_label: p.priority || 'medium',
-                            success_probability: p.success_probability || 50,
-                            created_by_apporteur: apporteurId
-                        },
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    console.log('📊 Produits à insérer:', JSON.stringify(productLinks, null, 2));
-
-                    const { error: productsError } = await supabase
-                        .from('ClientProduitEligible')
-                        .insert(productLinks);
-
-                    if (productsError) {
-                        console.error('⚠️ Erreur liaison produits:', productsError);
-                        console.error('Details:', JSON.stringify(productsError, null, 2));
-                        // On ne bloque pas la création du prospect
-                    } else {
-                        console.log(`✅ ${productLinks.length} produit(s) lié(s) au prospect`);
-                    }
-                }
-            }
-
-            // Gérer le RDV si présent
-            if (prospectData.meeting_type && prospectData.scheduled_date && prospectData.scheduled_time) {
-                console.log('🔍 ProspectService.createProspect - Création du RDV');
-                
-                try {
-                    // Utiliser le RDVService pour créer le RDV
-                    const rdv = await RDVService.createRDV({
-                        client_id: prospect.id,
-                        expert_id: prospectData.preselected_expert_id || null,
-                        apporteur_id: apporteurId,
-                        meeting_type: prospectData.meeting_type,
-                        scheduled_date: prospectData.scheduled_date,
-                        scheduled_time: prospectData.scheduled_time,
-                        duration_minutes: 60,
-                        location: prospectData.location,
-                        meeting_url: prospectData.meeting_url,
-                        title: `RDV Prospect - ${prospectData.company_name}`,
-                        notes: `Rendez-vous avec ${prospectData.name} (${prospectData.email})${prospectData.preselected_expert_id ? '\nExpert présélectionné inclus' : ''}`,
-                        source: 'apporteur',
-                        category: 'prospect',
-                        priority: 3, // High priority
-                        created_by: apporteurId,
-                        metadata: {
-                            prospect_name: prospectData.name,
-                            company_name: prospectData.company_name
-                        }
-                    });
-                    
-                    console.log('✅ RDV créé:', rdv.id);
-                    console.log('   - Client/Prospect:', prospect.id);
-                    console.log('   - Apporteur:', apporteurId);
-                    if (prospectData.preselected_expert_id) {
-                        console.log('   - Expert présélectionné:', prospectData.preselected_expert_id);
-                    }
-                } catch (rdvError) {
-                    console.error('⚠️ Erreur création RDV:', rdvError);
-                    // On ne bloque pas la création du prospect
-                }
-            }
-
-            return {
-                prospect: {
-                    ...prospect,
-                    temporaryPassword: plainPassword // Inclure le mot de passe pour l'email (ne sera jamais affiché à l'apporteur dans l'UI)
-                },
-                notification_sent: false,
-                expert_notified: false
-            };
-
-        } catch (error) {
-            console.error('❌ ProspectService.createProspect - Erreur:', error);
-            throw new Error(`Erreur lors de la création du prospect: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
-        }
-    }
-
-    // ===== RÉCUPÉRATION PROSPECTS =====
-    static async getProspects(apporteurId: string, filters: ProspectFilters = {}): Promise<ApiResponse<ProspectResponse[]>> {
-        try {
-            const { page = 1, limit = 20, status, interest_level, budget_range, timeline, expert_id, source, date_from, date_to } = filters;
-            const offset = (page - 1) * limit;
-
-            let query = supabase
-                .from('Client')
-                .select('*')
-                .eq('apporteur_id', apporteurId)
-                .eq('status', 'prospect') // IMPORTANT: Récupérer seulement les prospects
-                .order('created_at', { ascending: false })
-                .range(offset, offset + limit - 1);
-
-            // Filtres
-            if (status) {
-                query = query.eq('status', status);
-            }
-
-            if (interest_level) {
-                query = query.eq('interest_level', interest_level);
-            }
-
-            if (budget_range) {
-                query = query.eq('budget_range', budget_range);
-            }
-
-            if (timeline) {
-                query = query.eq('timeline', timeline);
-            }
-
-            if (expert_id) {
-                query = query.eq('preselected_expert_id', expert_id);
-            }
-
-            if (source) {
-                query = query.eq('source', source);
-            }
-
-            if (date_from) {
-                query = query.gte('created_at', date_from);
-            }
-
-            if (date_to) {
-                query = query.lte('created_at', date_to);
-            }
-
-            const { data: prospects, error, count } = await query;
-
-            if (error) throw error;
-
-            return {
-                success: true,
-                data: prospects || [],
-                pagination: {
-                    page,
-                    limit,
-                    total: count || 0,
-                    total_pages: Math.ceil((count || 0) / limit)
-                }
-            };
-
-        } catch (error) {
-            console.error('Erreur getProspects:', error);
-            return {
-                success: false,
-                error: 'Erreur lors de la récupération des prospects'
-            };
-        }
-    }
-
-    // ===== DÉTAILS PROSPECT =====
-    static async getProspectById(prospectId: string): Promise<ProspectResponse> {
-        try {
-            const { data: prospect, error } = await supabase
-                .from('Client')
-                .select('*')
-                .eq('id', prospectId)
-                .eq('status', 'prospect') // IMPORTANT: Vérifier que c'est bien un prospect
-                .single();
-
-            if (error) throw error;
-            if (!prospect) throw new Error('Prospect non trouvé');
-
-            return prospect as any; // Cast temporaire
-
-        } catch (error) {
-            console.error('Erreur getProspectById:', error);
-            throw new Error('Erreur lors de la récupération du prospect');
-        }
-    }
-
-    // ===== MISE À JOUR PROSPECT =====
-    static async updateProspect(prospectId: string, updateData: any): Promise<ProspectResponse> {
-        try {
-            console.log('🔍 ProspectService.updateProspect - ID:', prospectId);
-            console.log('🔍 ProspectService.updateProspect - Données:', updateData);
-
-            const { data: prospect, error } = await supabase
-                .from('Client')
-                .update({
-                    ...updateData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', prospectId)
-                .eq('status', 'prospect') // IMPORTANT: Vérifier que c'est bien un prospect
-                .select('*')
-                .single();
-
-            if (error) throw error;
-            if (!prospect) throw new Error('Prospect non trouvé');
-
-            console.log('✅ ProspectService.updateProspect - Prospect mis à jour:', prospect.id);
-            return prospect as any; // Cast temporaire
-
-        } catch (error) {
-            console.error('❌ ProspectService.updateProspect - Erreur:', error);
-            throw new Error(`Erreur lors de la mise à jour du prospect: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
-        }
-    }
-
-    // ===== SUPPRESSION PROSPECT =====
-    static async deleteProspect(prospectId: string): Promise<void> {
-        try {
-            console.log('🔍 ProspectService.deleteProspect - ID:', prospectId);
-
-            const { error } = await supabase
-                .from('Client')
-                .delete()
-                .eq('id', prospectId)
-                .eq('status', 'prospect'); // IMPORTANT: Vérifier que c'est bien un prospect
-
-            if (error) throw error;
-
-            console.log('✅ ProspectService.deleteProspect - Prospect supprimé:', prospectId);
-
-        } catch (error) {
-            console.error('❌ ProspectService.deleteProspect - Erreur:', error);
-            throw new Error(`Erreur lors de la suppression du prospect: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
-        }
-    }
-
-    // ===== CONVERSION PROSPECT → CLIENT =====
-    static async convertProspectToClient(prospectId: string, apporteurId: string): Promise<{ client_id: string; prospect_id: string }> {
-        try {
-            // Vérifier que le prospect appartient à l'apporteur
-            const { data: prospect, error: prospectError } = await supabase
-                .from('Prospect')
-                .select('*')
-                .eq('id', prospectId)
-                .eq('apporteur_id', apporteurId)
-                .single();
-
-            if (prospectError || !prospect) {
-                throw new Error('Prospect non trouvé ou non autorisé');
-            }
-
-            // Créer le client
-            const { data: client, error: clientError } = await supabase
-                .from('Client')
-                .insert({
-                    name: `${prospect.decision_maker_first_name} ${prospect.decision_maker_last_name}`,
-                    email: prospect.decision_maker_email,
-                    phone: prospect.decision_maker_phone,
-                    company_name: prospect.company_name,
-                    siren: prospect.siren,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .select('id')
-                .single();
-
-            if (clientError) throw clientError;
-
-            // Enregistrer la conversion
-            const { error: conversionError } = await supabase
-                .from('ProspectConversion')
-                .insert({
-                    prospect_id: prospectId,
-                    client_id: client.id,
-                    converted_at: new Date().toISOString(),
-                    conversion_notes: 'Conversion automatique depuis prospect'
-                });
-
-            if (conversionError) throw conversionError;
-
-            // Marquer le prospect comme converti
-            const { error: updateError } = await supabase
-                .from('Prospect')
-                .update({ 
-                    status: 'converted',
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', prospectId);
-
-            if (updateError) throw updateError;
-
-            return {
-                client_id: client.id,
-                prospect_id: prospectId
-            };
-
-        } catch (error) {
-            console.error('Erreur convertProspectToClient:', error);
-            throw new Error('Erreur lors de la conversion du prospect');
-        }
-    }
-
-    // ===== NOTIFICATION EXPERT =====
-    static async notifyExpertNewProspect(expertId: string, prospectId: string, apporteurId: string): Promise<{ success: boolean; notification_id?: string }> {
-        try {
-            const { data: notification, error } = await supabase
-                .from('ExpertNotification')
-                .insert({
-                    expert_id: expertId,
-                    prospect_id: prospectId,
-                    apporteur_id: apporteurId,
-                    notification_type: 'prospect_preselected',
-                    title: 'Nouveau prospect présélectionné pour vous',
-                    message: 'Un apporteur d\'affaires vous a présélectionné pour un prospect chaud. Voulez-vous accepter ?',
-                    priority: 'high'
-                })
-                .select('id')
-                .single();
-
-            if (error) throw error;
-
-            // Mettre à jour le statut du prospect
-            await supabase
-                .from('Prospect')
-                .update({ 
-                    status: 'expert_assigned',
-                    expert_contacted_at: new Date().toISOString()
-                })
-                .eq('id', prospectId);
-
-            return {
-                success: true,
-                notification_id: notification.id
-            };
-
-        } catch (error) {
-            console.error('Erreur notifyExpertNewProspect:', error);
-            return {
-                success: false
-            };
-        }
-    }
-
-    // ===== VALIDATION =====
-    private static validateProspectData(data: any): { isValid: boolean; errors: string[] } {
-        const errors: string[] = [];
-
-        if (data.company_name !== undefined && (!data.company_name || data.company_name.trim().length === 0)) {
-            errors.push('Le nom de l\'entreprise est requis');
-        }
-
-        if (data.decision_maker_first_name !== undefined && (!data.decision_maker_first_name || data.decision_maker_first_name.trim().length === 0)) {
-            errors.push('Le prénom du décisionnaire est requis');
-        }
-
-        if (data.decision_maker_last_name !== undefined && (!data.decision_maker_last_name || data.decision_maker_last_name.trim().length === 0)) {
-            errors.push('Le nom du décisionnaire est requis');
-        }
-
-        if (data.decision_maker_email !== undefined) {
-            if (!data.decision_maker_email || !this.isValidEmail(data.decision_maker_email)) {
-                errors.push('L\'email du décisionnaire est requis et doit être valide');
-            }
-        }
-
-        if (data.decision_maker_phone !== undefined && (!data.decision_maker_phone || data.decision_maker_phone.trim().length === 0)) {
-            errors.push('Le téléphone du décisionnaire est requis');
-        }
-
-        if (data.qualification_score !== undefined && (data.qualification_score < 1 || data.qualification_score > 10)) {
-            errors.push('Le score de qualification doit être entre 1 et 10');
-        }
-
-        if (data.siren !== undefined && data.siren && !this.isValidSiren(data.siren)) {
-            errors.push('Le SIREN doit contenir exactement 9 chiffres');
-        }
-
+  
+  // ===== CRUD PROSPECTS =====
+  
+  /**
+   * Crée un nouveau prospect
+   */
+  static async createProspect(input: CreateProspectInput): Promise<ApiResponse<Prospect>> {
+    try {
+      const prospectData = {
+        email: input.email,
+        source: input.source,
+        email_validity: input.email_validity || null,
+        firstname: input.firstname || null,
+        lastname: input.lastname || null,
+        company_name: input.company_name || null,
+        siren: input.siren || null,
+        enrichment_status: 'pending' as EnrichmentStatus,
+        ai_status: 'pending' as AIStatus,
+        emailing_status: 'pending' as EmailingStatus,
+        score_priority: 0,
+        metadata: input.metadata || {}
+      };
+
+      const { data, error } = await supabase
+        .from('prospects')
+        .insert(prospectData)
+        .select()
+        .single();
+
+      if (error) {
         return {
-            isValid: errors.length === 0,
-            errors
+          success: false,
+          error: `Erreur création prospect: ${error.message}`
         };
+      }
+
+      return {
+        success: true,
+        data: data as Prospect
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue lors de la création du prospect'
+      };
     }
+  }
 
-    /**
-     * Envoie les identifiants de connexion au prospect par email
-     * @param prospectId ID du prospect
-     * @param emailType Type d'email ('exchange' ou 'presentation')
-     * @param apporteurId ID de l'apporteur qui a créé le prospect
-     */
-    static async sendProspectCredentials(
-        prospectId: string,
-        emailType: 'exchange' | 'presentation',
-        apporteurId: string
-    ): Promise<{ success: boolean; message: string }> {
-        try {
-            console.log(`📧 Envoi des identifiants au prospect ${prospectId}...`);
+  /**
+   * Récupère un prospect par ID
+   */
+  static async getProspectById(id: string): Promise<ApiResponse<Prospect>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospects')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-            // Récupérer les données du prospect
-            const { data: prospect, error: prospectError } = await supabase
-                .from('Client')
-                .select('id, name, email, company_name, temp_password, status')
-                .eq('id', prospectId)
-                .eq('status', 'prospect')
-                .single();
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération prospect: ${error.message}`
+        };
+      }
 
-            if (prospectError || !prospect) {
-                throw new Error('Prospect non trouvé');
-            }
+      return {
+        success: true,
+        data: data as Prospect
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
 
-            if (!prospect.temp_password) {
-                throw new Error('Aucun mot de passe provisoire disponible pour ce prospect');
-            }
+  /**
+   * Liste les prospects avec filtres et pagination
+   */
+  static async listProspects(filters: ProspectFilters = {}): Promise<ApiResponse<ProspectListResponse>> {
+    try {
+      const {
+        page = 1,
+        limit = 20,
+        source,
+        email_validity,
+        enrichment_status,
+        ai_status,
+        emailing_status,
+        search,
+        min_score_priority,
+        has_siren,
+        has_sequences,
+        sort_by = 'created_at',
+        sort_order = 'desc'
+      } = filters;
 
-            // Récupérer les données de l'apporteur
-            const { data: apporteur, error: apporteurError } = await supabase
-                .from('ApporteurAffaires')
-                .select('first_name, last_name, company_name, email')
-                .eq('id', apporteurId)
-                .single();
+      const offset = (page - 1) * limit;
 
-            if (apporteurError || !apporteur) {
-                throw new Error('Apporteur non trouvé');
-            }
+      // Si filtre sur séquences, on doit faire une sous-requête
+      let query = supabase
+        .from('prospects')
+        .select('*', { count: 'exact' });
 
-            const apporteurName = `${apporteur.first_name} ${apporteur.last_name}`;
-            const loginUrl = `${process.env.CLIENT_URL || 'https://www.profitum.app'}/login`;
+      // Application des filtres
+      if (source) {
+        query = query.eq('source', source);
+      }
+      if (email_validity) {
+        query = query.eq('email_validity', email_validity);
+      }
+      if (enrichment_status) {
+        query = query.eq('enrichment_status', enrichment_status);
+      }
+      if (ai_status) {
+        query = query.eq('ai_status', ai_status);
+      }
+      if (emailing_status) {
+        query = query.eq('emailing_status', emailing_status);
+      }
+      if (min_score_priority !== undefined) {
+        query = query.gte('score_priority', min_score_priority);
+      }
+      if (has_siren === true) {
+        query = query.not('siren', 'is', null);
+      }
+      // Note: Le filtre has_sequences sera géré après la requête principale
+      // car Supabase ne supporte pas facilement les sous-requêtes dans .in()
+      if (search) {
+        query = query.or(`email.ilike.%${search}%,firstname.ilike.%${search}%,lastname.ilike.%${search}%,company_name.ilike.%${search}%`);
+      }
 
-            // Préparer les données pour le template
-            const emailData = {
-                prospectName: prospect.name,
-                prospectEmail: prospect.email,
-                temporaryPassword: prospect.temp_password,
-                apporteurName,
-                apporteurCompany: apporteur.company_name || apporteurName,
-                loginUrl
-            };
+      // Tri
+      query = query.order(sort_by, { ascending: sort_order === 'asc' });
 
-            // Sélectionner le template approprié
-            const emailTemplate = emailType === 'exchange' 
-                ? getExchangeEmailTemplate(emailData)
-                : getPresentationEmailTemplate(emailData);
+      // Pagination (sans limite si filtre séquences, on filtrera après)
+      if (has_sequences === undefined) {
+        query = query.range(offset, offset + limit - 1);
+      }
 
-            // Envoyer l'email (via console.log pour l'instant, à remplacer par un vrai service d'email)
-            console.log('📧 Envoi email au prospect:', prospect.email);
-            console.log('   Sujet:', emailTemplate.subject);
-            console.log('   Type:', emailType);
-            
-            // TODO: Intégrer un vrai service d'email (SendGrid, Mailgun, AWS SES, etc.)
-            // Pour l'instant, on simule un envoi réussi
-            const emailSent = true;
+      const { data, error, count } = await query;
 
-            if (!emailSent) {
-                throw new Error('Échec de l\'envoi de l\'email');
-            }
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération prospects: ${error.message}`
+        };
+      }
 
-            // Supprimer le temp_password de la base de données après envoi réussi
-            const { error: updateError } = await supabase
-                .from('Client')
-                .update({ 
-                    temp_password: null,
-                    temp_password_sent_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', prospectId);
+      let filteredData = (data || []) as Prospect[];
+      let filteredCount = count || 0;
 
-            if (updateError) {
-                console.error('⚠️ Erreur suppression temp_password:', updateError);
-                // On ne bloque pas le succès de l'envoi
-            }
+      // Filtrer par séquences si demandé
+      if (has_sequences !== undefined) {
+        // Récupérer les IDs des prospects avec séquences programmées
+        const { data: scheduledData } = await supabase
+          .from('prospect_email_scheduled')
+          .select('prospect_id')
+          .in('status', ['scheduled', 'paused']);
 
-            console.log('✅ Email envoyé avec succès au prospect');
+        const prospectIdsWithSequences = new Set(
+          (scheduledData || []).map((d: any) => d.prospect_id)
+        );
 
-            return {
-                success: true,
-                message: `Email "${emailType === 'exchange' ? 'Échange concluant' : 'Présentation'}" envoyé à ${prospect.email}`
-            };
+        // Filtrer les données
+        filteredData = filteredData.filter((p: Prospect) => {
+          const hasSeq = prospectIdsWithSequences.has(p.id);
+          return has_sequences ? hasSeq : !hasSeq;
+        });
 
-        } catch (error) {
-            console.error('❌ Erreur envoi email prospect:', error);
-            return {
-                success: false,
-                message: error instanceof Error ? error.message : 'Erreur lors de l\'envoi de l\'email'
-            };
+        filteredCount = filteredData.length;
+
+        // Appliquer la pagination après filtrage
+        filteredData = filteredData.slice(offset, offset + limit);
+      }
+
+      return {
+        success: true,
+        data: {
+          data: filteredData,
+          total: filteredCount,
+          page,
+          limit,
+          total_pages: Math.ceil(filteredCount / limit)
         }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
     }
+  }
 
-    private static isValidEmail(email: string): boolean {
-        const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-        return emailRegex.test(email);
-    }
+  /**
+   * Met à jour un prospect
+   */
+  static async updateProspect(id: string, input: UpdateProspectInput): Promise<ApiResponse<Prospect>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospects')
+        .update(input)
+        .eq('id', id)
+        .select()
+        .single();
 
-    private static isValidSiren(siren: string): boolean {
-        const sirenRegex = /^[0-9]{9}$/;
-        return sirenRegex.test(siren);
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur mise à jour prospect: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: data as Prospect
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
     }
+  }
+
+  /**
+   * Supprime un prospect
+   */
+  static async deleteProspect(id: string): Promise<ApiResponse<void>> {
+    try {
+      const { error } = await supabase
+        .from('prospects')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur suppression prospect: ${error.message}`
+        };
+      }
+
+      return {
+        success: true
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  // ===== VUES UTILITAIRES =====
+
+  /**
+   * Récupère les prospects en attente d'enrichissement
+   */
+  static async getPendingEnrichment(): Promise<ApiResponse<Prospect[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospects_pending_enrichment')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: (data || []) as Prospect[]
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Récupère les prospects en attente de traitement IA
+   */
+  static async getPendingAI(): Promise<ApiResponse<Prospect[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospects_pending_ai')
+        .select('*')
+        .order('score_priority', { ascending: false })
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: (data || []) as Prospect[]
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Récupère les prospects prêts pour l'emailing
+   */
+  static async getReadyForEmailing(): Promise<ApiResponse<Prospect[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospects_ready_for_emailing')
+        .select('*')
+        .order('score_priority', { ascending: false });
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: (data || []) as Prospect[]
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Récupère les statistiques de prospection
+   */
+  static async getStats(): Promise<ApiResponse<ProspectStats>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospects_stats')
+        .select('*')
+        .single();
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération stats: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: data as ProspectStats
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  // ===== GESTION EMAILS =====
+
+  /**
+   * Crée un email pour un prospect
+   */
+  static async createProspectEmail(input: CreateProspectEmailInput): Promise<ApiResponse<ProspectEmail>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospects_emails')
+        .insert(input)
+        .select()
+        .single();
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur création email: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: data as ProspectEmail
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Récupère les emails d'un prospect
+   */
+  static async getProspectEmails(prospectId: string): Promise<ApiResponse<ProspectEmail[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospects_emails')
+        .select('*')
+        .eq('prospect_id', prospectId)
+        .order('step', { ascending: true });
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération emails: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: (data || []) as ProspectEmail[]
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Met à jour un email de prospect
+   */
+  static async updateProspectEmail(id: string, input: UpdateProspectEmailInput): Promise<ApiResponse<ProspectEmail>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospects_emails')
+        .update(input)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur mise à jour email: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: data as ProspectEmail
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  // ===== ACTIONS BULK =====
+
+  /**
+   * Crée plusieurs prospects en une seule requête
+   */
+  static async createBulkProspects(inputs: CreateProspectInput[]): Promise<ApiResponse<{ created: number; errors: string[] }>> {
+    try {
+      const prospectsData = inputs.map(input => ({
+        email: input.email,
+        source: input.source,
+        email_validity: input.email_validity || null,
+        firstname: input.firstname || null,
+        lastname: input.lastname || null,
+        company_name: input.company_name || null,
+        siren: input.siren || null,
+        enrichment_status: 'pending' as EnrichmentStatus,
+        ai_status: 'pending' as AIStatus,
+        emailing_status: 'pending' as EmailingStatus,
+        score_priority: 0,
+        metadata: input.metadata || {}
+      }));
+
+      const { data, error } = await supabase
+        .from('prospects')
+        .insert(prospectsData)
+        .select();
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur création bulk: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          created: data?.length || 0,
+          errors: []
+        }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Met à jour le statut d'enrichissement
+   */
+  static async updateEnrichmentStatus(id: string, status: EnrichmentStatus): Promise<ApiResponse<Prospect>> {
+    return this.updateProspect(id, { enrichment_status: status });
+  }
+
+  /**
+   * Met à jour le statut IA
+   */
+  static async updateAIStatus(id: string, status: AIStatus, aiData?: {
+    ai_summary?: string;
+    ai_trigger_points?: string;
+    ai_product_match?: Record<string, any>;
+    ai_email_personalized?: string;
+    score_priority?: number;
+  }): Promise<ApiResponse<Prospect>> {
+    return this.updateProspect(id, {
+      ai_status: status,
+      ...aiData
+    });
+  }
+
+  /**
+   * Met à jour le statut d'emailing
+   */
+  static async updateEmailingStatus(id: string, status: EmailingStatus): Promise<ApiResponse<Prospect>> {
+    return this.updateProspect(id, { emailing_status: status });
+  }
+
+  // ===== SÉQUENCES D'EMAILS =====
+
+  /**
+   * Crée une séquence d'emails (template)
+   */
+  static async createEmailSequence(input: {
+    name: string;
+    description?: string;
+    steps: Array<{
+      step_number: number;
+      delay_days: number;
+      subject: string;
+      body: string;
+    }>;
+  }): Promise<ApiResponse<{ sequence_id: string }>> {
+    try {
+      // Créer la séquence
+      const { data: sequence, error: seqError } = await supabase
+        .from('prospect_email_sequences')
+        .insert({
+          name: input.name,
+          description: input.description || null,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (seqError) {
+        return {
+          success: false,
+          error: `Erreur création séquence: ${seqError.message}`
+        };
+      }
+
+      // Créer les étapes
+      const stepsData = input.steps.map(step => ({
+        sequence_id: sequence.id,
+        step_number: step.step_number,
+        delay_days: step.delay_days,
+        subject: step.subject,
+        body: step.body,
+        is_active: true
+      }));
+
+      const { error: stepsError } = await supabase
+        .from('prospect_email_sequence_steps')
+        .insert(stepsData);
+
+      if (stepsError) {
+        // Nettoyer la séquence en cas d'erreur
+        await supabase.from('prospect_email_sequences').delete().eq('id', sequence.id);
+        return {
+          success: false,
+          error: `Erreur création étapes: ${stepsError.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: { sequence_id: sequence.id }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Programme une séquence pour un prospect
+   */
+  static async scheduleSequenceForProspect(
+    prospectId: string,
+    sequenceId: string,
+    startDate?: string
+  ): Promise<ApiResponse<{ scheduled_count: number }>> {
+    try {
+      // Récupérer la séquence et ses étapes
+      const { data: sequence, error: seqError } = await supabase
+        .from('prospect_email_sequences')
+        .select('*, prospect_email_sequence_steps(*)')
+        .eq('id', sequenceId)
+        .eq('is_active', true)
+        .single();
+
+      if (seqError || !sequence) {
+        return {
+          success: false,
+          error: `Séquence non trouvée: ${seqError?.message}`
+        };
+      }
+
+      const steps = sequence.prospect_email_sequence_steps || [];
+      if (steps.length === 0) {
+        return {
+          success: false,
+          error: 'La séquence ne contient aucune étape'
+        };
+      }
+
+      // Trier les étapes par step_number
+      const sortedSteps = steps.sort((a: any, b: any) => a.step_number - b.step_number);
+
+      // Calculer les dates d'envoi
+      const start = startDate ? new Date(startDate) : new Date();
+      const scheduledEmails = [];
+      let currentDate = new Date(start);
+
+      for (const step of sortedSteps) {
+        if (step.step_number > 1) {
+          // Ajouter le délai depuis l'étape précédente
+          currentDate = new Date(currentDate.getTime() + (step.delay_days * 24 * 60 * 60 * 1000));
+        }
+
+        scheduledEmails.push({
+          prospect_id: prospectId,
+          sequence_id: sequenceId,
+          step_number: step.step_number,
+          subject: step.subject,
+          body: step.body,
+          scheduled_for: currentDate.toISOString(),
+          status: 'scheduled'
+        });
+      }
+
+      // Insérer tous les emails programmés
+      const { data, error } = await supabase
+        .from('prospect_email_scheduled')
+        .insert(scheduledEmails)
+        .select();
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur programmation séquence: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: { scheduled_count: data?.length || 0 }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Récupère les emails programmés pour un prospect
+   */
+  static async getScheduledEmails(prospectId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospect_email_scheduled')
+        .select('*, prospect_email_sequences(name)')
+        .eq('prospect_id', prospectId)
+        .order('scheduled_for', { ascending: true });
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: data || []
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Récupère toutes les séquences disponibles
+   */
+  static async getEmailSequences(): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospect_email_sequences')
+        .select('*, prospect_email_sequence_steps(*)')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: data || []
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Annule un email programmé
+   */
+  static async cancelScheduledEmail(emailId: string, reason?: string): Promise<ApiResponse<void>> {
+    try {
+      const { error } = await supabase
+        .from('prospect_email_scheduled')
+        .update({
+          status: 'cancelled',
+          cancelled_reason: reason || 'Annulé manuellement',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', emailId);
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur annulation: ${error.message}`
+        };
+      }
+
+      return {
+        success: true
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Met à jour le délai d'un email programmé et recalcule les dates
+   */
+  static async updateScheduledEmailDelay(
+    emailId: string, 
+    delayDays: number
+  ): Promise<ApiResponse<void>> {
+    try {
+      // Récupérer l'email programmé pour avoir le prospect_id
+      const { data: scheduledEmail, error: fetchError } = await supabase
+        .from('prospect_email_scheduled')
+        .select('prospect_id')
+        .eq('id', emailId)
+        .single();
+
+      if (fetchError || !scheduledEmail) {
+        return {
+          success: false,
+          error: `Email programmé non trouvé: ${fetchError?.message}`
+        };
+      }
+
+      // Mettre à jour le délai
+      const { error: updateError } = await supabase
+        .from('prospect_email_scheduled')
+        .update({
+          delay_days_override: delayDays,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', emailId);
+
+      if (updateError) {
+        return {
+          success: false,
+          error: `Erreur mise à jour: ${updateError.message}`
+        };
+      }
+
+      // Recalculer les dates pour ce prospect
+      const { error: recalcError } = await supabase.rpc(
+        'recalculate_scheduled_emails_dates',
+        { prospect_uuid: scheduledEmail.prospect_id }
+      );
+
+      if (recalcError) {
+        console.error('Erreur recalcul dates:', recalcError);
+        // Ne pas échouer si le recalcul échoue, le délai a été mis à jour
+      }
+
+      return {
+        success: true
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
 }

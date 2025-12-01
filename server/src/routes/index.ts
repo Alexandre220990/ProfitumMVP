@@ -32,6 +32,8 @@ import unifiedMessagingRoutes from "./unified-messaging";
 import adminCandidaturesRoutes from "./admin-candidatures";
 import apporteurRegisterRoutes from "./apporteur-register";
 import manifestRoutes from "./manifest";
+import prospectsRoutes from "./prospects";
+import gmailRoutes from "./gmail";
 import { enhancedAuthMiddleware, requireUserType } from "../middleware/auth-enhanced";
 import * as fs from 'fs';
 import * as path from 'path';
@@ -112,6 +114,12 @@ router.use('/messaging', enhancedAuthMiddleware, unifiedMessagingRoutes);
 
 // Routes admin pour les candidatures
 router.use('/admin', enhancedAuthMiddleware, requireUserType('admin'), adminCandidaturesRoutes);
+
+// Routes prospects (admin uniquement)
+router.use('/api/prospects', enhancedAuthMiddleware, requireUserType('admin'), prospectsRoutes);
+
+// Routes Gmail (admin uniquement)
+router.use('/api/gmail', enhancedAuthMiddleware, requireUserType('admin'), gmailRoutes);
 
 // Routes pour les images statiques
 router.get('/avatar.png', (req, res) => {

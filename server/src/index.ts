@@ -106,6 +106,7 @@ import { startActionTypeRemindersCron } from './cron/action-type-reminders';
 import { startDailyActivityReportCron } from './cron/daily-activity-report';
 import { startNotificationEscalationCron } from './cron/notification-escalation';
 import { startRDVSlaRemindersCron } from './cron/rdv-sla-reminders';
+import { startGmailCheckerJob } from './jobs/gmail-checker';
 import routes from './routes';
 
 // Routes apporteurs d'affaires
@@ -852,6 +853,18 @@ server.listen(PORT, HOST, () => {
     // Rappels automatiques pour les RDV non traités selon les SLA (24h, 48h, 120h)
   } catch (error) {
     console.error('❌ Erreur démarrage cron job rappels SLA RDV:', error);
+  }
+
+  // Démarrer le job de vérification Gmail (si configuré)
+  try {
+    if (process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN) {
+      startGmailCheckerJob();
+    } else {
+      console.log('⚠️  Job vérification Gmail désactivé (credentials manquants)');
+      console.log('   Configurez GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET et GMAIL_REFRESH_TOKEN pour activer');
+    }
+  } catch (error) {
+    console.error('❌ Erreur démarrage job vérification Gmail:', error);
   }
   
   // monitoringSystem.recordAuditLog({

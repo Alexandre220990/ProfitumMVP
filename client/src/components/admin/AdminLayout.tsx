@@ -22,7 +22,8 @@ import {
   Building2,
   UserCircle,
   Target,
-  Upload
+  Upload,
+  Mail
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -90,6 +91,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: '/admin/cabinets',
       icon: Building2,
       current: location.pathname.includes('/admin/cabinets')
+    },
+    {
+      name: 'Prospection',
+      href: '/admin/prospection',
+      icon: Mail,
+      current: location.pathname.includes('/admin/prospection')
     },
     
     // Gestion
