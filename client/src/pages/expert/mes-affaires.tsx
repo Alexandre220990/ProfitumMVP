@@ -418,30 +418,69 @@ const ExpertMesAffaires = () => {
                         <span className="ml-3 text-gray-600">Chargement des dossiers...</span>
                       </div>
                     ) : dossiers.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Client</TableHead>
-                              <TableHead>Produit</TableHead>
-                              <TableHead>Montant</TableHead>
-                              <TableHead>Taux</TableHead>
-                              <TableHead>Statut</TableHead>
-                              <TableHead>Date création</TableHead>
-                              <TableHead>Dernière màj</TableHead>
-                              <TableHead>Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {dossiers.map((dossier) => (
-                              <TableRow key={dossier.id}>
-                                <TableCell className="font-medium">{dossier.clientName}</TableCell>
-                                <TableCell>{dossier.produit}</TableCell>
-                                <TableCell className="font-semibold text-blue-600">
-                                  {formatCurrency(dossier.montant)}
-                                </TableCell>
-                                <TableCell>{dossier.taux.toFixed(2)}%</TableCell>
-                                <TableCell>
+                      <>
+                        {/* Desktop: Table */}
+                        <div className="hidden md:block overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Client</TableHead>
+                                <TableHead>Produit</TableHead>
+                                <TableHead>Montant</TableHead>
+                                <TableHead>Taux</TableHead>
+                                <TableHead>Statut</TableHead>
+                                <TableHead>Date création</TableHead>
+                                <TableHead>Dernière màj</TableHead>
+                                <TableHead>Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {dossiers.map((dossier) => (
+                                <TableRow key={dossier.id}>
+                                  <TableCell className="font-medium">{dossier.clientName}</TableCell>
+                                  <TableCell>{dossier.produit}</TableCell>
+                                  <TableCell className="font-semibold text-blue-600">
+                                    {formatCurrency(dossier.montant)}
+                                  </TableCell>
+                                  <TableCell>{dossier.taux.toFixed(2)}%</TableCell>
+                                  <TableCell>
+                                    <Badge className={
+                                      dossier.statut === 'Prospect' ? 'bg-blue-100 text-blue-800' :
+                                      dossier.statut === 'En signature' ? 'bg-orange-100 text-orange-800' :
+                                      'bg-green-100 text-green-800'
+                                    }>
+                                      {dossier.statut}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>{formatDate(dossier.dateCreation)}</TableCell>
+                                  <TableCell>{formatDate(dossier.dateUpdate)}</TableCell>
+                                  <TableCell>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/expert/dossier/${dossier.id}`);
+                                      }}
+                                    >
+                                      Voir
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        {/* Mobile: Cards */}
+                        <div className="md:hidden space-y-3">
+                          {dossiers.map((dossier) => (
+                            <Card key={dossier.id} className="p-4">
+                              <div className="space-y-3">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold text-sm">{dossier.clientName}</h3>
+                                    <p className="text-xs text-gray-600 mt-1">{dossier.produit}</p>
+                                  </div>
                                   <Badge className={
                                     dossier.statut === 'Prospect' ? 'bg-blue-100 text-blue-800' :
                                     dossier.statut === 'En signature' ? 'bg-orange-100 text-orange-800' :
@@ -449,26 +488,41 @@ const ExpertMesAffaires = () => {
                                   }>
                                     {dossier.statut}
                                   </Badge>
-                                </TableCell>
-                                <TableCell>{formatDate(dossier.dateCreation)}</TableCell>
-                                <TableCell>{formatDate(dossier.dateUpdate)}</TableCell>
-                                <TableCell>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(`/expert/dossier/${dossier.id}`);
-                                    }}
-                                  >
-                                    Voir
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <span className="text-gray-500">Montant:</span>
+                                    <p className="font-semibold text-blue-600">{formatCurrency(dossier.montant)}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Taux:</span>
+                                    <p className="font-medium">{dossier.taux.toFixed(2)}%</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Créé:</span>
+                                    <p className="font-medium">{formatDate(dossier.dateCreation)}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Màj:</span>
+                                    <p className="font-medium">{formatDate(dossier.dateUpdate)}</p>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/expert/dossier/${dossier.id}`);
+                                  }}
+                                >
+                                  Voir détails
+                                </Button>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      </>
                     ) : (
                       <div className="text-center py-12">
                         <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -521,7 +575,8 @@ const ExpertMesAffaires = () => {
                   <CardContent>
                     {revenueData.length > 0 ? (
                       <div className="space-y-4">
-                        <div className="overflow-x-auto">
+                        {/* Desktop: Table */}
+                        <div className="hidden md:block overflow-x-auto">
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -546,6 +601,30 @@ const ExpertMesAffaires = () => {
                               ))}
                             </TableBody>
                           </Table>
+                        </div>
+                        {/* Mobile: Cards */}
+                        <div className="md:hidden space-y-3">
+                          {revenueData.map((data, index) => (
+                            <Card key={index} className="p-4">
+                              <div className="space-y-2">
+                                <h3 className="font-semibold text-sm">{data.month}</h3>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <span className="text-gray-500">Revenus:</span>
+                                    <p className="font-semibold text-green-600">{formatCurrency(data.revenue)}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Missions:</span>
+                                    <p className="font-medium">{data.assignments}</p>
+                                  </div>
+                                  <div className="col-span-2">
+                                    <span className="text-gray-500">Moyenne par mission:</span>
+                                    <p className="font-medium">{data.assignments > 0 ? formatCurrency(data.revenue / data.assignments) : '0€'}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </Card>
+                          ))}
                         </div>
                         {/* Graphique simple avec barres */}
                         <div className="mt-6 pt-6 border-t">
@@ -601,7 +680,8 @@ const ExpertMesAffaires = () => {
                   <CardContent>
                     {productPerformance.length > 0 ? (
                       <div className="space-y-4">
-                        <div className="overflow-x-auto">
+                        {/* Desktop: Table */}
+                        <div className="hidden md:block overflow-x-auto">
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -641,6 +721,45 @@ const ExpertMesAffaires = () => {
                               ))}
                             </TableBody>
                           </Table>
+                        </div>
+                        {/* Mobile: Cards */}
+                        <div className="md:hidden space-y-3">
+                          {productPerformance.map((product, index) => (
+                            <Card key={index} className="p-4">
+                              <div className="space-y-3">
+                                <h3 className="font-semibold text-sm">{product.product}</h3>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <span className="text-gray-500">Missions:</span>
+                                    <p className="font-medium">{product.assignments}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Revenus:</span>
+                                    <p className="font-semibold text-green-600">{formatCurrency(product.revenue)}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Taux réussite:</span>
+                                    <Badge className={
+                                      (product.successRate ?? 0) >= 80 
+                                        ? "bg-green-100 text-green-800 border-green-300" 
+                                        : (product.successRate ?? 0) >= 50
+                                        ? "bg-yellow-100 text-yellow-800 border-yellow-300"
+                                        : "bg-red-100 text-red-800 border-red-300"
+                                    }>
+                                      {product.successRate ? product.successRate.toFixed(1) : '0.0'}%
+                                    </Badge>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Note:</span>
+                                    <div className="flex items-center">
+                                      <Star className="h-3 w-3 text-yellow-500 mr-1 fill-yellow-500" />
+                                      <span className="font-medium">{product.averageRating ? product.averageRating.toFixed(1) : '0.0'}/5</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </Card>
+                          ))}
                         </div>
                         {/* Statistiques résumées */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t">
@@ -695,7 +814,8 @@ const ExpertMesAffaires = () => {
                   <CardContent>
                     {clientPerformance.length > 0 ? (
                       <div className="space-y-4">
-                        <div className="overflow-x-auto">
+                        {/* Desktop: Table */}
+                        <div className="hidden md:block overflow-x-auto">
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -735,6 +855,45 @@ const ExpertMesAffaires = () => {
                               ))}
                             </TableBody>
                           </Table>
+                        </div>
+                        {/* Mobile: Cards */}
+                        <div className="md:hidden space-y-3">
+                          {clientPerformance.map((client, index) => (
+                            <Card key={index} className="p-4">
+                              <div className="space-y-3">
+                                <h3 className="font-semibold text-sm">{client.clientName}</h3>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <span className="text-gray-500">Missions:</span>
+                                    <p className="font-medium">{client.totalAssignments}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Revenus:</span>
+                                    <p className="font-semibold text-green-600">{formatCurrency(client.totalRevenue)}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Note:</span>
+                                    <div className="flex items-center">
+                                      <Star className="h-3 w-3 text-yellow-500 mr-1 fill-yellow-500" />
+                                      <span className="font-medium">{client.averageRating ? client.averageRating.toFixed(1) : '0.0'}/5</span>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Dernière:</span>
+                                    <p className="font-medium">{formatDate(client.lastAssignment)}</p>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full"
+                                  onClick={() => navigate(`/expert/client/${client.clientId}`)}
+                                >
+                                  Voir détails
+                                </Button>
+                              </div>
+                            </Card>
+                          ))}
                         </div>
                         {/* Statistiques résumées */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t">

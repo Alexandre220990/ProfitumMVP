@@ -289,10 +289,10 @@ export default function KanbanBoard() {
       </div>
 
       {/* Kanban Board Optimisé */}
-      <div className="p-6">
-        <div className="flex gap-6 overflow-x-auto pb-6">
+      <div className="p-3 md:p-6">
+        <div className="flex gap-3 md:gap-6 overflow-x-auto pb-6 scrollbar-hide -mx-3 md:mx-0 px-3 md:px-0">
           {columns.map((column) => (
-            <div key={column.id} className="flex-shrink-0 w-80">
+            <div key={column.id} className="flex-shrink-0 w-[280px] md:w-80">
               <div className={`${column.color} rounded-xl p-6 border shadow-lg`}>
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">

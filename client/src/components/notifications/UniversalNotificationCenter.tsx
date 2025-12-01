@@ -869,7 +869,7 @@ export function UniversalNotificationCenter({
       >
         <CardContent
           className={cn(
-            "p-4",
+            "p-3 sm:p-4",
             isClickable && "cursor-pointer hover:bg-gray-50 transition-colors"
           )}
           onClick={() => {
@@ -878,23 +878,23 @@ export function UniversalNotificationCenter({
             }
           }}
         >
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start space-x-3 flex-1">
+          <div className="flex flex-col md:flex-row items-start justify-between gap-3 md:gap-4">
+            <div className="flex items-start space-x-2 sm:space-x-3 flex-1 min-w-0 w-full">
               <div className={cn(
-                "mt-1",
+                "mt-1 flex-shrink-0",
                 isUnread && "opacity-100",
                 !isUnread && "opacity-60"
               )}>
                 {getTypeIcon(notification.notification_type)}
               </div>
-              <div className="flex-1 min-w-0 space-y-1">
+              <div className="flex-1 min-w-0 space-y-1 w-full">
                 <div className="flex items-center flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     <h4 className={cn(
-                      "truncate",
+                      "truncate text-sm md:text-base",
                       isUnread 
                         ? isEventNotification 
-                          ? "font-bold text-gray-900 text-base" 
+                          ? "font-bold text-gray-900" 
                           : "font-semibold text-gray-900"
                         : isEventNotification
                         ? "font-medium text-gray-700"
@@ -909,12 +909,13 @@ export function UniversalNotificationCenter({
                       )} />
                     )}
                   </div>
-                  <Badge
-                    variant="secondary"
-                    className={cn("text-xs capitalize", getPriorityColor(notification.priority))}
-                  >
-                    {notification.priority}
-                  </Badge>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge
+                      variant="secondary"
+                      className={cn("text-xs capitalize", getPriorityColor(notification.priority))}
+                    >
+                      {notification.priority}
+                    </Badge>
                   {notification.sla.isLate && !isArchived && (
                     <Badge
                       variant="destructive"
@@ -930,7 +931,7 @@ export function UniversalNotificationCenter({
                   )}
                 </div>
                 <p className={cn(
-                  "text-sm line-clamp-2",
+                  "text-xs md:text-sm line-clamp-2 break-words",
                   isUnread ? "text-gray-700" : "text-gray-600"
                 )}>
                   {notification.message}
@@ -979,11 +980,11 @@ export function UniversalNotificationCenter({
                 )}
                 {/* Actions pour les événements proposés */}
                 {isEventProposed && metadata.event_id && !isArchived && (
-                  <div className="flex flex-wrap gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex flex-col sm:flex-row flex-wrap gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
                     <Button
                       size="sm"
                       variant="default"
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
                       onClick={() => {
                         handleEventResponse(metadata.event_id, 'accept');
                       }}
@@ -994,7 +995,7 @@ export function UniversalNotificationCenter({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                      className="border-purple-300 text-purple-700 hover:bg-purple-50 w-full sm:w-auto"
                       onClick={() => {
                         openEventResponseModal(metadata.event_id, 'propose_alternative', metadata.event_title || notification.title);
                       }}
@@ -1005,7 +1006,7 @@ export function UniversalNotificationCenter({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-red-300 text-red-700 hover:bg-red-50"
+                      className="border-red-300 text-red-700 hover:bg-red-50 w-full sm:w-auto"
                       onClick={() => {
                         openEventResponseModal(metadata.event_id, 'refuse', metadata.event_title || notification.title);
                       }}
@@ -1060,17 +1061,17 @@ export function UniversalNotificationCenter({
               </div>
             </div>
 
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2 w-full md:w-auto">
               {isArchived ? (
                 <div
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 w-full sm:w-auto"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => unarchiveNotification(notification.id)}
-                    className="h-8 px-2 text-green-600 hover:text-green-700"
+                    className="h-8 px-2 text-green-600 hover:text-green-700 flex-1 sm:flex-initial"
                     title="Restaurer"
                   >
                     <ArchiveRestore className="w-4 h-4" />
@@ -1079,7 +1080,7 @@ export function UniversalNotificationCenter({
                     variant="ghost"
                     size="sm"
                     onClick={() => deleteNotification(notification.id)}
-                    className="h-8 px-2 text-red-600 hover:text-red-700"
+                    className="h-8 px-2 text-red-600 hover:text-red-700 flex-1 sm:flex-initial"
                     title="Supprimer définitivement"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1088,10 +1089,10 @@ export function UniversalNotificationCenter({
               ) : (
                 <>
                   <div
-                    className="flex items-center gap-3"
+                    className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 w-full sm:w-auto">
                       <Switch
                         checked={notification.is_read}
                         onCheckedChange={() => toggleReadStatus(notification)}
@@ -1108,7 +1109,7 @@ export function UniversalNotificationCenter({
                         event.stopPropagation();
                         archiveNotification(notification.id);
                       }}
-                      className="h-8 px-2 text-gray-500 hover:text-red-600 hover:bg-red-50"
+                      className="h-8 px-2 text-gray-500 hover:text-red-600 hover:bg-red-50 w-full sm:w-auto"
                       title="Archiver"
                     >
                       <Archive className="w-4 h-4" />
@@ -1116,7 +1117,7 @@ export function UniversalNotificationCenter({
                   </div>
                   {/* Bouton rapport pour les événements terminés */}
                   {isEventNotification && eventStatus === 'completed' && metadata.event_id && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
                       {/* Icône de rapport si un rapport existe */}
                       {metadata.has_report && metadata.report && (
                         <Button
@@ -1130,7 +1131,7 @@ export function UniversalNotificationCenter({
                               eventTitle: metadata.event_title || notification.message
                             });
                           }}
-                          className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50 relative"
+                          className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50 relative w-full sm:w-auto"
                           title="Voir le résumé du rapport"
                         >
                           <FileTextIcon className="w-5 h-5" />
@@ -1144,7 +1145,7 @@ export function UniversalNotificationCenter({
                           event.stopPropagation();
                           handleOpenReportModal(metadata.event_id, metadata.event_title || notification.message);
                         }}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 w-full sm:w-auto text-xs"
                       >
                         <FileTextIcon className="w-4 h-4" />
                         {metadata.has_report ? 'Modifier rapport' : 'Ajouter rapport'}
@@ -1247,8 +1248,8 @@ export function UniversalNotificationCenter({
                         getCompactCardStyle(),
                         notification.action_url && "cursor-pointer hover:border-blue-300"
                       )}>
-                        <CardContent className="p-3">
-                          <div className="flex items-start justify-between gap-3">
+                        <CardContent className="p-2.5 sm:p-3">
+                          <div className="flex items-start justify-between gap-2 sm:gap-3">
                             <div 
                               className="flex items-start space-x-2 flex-1 min-w-0 cursor-pointer"
                               onClick={() => handleNotificationClick(notification)}
@@ -1378,41 +1379,41 @@ export function UniversalNotificationCenter({
   // ============================================================================
 
   const containerClass = mode === 'modal' 
-    ? "fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    ? "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0"
     : "w-full h-full";
 
   const contentClass = mode === 'modal'
-    ? "bg-white rounded-lg shadow-xl w-full max-w-4xl h-[80vh] flex flex-col"
-    : "bg-white rounded-lg shadow-lg w-full h-full flex flex-col";
+    ? "bg-white rounded-none sm:rounded-lg shadow-xl w-full max-w-full md:max-w-4xl h-screen sm:h-[90vh] md:h-[80vh] flex flex-col overflow-hidden"
+    : "bg-white rounded-lg shadow-lg w-full h-full flex flex-col overflow-hidden";
 
   return (
     <div className={containerClass}>
       <div className={contentClass}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div className="flex items-center space-x-3">
-            <Bell className="h-6 w-6 text-blue-600" />
-            <div>
-              <h2 className="text-xl font-semibold">{title || 'Centre de Notifications'}</h2>
-              <p className="text-sm text-gray-500">{getRoleLabel()} • {totalCount} notification(s)</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 md:p-6 border-b flex-shrink-0">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+            <Bell className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base sm:text-lg md:text-xl font-semibold truncate">{title || 'Centre de Notifications'}</h2>
+              <p className="text-xs sm:text-sm text-gray-500 truncate">{getRoleLabel()} • {totalCount} notification(s)</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowPreferences(!showPreferences)}
-              className="flex items-center space-x-2"
+              className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 flex-1 sm:flex-initial"
             >
-              <Settings className="h-4 w-4" />
-              <span>Préférences</span>
+              <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Préférences</span>
             </Button>
             {mode === 'modal' && onClose && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onClose}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 h-8 sm:h-9 w-8 sm:w-9 p-0 flex-shrink-0"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -1421,9 +1422,9 @@ export function UniversalNotificationCenter({
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
           {/* Sidebar */}
-          <div className="w-64 border-r bg-gray-50 p-4 overflow-y-auto">
+          <div className="w-full md:w-64 border-r border-b md:border-b-0 bg-gray-50 p-3 sm:p-4 md:p-4 overflow-y-auto max-h-[250px] sm:max-h-[350px] md:max-h-none flex-shrink-0 md:flex-shrink">
             <div className="space-y-4">
               {/* Filtres */}
               <div>
@@ -1584,24 +1585,24 @@ export function UniversalNotificationCenter({
           </div>
 
           {/* Main content */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
             {/* Search bar */}
-            <div className="p-4 border-b">
+            <div className="p-3 sm:p-4 border-b flex-shrink-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Rechercher dans les notifications..."
+                  placeholder="Rechercher..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
 
             {/* Notifications list */}
-            <ScrollArea className="flex-1">
-              <div className="p-4 space-y-3">
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1661,7 +1662,7 @@ export function UniversalNotificationCenter({
           setReportSummaryPopup({ isOpen: false, report: null });
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] sm:max-h-[80vh] overflow-y-auto p-4 sm:p-6 m-2 sm:m-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileTextIcon className="w-5 h-5 text-green-600" />
@@ -1718,7 +1719,7 @@ export function UniversalNotificationCenter({
           setAlternativeDateTime({ date: '', time: '', notes: '' });
         }
       }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 m-2 sm:m-4">
           <DialogHeader>
             <DialogTitle>
               {eventResponseModal.action === 'accept' && 'Accepter l\'événement'}

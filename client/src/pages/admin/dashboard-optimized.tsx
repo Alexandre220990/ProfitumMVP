@@ -1271,87 +1271,160 @@ const AdminDashboardOptimized: React.FC = () => {
           </div>
         </div>
 
-        {/* Tableau des clients - Design haut de gamme */}
+        {/* Tableau des clients - Design haut de gamme - Responsive */}
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-200">
-                <tr>
-                  <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Entreprise
-                  </th>
-                  <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Statut
-                  </th>
-                  <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Inscription
-                  </th>
-                  <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {clients.map((client: any) => (
-                  <tr 
-                    key={client.id} 
-                    onClick={() => navigate(`/admin/clients/${client.id}`)}
-                    className="group cursor-pointer hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-200 hover:shadow-sm"
-                  >
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm shadow-md group-hover:shadow-lg transition-shadow">
-                          {(client.company_name || 'E')[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">
-                            {client.company_name || 'Entreprise'}
-                          </div>
-                          {client.siren && (
-                            <div className="text-xs text-slate-500 mt-0.5 font-mono">
-                              SIREN: {client.siren}
+          <div className="overflow-y-auto max-h-[600px]">
+            <div className="min-w-full">
+              {/* Desktop: Table */}
+              <div className="hidden md:block">
+                <table className="w-full">
+                  <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Entreprise
+                      </th>
+                      <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Contact
+                      </th>
+                      <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Statut
+                      </th>
+                      <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Inscription
+                      </th>
+                      <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {clients.map((client: any) => (
+                      <tr 
+                        key={client.id} 
+                        onClick={() => navigate(`/admin/clients/${client.id}`)}
+                        className="group cursor-pointer hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-200 hover:shadow-sm"
+                      >
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm shadow-md group-hover:shadow-lg transition-shadow">
+                              {(client.company_name || 'E')[0].toUpperCase()}
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-slate-900">
-                          <Mail className="h-3.5 w-3.5 text-slate-400" />
-                          <span className="truncate max-w-[200px]">{client.email}</span>
-                        </div>
-                        {client.phone_number && (
+                            <div>
+                              <div className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">
+                                {client.company_name || 'Entreprise'}
+                              </div>
+                              {client.siren && (
+                                <div className="text-xs text-slate-500 mt-0.5 font-mono">
+                                  SIREN: {client.siren}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm text-slate-900">
+                              <Mail className="h-3.5 w-3.5 text-slate-400" />
+                              <span className="truncate max-w-[200px]">{client.email}</span>
+                            </div>
+                            {client.phone_number && (
+                              <div className="flex items-center gap-2 text-sm text-slate-600">
+                                <Phone className="h-3.5 w-3.5 text-slate-400" />
+                                <span>{client.phone_number}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-8 py-5">
+                          <Badge 
+                            variant={client.statut === 'actif' ? 'default' : 'secondary'}
+                            className={`text-xs font-medium px-3 py-1 ${
+                              client.statut === 'actif' 
+                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                                : 'bg-amber-100 text-amber-700 border-amber-200'
+                            }`}
+                          >
+                            {client.statut || 'actif'}
+                          </Badge>
+                        </td>
+                        <td className="px-8 py-5">
                           <div className="flex items-center gap-2 text-sm text-slate-600">
-                            <Phone className="h-3.5 w-3.5 text-slate-400" />
-                            <span>{client.phone_number}</span>
+                            <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                            <span>{new Date(client.created_at).toLocaleDateString('fr-FR')}</span>
+                          </div>
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/admin/messagerie-admin?user=${client.id}`);
+                              }}
+                              className="border-slate-300 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all"
+                            >
+                              <Mail className="h-3.5 w-3.5 mr-1.5" />
+                              Contacter
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Mobile: Cards */}
+              <div className="md:hidden space-y-2 p-2">
+                {clients.map((client: any) => (
+                  <div
+                    key={client.id}
+                    onClick={() => navigate(`/admin/clients/${client.id}`)}
+                    className="group cursor-pointer hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-200 hover:shadow-sm p-3 md:p-4 border rounded-lg"
+                  >
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm shadow-md group-hover:shadow-lg transition-shadow">
+                        {(client.company_name || 'E')[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0 w-full">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-sm md:text-base text-slate-900 truncate w-full sm:w-auto">
+                            {client.company_name || 'Entreprise'}
+                          </h3>
+                          <Badge 
+                            variant={client.statut === 'actif' ? 'default' : 'secondary'}
+                            className={`text-xs font-medium px-3 py-1 whitespace-nowrap ${
+                              client.statut === 'actif' 
+                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                                : 'bg-amber-100 text-amber-700 border-amber-200'
+                            }`}
+                          >
+                            {client.statut || 'actif'}
+                          </Badge>
+                        </div>
+                        {client.siren && (
+                          <div className="text-xs text-slate-500 mb-2 font-mono">
+                            SIREN: {client.siren}
                           </div>
                         )}
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs md:text-sm text-slate-600">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Mail className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                            <span className="truncate">{client.email}</span>
+                          </div>
+                          {client.phone_number && (
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Phone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                              <span className="truncate">{client.phone_number}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                            <span>{new Date(client.created_at).toLocaleDateString('fr-FR')}</span>
+                          </div>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <Badge 
-                        variant={client.statut === 'actif' ? 'default' : 'secondary'}
-                        className={`text-xs font-medium px-3 py-1 ${
-                          client.statut === 'actif' 
-                            ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
-                            : 'bg-amber-100 text-amber-700 border-amber-200'
-                        }`}
-                      >
-                        {client.statut || 'actif'}
-                      </Badge>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                        <span>{new Date(client.created_at).toLocaleDateString('fr-FR')}</span>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
                         <Button
                           variant="outline"
                           size="sm"
@@ -1359,17 +1432,17 @@ const AdminDashboardOptimized: React.FC = () => {
                             e.stopPropagation();
                             navigate(`/admin/messagerie-admin?user=${client.id}`);
                           }}
-                          className="border-slate-300 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all"
+                          className="flex-1 sm:flex-initial text-xs border-slate-300 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all"
                         >
                           <Mail className="h-3.5 w-3.5 mr-1.5" />
                           Contacter
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -1433,106 +1506,192 @@ const AdminDashboardOptimized: React.FC = () => {
           </div>
         </div>
 
-        {/* Tableau des experts */}
+        {/* Tableau des experts - Responsive */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
-                    Expert
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
-                    Contact
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
-                    Spécialisations
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
-                    Statut
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
-                    Inscription
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
+          <div className="overflow-y-auto max-h-[600px]">
+            <div className="min-w-full">
+              {/* Desktop: Table */}
+              <div className="hidden md:block">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                        Expert
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                        Contact
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                        Spécialisations
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                        Statut
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                        Inscription
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {filteredExperts.map((expert: any) => (
+                      <tr key={expert.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="font-medium text-slate-900">
+                              {expert.name || expert.company_name}
+                            </div>
+                            {expert.company_name && expert.name && (
+                              <div className="text-sm text-slate-500">
+                                {expert.company_name}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="text-sm text-slate-900">{expert.email}</div>
+                            {expert.location && (
+                              <div className="text-sm text-slate-500">{expert.location}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {expert.specializations?.slice(0, 2).map((spec: string, index: number) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {spec}
+                              </Badge>
+                            ))}
+                            {expert.specializations?.length > 2 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{expert.specializations.length - 2}
+                              </Badge>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge 
+                            variant={
+                              expert.approval_status === 'approved' ? 'default' : 
+                              expert.approval_status === 'pending' ? 'secondary' : 'destructive'
+                            }
+                            className="text-xs"
+                          >
+                            {expert.approval_status === 'approved' ? 'Validé' : 
+                             expert.approval_status === 'pending' ? 'En cours' : 'Rejeté'}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-600">
+                          {new Date(expert.created_at).toLocaleDateString('fr-FR')}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => window.open(`/admin/expert-details/${expert.id}`, '_blank')}
+                            >
+                              Voir détails
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => window.open(`/admin/messagerie-admin?user=${expert.id}`, '_blank')}
+                            >
+                              Contacter
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Mobile: Cards */}
+              <div className="md:hidden space-y-2 p-2">
                 {filteredExperts.map((expert: any) => (
-                  <tr key={expert.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="font-medium text-slate-900">
-                          {expert.name || expert.company_name}
+                  <div
+                    key={expert.id}
+                    className="hover:bg-slate-50 transition-colors p-3 md:p-4 border rounded-lg"
+                  >
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      <div className="flex-1 min-w-0 w-full">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-sm md:text-base text-slate-900 truncate w-full sm:w-auto">
+                            {expert.name || expert.company_name}
+                          </h3>
+                          <Badge 
+                            variant={
+                              expert.approval_status === 'approved' ? 'default' : 
+                              expert.approval_status === 'pending' ? 'secondary' : 'destructive'
+                            }
+                            className="text-xs whitespace-nowrap"
+                          >
+                            {expert.approval_status === 'approved' ? 'Validé' : 
+                             expert.approval_status === 'pending' ? 'En cours' : 'Rejeté'}
+                          </Badge>
                         </div>
                         {expert.company_name && expert.name && (
-                          <div className="text-sm text-slate-500">
+                          <div className="text-xs text-slate-500 mb-2">
                             {expert.company_name}
                           </div>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm text-slate-900">{expert.email}</div>
-                        {expert.location && (
-                          <div className="text-sm text-slate-500">{expert.location}</div>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs md:text-sm text-slate-600 mb-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Mail className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                            <span className="truncate">{expert.email}</span>
+                          </div>
+                          {expert.location && (
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="truncate">{expert.location}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                            <span>{new Date(expert.created_at).toLocaleDateString('fr-FR')}</span>
+                          </div>
+                        </div>
+                        {expert.specializations && expert.specializations.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {expert.specializations?.slice(0, 2).map((spec: string, index: number) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {spec}
+                              </Badge>
+                            ))}
+                            {expert.specializations?.length > 2 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{expert.specializations.length - 2}
+                              </Badge>
+                            )}
+                          </div>
                         )}
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {expert.specializations?.slice(0, 2).map((spec: string, index: number) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {spec}
-                          </Badge>
-                        ))}
-                        {expert.specializations?.length > 2 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{expert.specializations.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge 
-                        variant={
-                          expert.approval_status === 'approved' ? 'default' : 
-                          expert.approval_status === 'pending' ? 'secondary' : 'destructive'
-                        }
-                        className="text-xs"
-                      >
-                        {expert.approval_status === 'approved' ? 'Validé' : 
-                         expert.approval_status === 'pending' ? 'En cours' : 'Rejeté'}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                      {new Date(expert.created_at).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
                         <Button
                           variant="secondary"
                           size="sm"
                           onClick={() => window.open(`/admin/expert-details/${expert.id}`, '_blank')}
+                          className="flex-1 sm:flex-initial text-xs"
                         >
-                          Voir détails
+                          Détails
                         </Button>
                         <Button
                           variant="default"
                           size="sm"
                           onClick={() => window.open(`/admin/messagerie-admin?user=${expert.id}`, '_blank')}
+                          className="flex-1 sm:flex-initial text-xs"
                         >
                           Contacter
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -1730,7 +1889,7 @@ const AdminDashboardOptimized: React.FC = () => {
                   </div>
 
                   {/* Infos Expert et Apporteur */}
-                  <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4 text-blue-600" />
                       <div className="min-w-0">
@@ -1765,7 +1924,7 @@ const AdminDashboardOptimized: React.FC = () => {
                   {/* Étapes de validation */}
                   <div className="mb-3 p-3 bg-blue-50 rounded-lg">
                     <p className="text-xs font-medium text-gray-700 mb-2">📋 Étapes de validation</p>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                       <div className="flex items-center gap-1">
                         {(dossier as any).pre_eligibility_validated_at ? (
                           <CheckCircle className="w-3 h-3 text-green-600" />
@@ -1958,31 +2117,31 @@ const AdminDashboardOptimized: React.FC = () => {
   
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 md:p-6">
           {loading ? (
             <LoadingScreen />
           ) : (
             <>
               {/* Notifications temps réel */}
-              <div className="mb-6">
+              <div className="mb-4 md:mb-6">
                 <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                         <div>
-                          <h3 className="font-semibold text-blue-900">Système en temps réel</h3>
-                          <p className="text-sm text-blue-700">Dernière mise à jour: {new Date().toLocaleTimeString('fr-FR')}</p>
+                          <h3 className="font-semibold text-sm md:text-base text-blue-900">Système en temps réel</h3>
+                          <p className="text-xs md:text-sm text-blue-700">Dernière mise à jour: {new Date().toLocaleTimeString('fr-FR')}</p>
                         </div>
                       </div>
-                      <div className="flex gap-3 items-center">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center w-full sm:w-auto">
                         {/* TypeSwitcher */}
                         <TypeSwitcher />
                         
                         <div className="flex gap-2">
                           <Badge 
                             variant="default" 
-                            className={`bg-green-100 text-green-800 cursor-pointer hover:bg-green-200 transition-colors ${
+                            className={`bg-green-100 text-green-800 cursor-pointer hover:bg-green-200 transition-colors text-xs ${
                               selectedAlertType === 'urgences' ? 'ring-2 ring-green-500' : ''
                             }`}
                             onClick={() => setSelectedAlertType(selectedAlertType === 'urgences' ? null : 'urgences')}
@@ -1992,7 +2151,7 @@ const AdminDashboardOptimized: React.FC = () => {
                           </Badge>
                           <Badge 
                             variant="secondary" 
-                            className={`bg-yellow-100 text-yellow-800 cursor-pointer hover:bg-yellow-200 transition-colors ${
+                            className={`bg-yellow-100 text-yellow-800 cursor-pointer hover:bg-yellow-200 transition-colors text-xs ${
                               selectedAlertType === 'alertes' ? 'ring-2 ring-yellow-500' : ''
                             }`}
                             onClick={() => setSelectedAlertType(selectedAlertType === 'alertes' ? null : 'alertes')}
@@ -2238,23 +2397,25 @@ const AdminDashboardOptimized: React.FC = () => {
                 {activeSection === 'overview' && (
                   <div className="space-y-6">
                     {/* En-tête avec actions de reporting */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 md:mb-6">
                       <div>
-                        <h2 className="text-2xl font-bold text-slate-900">Vue d'ensemble - Reporting</h2>
-                        <p className="text-slate-600">Tableaux de bord et analyses en temps réel</p>
+                        <h2 className="text-xl md:text-2xl font-bold text-slate-900">Vue d'ensemble - Reporting</h2>
+                        <p className="text-sm md:text-base text-slate-600">Tableaux de bord et analyses en temps réel</p>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                      <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                        <Button variant="outline" size="sm" className="text-xs md:text-sm flex-1 sm:flex-initial">
                           <Download className="w-4 h-4 mr-2" />
-                          Exporter Rapport
+                          <span className="hidden sm:inline">Exporter Rapport</span>
+                          <span className="sm:hidden">Exporter</span>
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" className="text-xs md:text-sm flex-1 sm:flex-initial">
                           <RefreshCw className="w-4 h-4 mr-2" />
                           Actualiser
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" className="text-xs md:text-sm flex-1 sm:flex-initial">
                           <Settings className="w-4 h-4 mr-2" />
-                          Configurer
+                          <span className="hidden sm:inline">Configurer</span>
+                          <span className="sm:hidden">Config</span>
                         </Button>
                       </div>
                     </div>
@@ -2269,11 +2430,11 @@ const AdminDashboardOptimized: React.FC = () => {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          {/* Tuiles Écosystème - Une seule ligne compacte */}
-                          <div className="flex gap-2 mb-6 overflow-x-auto">
+                          {/* Tuiles Écosystème - Grid responsive au lieu de flex avec overflow */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 md:gap-3 mb-6">
                             {/* Clients */}
                             <div 
-                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
+                              className={`p-2 md:p-3 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'clients' 
                                   ? 'border-green-500 bg-green-50 shadow-md' 
                                   : 'border-gray-200 hover:border-green-300 hover:bg-green-50'
@@ -2281,14 +2442,14 @@ const AdminDashboardOptimized: React.FC = () => {
                               onClick={() => setSelectedEcosystemTile('clients')}
                             >
                               <div className="flex flex-col items-center justify-center">
-                                <p className="text-xs text-gray-600 mb-1">Clients actifs</p>
-                                <p className="text-lg font-bold text-green-600">{kpiData.totalClients}</p>
+                                <p className="text-xs text-gray-600 mb-1 text-center">Clients actifs</p>
+                                <p className="text-base md:text-lg font-bold text-green-600">{kpiData.totalClients}</p>
                               </div>
                             </div>
 
                             {/* Experts */}
                             <div 
-                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
+                              className={`p-2 md:p-3 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'experts' 
                                   ? 'border-blue-500 bg-blue-50 shadow-md' 
                                   : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
@@ -2296,14 +2457,14 @@ const AdminDashboardOptimized: React.FC = () => {
                               onClick={() => setSelectedEcosystemTile('experts')}
                             >
                               <div className="flex flex-col items-center justify-center">
-                                <p className="text-xs text-gray-600 mb-1">Experts</p>
-                                <p className="text-lg font-bold text-blue-600">{kpiData.totalExperts}</p>
+                                <p className="text-xs text-gray-600 mb-1 text-center">Experts</p>
+                                <p className="text-base md:text-lg font-bold text-blue-600">{kpiData.totalExperts}</p>
                               </div>
                             </div>
 
                             {/* Apporteurs */}
                             <div 
-                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
+                              className={`p-2 md:p-3 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'apporteurs' 
                                   ? 'border-purple-500 bg-purple-50 shadow-md' 
                                   : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
@@ -2311,14 +2472,14 @@ const AdminDashboardOptimized: React.FC = () => {
                               onClick={() => setSelectedEcosystemTile('apporteurs')}
                             >
                               <div className="flex flex-col items-center justify-center">
-                                <p className="text-xs text-gray-600 mb-1">Apporteurs</p>
-                                <p className="text-lg font-bold text-purple-600">{kpiData.apporteursTotal}</p>
+                                <p className="text-xs text-gray-600 mb-1 text-center">Apporteurs</p>
+                                <p className="text-base md:text-lg font-bold text-purple-600">{kpiData.apporteursTotal}</p>
                               </div>
                             </div>
 
                             {/* Dossiers */}
                             <div 
-                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
+                              className={`p-2 md:p-3 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'dossiers' 
                                   ? 'border-indigo-500 bg-indigo-50 shadow-md' 
                                   : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
@@ -2326,14 +2487,14 @@ const AdminDashboardOptimized: React.FC = () => {
                               onClick={() => setSelectedEcosystemTile('dossiers')}
                             >
                               <div className="flex flex-col items-center justify-center">
-                                <p className="text-xs text-gray-600 mb-1">Dossiers en cours</p>
-                                <p className="text-lg font-bold text-indigo-600">{kpiData.totalDossiers}</p>
+                                <p className="text-xs text-gray-600 mb-1 text-center">Dossiers en cours</p>
+                                <p className="text-base md:text-lg font-bold text-indigo-600">{kpiData.totalDossiers}</p>
                               </div>
                             </div>
 
                             {/* Produits */}
                             <div 
-                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
+                              className={`p-2 md:p-3 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'produits' 
                                   ? 'border-orange-500 bg-orange-50 shadow-md' 
                                   : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50'
@@ -2344,14 +2505,14 @@ const AdminDashboardOptimized: React.FC = () => {
                               }}
                             >
                               <div className="flex flex-col items-center justify-center">
-                                <p className="text-xs text-gray-600 mb-1">Produits éligibles</p>
-                                <p className="text-lg font-bold text-orange-600">{kpiData.totalProduits || 0}</p>
+                                <p className="text-xs text-gray-600 mb-1 text-center">Produits éligibles</p>
+                                <p className="text-base md:text-lg font-bold text-orange-600">{kpiData.totalProduits || 0}</p>
                               </div>
                             </div>
 
                             {/* Performance */}
                             <div 
-                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
+                              className={`p-2 md:p-3 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'performance' 
                                   ? 'border-emerald-500 bg-emerald-50 shadow-md' 
                                   : 'border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'
@@ -2359,8 +2520,8 @@ const AdminDashboardOptimized: React.FC = () => {
                               onClick={() => setSelectedEcosystemTile('performance')}
                             >
                               <div className="flex flex-col items-center justify-center">
-                                <p className="text-xs text-gray-600 mb-1">Performance</p>
-                                <p className={`text-lg font-bold ${kpiData.croissanceRevenus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <p className="text-xs text-gray-600 mb-1 text-center">Performance</p>
+                                <p className={`text-base md:text-lg font-bold ${kpiData.croissanceRevenus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                   {kpiData.croissanceRevenus >= 0 ? '+' : ''}{kpiData.croissanceRevenus}%
                                 </p>
                               </div>
@@ -2824,7 +2985,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                               </div>
                                               
                                               {/* Filtre Date */}
-                                              <div className="grid grid-cols-2 gap-1">
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                                                 <div>
                                                   <Label className="text-xs text-gray-600 mb-1 block">Date début</Label>
                                                   <Input
@@ -3218,7 +3379,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                       </div>
                                       
                                       {/* Mini graphiques */}
-                                      <div className="grid grid-cols-2 gap-4">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <Card>
                                           <CardHeader className="pb-2">
                                             <CardTitle className="text-sm flex items-center gap-2">
@@ -4511,7 +4672,7 @@ const AdminDashboardOptimized: React.FC = () => {
             <DialogTitle>Ajouter un nouveau produit</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="add-nom">Nom du produit *</Label>
                 <Input
@@ -4595,7 +4756,7 @@ const AdminDashboardOptimized: React.FC = () => {
             </div>
             <div className="border-t pt-4">
               <h4 className="font-semibold mb-3">Montants (€)</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="add-montant-min">Minimum</Label>
                   <Input
@@ -4620,7 +4781,7 @@ const AdminDashboardOptimized: React.FC = () => {
             </div>
             <div className="border-t pt-4">
               <h4 className="font-semibold mb-3">Taux (en décimal, ex: 0.05 pour 5%)</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="add-taux-min">Minimum</Label>
                   <Input
@@ -4647,7 +4808,7 @@ const AdminDashboardOptimized: React.FC = () => {
             </div>
             <div className="border-t pt-4">
               <h4 className="font-semibold mb-3">Durée (mois)</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="add-duree-min">Minimum</Label>
                   <Input
@@ -4732,7 +4893,7 @@ const AdminDashboardOptimized: React.FC = () => {
             <DialogTitle>Modifier le produit</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="edit-nom">Nom du produit</Label>
                 <Input

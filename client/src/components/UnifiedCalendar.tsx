@@ -804,9 +804,9 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
           </div>
         </div>
         
-        {/* Scroll horizontal sur mobile */}
-        <div className="overflow-x-auto -mx-2 sm:mx-0">
-          <div className="flex border border-gray-300 rounded-lg overflow-hidden bg-white min-w-[800px] sm:min-w-0">
+        {/* Scroll horizontal sur mobile - amélioré */}
+        <div className="overflow-x-auto -mx-2 sm:mx-0 pb-2">
+          <div className="flex border border-gray-300 rounded-lg overflow-hidden bg-white min-w-[600px] sm:min-w-0">
             {/* Colonne des heures */}
             <div className="w-12 sm:w-16 flex-shrink-0 border-r border-gray-300">
             <div className="h-12 border-b border-gray-300"></div>
