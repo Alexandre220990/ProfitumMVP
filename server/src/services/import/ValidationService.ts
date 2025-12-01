@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { EntityType, MappingRule } from '../../types/import';
+import { TransformationService } from './TransformationService';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -13,6 +14,12 @@ export interface ValidationError {
 }
 
 export class ValidationService {
+  private transformer: TransformationService;
+
+  constructor() {
+    this.transformer = new TransformationService();
+  }
+
   /**
    * Valide une ligne de données selon les règles de mapping
    */
@@ -25,23 +32,63 @@ export class ValidationService {
   ): Promise<ValidationError[]> {
     const errors: ValidationError[] = [];
 
-    // Créer un objet avec les données mappées
+    // Créer un objet avec les données mappées (avec transformations)
     const mappedData: Record<string, any> = {};
     
-    mappingRules.forEach(rule => {
-      const columnIndex = columns.indexOf(rule.excelColumn);
-      if (columnIndex >= 0 && columnIndex < rowData.length) {
-        mappedData[rule.databaseField] = rowData[columnIndex];
-      } else if (rule.defaultValue !== undefined) {
-        mappedData[rule.databaseField] = rule.defaultValue;
-      }
-    });
-
-    // Validation des champs requis
     for (const rule of mappingRules) {
-      if (rule.isRequired) {
+      const columnIndex = columns.indexOf(rule.excelColumn);
+      let value: any = null;
+
+      if (columnIndex >= 0 && columnIndex < rowData.length) {
+        value = rowData[columnIndex];
+      } else if (rule.defaultValue !== undefined) {
+        value = rule.defaultValue;
+      }
+
+      // Appliquer la transformation comme dans ImportService
+      if (value !== null && value !== undefined && value !== '') {
+        try {
+          value = await this.transformer.transformValue(value, rule.transformation);
+        } catch (error) {
+          console.warn(`Erreur transformation pour ${rule.databaseField}:`, error);
+          // Continuer avec la valeur brute en cas d'erreur
+        }
+      }
+
+      // Gérer le split (ex: nom complet → first_name, last_name)
+      if (rule.transformation?.type === 'split' && value && typeof value === 'object') {
+        if (value.first_name) mappedData.first_name = value.first_name;
+        if (value.last_name) mappedData.last_name = value.last_name;
+      } else if (rule.databaseField) {
+        mappedData[rule.databaseField] = value;
+      }
+    }
+
+    // Fonction pour normaliser les valeurs vides (gère les placeholders comme "—", "-", "N/A", etc.)
+    const normalizeEmptyValue = (value: any): boolean => {
+      if (value === null || value === undefined) return true;
+      if (typeof value === 'object' && Object.keys(value).length === 0) return true;
+      
+      const strValue = String(value).trim();
+      const emptyPlaceholders = ['—', '-', '--', 'N/A', 'n/a', 'NA', 'na', 'NULL', 'null', ''];
+      return emptyPlaceholders.includes(strValue);
+    };
+    
+    // Validation des champs requis
+    // Pour les apporteurs, ignorer address et postal_code car ils ne sont pas dans ApporteurAffaires
+    const fieldsToIgnoreForApporteurs = ['address', 'postal_code', 'city'];
+    
+    for (const rule of mappingRules) {
+      if (rule.isRequired && rule.databaseField) {
+        // Ignorer certains champs pour les apporteurs
+        if (entityType === 'apporteur' && fieldsToIgnoreForApporteurs.includes(rule.databaseField)) {
+          continue;
+        }
+        
         const value = mappedData[rule.databaseField];
-        if (value === null || value === undefined || value === '') {
+        
+        // Normaliser les valeurs vides (inclut les placeholders)
+        if (normalizeEmptyValue(value)) {
           errors.push({
             rowIndex,
             field: rule.databaseField,
@@ -71,10 +118,17 @@ export class ValidationService {
     rowIndex: number,
     errors: ValidationError[]
   ): Promise<void> {
-    // Validation email
-    if (data.email) {
+    // Validation email - convertir en string si c'est un objet
+    let emailValue = data.email;
+    if (emailValue && typeof emailValue === 'object') {
+      emailValue = emailValue.toString();
+    }
+    
+    if (emailValue) {
+      const emailStr = String(emailValue).trim();
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(data.email)) {
+      
+      if (!emailRegex.test(emailStr)) {
         errors.push({
           rowIndex,
           field: 'email',
@@ -85,7 +139,7 @@ export class ValidationService {
         const { data: existing } = await supabase
           .from('Client')
           .select('id')
-          .eq('email', data.email)
+          .eq('email', emailStr)
           .single();
 
         if (existing) {
@@ -157,10 +211,17 @@ export class ValidationService {
     rowIndex: number,
     errors: ValidationError[]
   ): Promise<void> {
-    // Validation email
-    if (data.email) {
+    // Validation email - convertir en string si c'est un objet
+    let emailValue = data.email;
+    if (emailValue && typeof emailValue === 'object') {
+      emailValue = emailValue.toString();
+    }
+    
+    if (emailValue) {
+      const emailStr = String(emailValue).trim();
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(data.email)) {
+      
+      if (!emailRegex.test(emailStr)) {
         errors.push({
           rowIndex,
           field: 'email',
@@ -171,7 +232,7 @@ export class ValidationService {
         const { data: existing } = await supabase
           .from('Expert')
           .select('id')
-          .eq('email', data.email)
+          .eq('email', emailStr)
           .single();
 
         if (existing) {
@@ -222,10 +283,17 @@ export class ValidationService {
     rowIndex: number,
     errors: ValidationError[]
   ): Promise<void> {
-    // Validation email
-    if (data.email) {
+    // Validation email - convertir en string si c'est un objet
+    let emailValue = data.email;
+    if (emailValue && typeof emailValue === 'object') {
+      emailValue = emailValue.toString();
+    }
+    
+    if (emailValue) {
+      const emailStr = String(emailValue).trim();
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(data.email)) {
+      
+      if (!emailRegex.test(emailStr)) {
         errors.push({
           rowIndex,
           field: 'email',
@@ -236,7 +304,7 @@ export class ValidationService {
         const { data: existing } = await supabase
           .from('ApporteurAffaires')
           .select('id')
-          .eq('email', data.email)
+          .eq('email', emailStr)
           .single();
 
         if (existing) {
@@ -248,6 +316,9 @@ export class ValidationService {
         }
       }
     }
+    
+    // Note: address et postal_code ne sont pas requis pour les apporteurs
+    // car ils ne sont pas dans la table ApporteurAffaires
   }
 
   /**

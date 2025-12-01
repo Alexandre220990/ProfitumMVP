@@ -43,24 +43,40 @@ export class EntityCreatorService {
     mapping: MappingConfig,
     options: { generatePassword?: boolean; password?: string } = {}
   ): Promise<{ id: string; authUserId: string }> {
+    // Fonction pour normaliser les valeurs vides (gère les placeholders)
+    const normalizeValue = (value: any, defaultValue: string = ''): string => {
+      if (!value) return defaultValue;
+      if (typeof value === 'object') return defaultValue;
+      const strValue = String(value).trim();
+      const emptyPlaceholders = ['—', '-', '--', 'N/A', 'n/a', 'NA', 'na', 'NULL', 'null'];
+      return emptyPlaceholders.includes(strValue) ? defaultValue : strValue;
+    };
+    
+    // Convertir les valeurs en strings si ce sont des objets (provenant de transformations)
+    const getStringValue = (value: any): string => {
+      if (!value) return '';
+      if (typeof value === 'object') return value.toString();
+      return String(value).trim();
+    };
+    
     // Préparer les données client
     const clientData: any = {
-      email: data.email,
-      first_name: data.first_name || data.name?.split(' ')[0] || '',
-      last_name: data.last_name || data.name?.split(' ').slice(1).join(' ') || '',
-      name: data.name || `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.company_name || '',
-      company_name: data.company_name || '',
-      phone_number: data.phone_number || data.phone || null,
-      address: data.address || '',
-      city: data.city || '',
-      postal_code: data.postal_code || null,
-      siren: data.siren ? data.siren.toString().replace(/\s/g, '') : null,
-      secteurActivite: data.secteurActivite || null,
+      email: getStringValue(data.email),
+      first_name: getStringValue(data.first_name) || (data.name ? String(data.name).split(' ')[0] : '') || '',
+      last_name: getStringValue(data.last_name) || (data.name ? String(data.name).split(' ').slice(1).join(' ') : '') || '',
+      name: normalizeValue(data.name) || `${getStringValue(data.first_name)} ${getStringValue(data.last_name)}`.trim() || normalizeValue(data.company_name) || '',
+      company_name: normalizeValue(data.company_name) || '',
+      phone_number: data.phone_number || data.phone ? normalizeValue(data.phone_number || data.phone) : null,
+      address: normalizeValue(data.address, ''), // Chaîne vide par défaut pour NOT NULL
+      city: normalizeValue(data.city, ''), // Chaîne vide par défaut pour NOT NULL
+      postal_code: normalizeValue(data.postal_code, ''), // Chaîne vide par défaut pour NOT NULL
+      siren: data.siren ? String(data.siren).replace(/\s/g, '') : null,
+      secteurActivite: data.secteurActivite ? normalizeValue(data.secteurActivite) : null,
       nombreEmployes: data.nombreEmployes ? Number(data.nombreEmployes) : null,
       revenuAnnuel: data.revenuAnnuel ? Number(data.revenuAnnuel) : null,
       type: 'client',
-      statut: data.statut || 'actif',
-      username: data.username || data.email?.split('@')[0] || '',
+      statut: normalizeValue(data.statut, 'actif'),
+      username: normalizeValue(data.username) || (data.email ? String(data.email).split('@')[0] : '') || '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -212,15 +228,22 @@ export class EntityCreatorService {
     mapping: MappingConfig,
     options: { generatePassword?: boolean; password?: string } = {}
   ): Promise<{ id: string; authUserId: string }> {
+    // Convertir les valeurs en strings si ce sont des objets (provenant de transformations)
+    const getStringValue = (value: any): string => {
+      if (!value) return '';
+      if (typeof value === 'object') return value.toString();
+      return String(value).trim();
+    };
+    
     // Préparer les données apporteur
     const apporteurData: any = {
-      email: data.email,
-      first_name: data.first_name || data.name?.split(' ')[0] || '',
-      last_name: data.last_name || data.name?.split(' ').slice(1).join(' ') || '',
-      company_name: data.company_name || '',
-      phone: data.phone || data.phone_number || null,
-      siren: data.siren ? data.siren.toString().replace(/\s/g, '') : null,
-      company_type: data.company_type || 'independant',
+      email: getStringValue(data.email),
+      first_name: getStringValue(data.first_name) || (data.name ? String(data.name).split(' ')[0] : '') || '',
+      last_name: getStringValue(data.last_name) || (data.name ? String(data.name).split(' ').slice(1).join(' ') : '') || '',
+      company_name: getStringValue(data.company_name) || '',
+      phone: data.phone || data.phone_number ? getStringValue(data.phone || data.phone_number) : null,
+      siren: data.siren ? String(data.siren).replace(/\s/g, '') : null,
+      company_type: getStringValue(data.company_type) || 'independant',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
