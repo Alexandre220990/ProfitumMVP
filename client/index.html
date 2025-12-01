@@ -129,20 +129,26 @@
           // Vérifier le type d'utilisateur dans localStorage
           const pwaUserType = localStorage.getItem('pwa_user_type');
           
-          // Si admin, rediriger IMMÉDIATEMENT vers www.profitum.app/connect-admin
+          // Si admin, rediriger vers /admin-redirect qui gère la logique de connexion
           if (pwaUserType === 'admin') {
-            console.log('🚨 ADMIN DÉTECTÉ EN PWA - Redirection IMMÉDIATE vers www.profitum.app/connect-admin');
-            // Redirection complète - ne pas attendre React
-            window.location.href = 'https://www.profitum.app/connect-admin';
-            return; // Arrêter l'exécution
+            const currentPath = window.location.pathname;
+            // Ne rediriger que si on n'est pas déjà sur /admin-redirect ou /connect-admin
+            if (currentPath !== '/admin-redirect' && currentPath !== '/connect-admin' && currentPath !== '/') {
+              console.log('🚨 ADMIN DÉTECTÉ EN PWA - Redirection vers /admin-redirect');
+              window.location.href = '/admin-redirect';
+              return; // Arrêter l'exécution
+            }
           }
           
           // Vérifier aussi l'URL de démarrage
           const pwaStartUrl = localStorage.getItem('pwa_start_url');
-          if (pwaStartUrl && pwaStartUrl.startsWith('https://www.profitum.app/connect-admin')) {
-            console.log('🚨 URL ADMIN DÉTECTÉE - Redirection IMMÉDIATE vers www.profitum.app/connect-admin');
-            window.location.href = 'https://www.profitum.app/connect-admin';
-            return;
+          if (pwaStartUrl && pwaStartUrl === '/admin-redirect') {
+            const currentPath = window.location.pathname;
+            if (currentPath !== '/admin-redirect' && currentPath !== '/connect-admin') {
+              console.log('🚨 URL ADMIN DÉTECTÉE - Redirection vers /admin-redirect');
+              window.location.href = '/admin-redirect';
+              return;
+            }
           }
         }
       })();

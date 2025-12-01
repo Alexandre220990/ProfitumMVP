@@ -247,6 +247,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       console.log('🚀 Initialisation de l\'authentification...');
+      
+      // Attendre un peu pour laisser Supabase restaurer la session depuis localStorage
+      // Supabase le fait automatiquement avec persistSession: true, mais il faut un peu de temps
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Vérifier d'abord si une session existe déjà
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          console.log('✅ Session Supabase trouvée au démarrage:', {
+            userId: session.user?.id,
+            email: session.user?.email,
+            expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toLocaleString() : 'N/A'
+          });
+          
+          // Mettre à jour les tokens dans localStorage pour compatibilité
+          if (session.access_token) {
+            localStorage.setItem('supabase_token', session.access_token);
+            localStorage.setItem('supabase_refresh_token', session.refresh_token || '');
+            localStorage.setItem('token', session.access_token);
+          }
+        } else {
+          console.log('⚠️ Aucune session Supabase trouvée au démarrage');
+          
+          // Essayer de rafraîchir avec le refresh token si disponible
+          const refreshToken = localStorage.getItem('supabase_refresh_token');
+          if (refreshToken) {
+            console.log('🔄 Tentative de restauration avec refresh token...');
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            
+            if (refreshData?.session && !refreshError) {
+              console.log('✅ Session restaurée avec refresh token');
+              localStorage.setItem('supabase_token', refreshData.session.access_token);
+              localStorage.setItem('supabase_refresh_token', refreshData.session.refresh_token || '');
+              localStorage.setItem('token', refreshData.session.access_token);
+            } else {
+              console.log('❌ Impossible de restaurer la session:', refreshError?.message);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de la vérification de session au démarrage:', error);
+      }
+      
       // Ne pas naviguer automatiquement lors de l'initialisation pour éviter les boucles
       await checkAuth(false);
       setIsLoading(false);
