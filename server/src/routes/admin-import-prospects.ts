@@ -91,6 +91,170 @@ router.post('/upload', upload.single('file'), asyncHandler(async (req: Request, 
 }));
 
 // ============================================================================
+// POST /api/admin/import-prospects/check-duplicates
+// Vérifie les doublons SIREN dans la base de données
+// ============================================================================
+router.post('/check-duplicates', upload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+  try {
+    let mapping = req.body.mapping;
+    if (typeof mapping === 'string') {
+      try {
+        mapping = JSON.parse(mapping);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          message: 'Format de mapping invalide'
+        });
+      }
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun fichier fourni'
+      });
+    }
+
+    if (!mapping) {
+      return res.status(400).json({
+        success: false,
+        message: 'mapping est requis'
+      });
+    }
+
+    // Vérifier si le SIREN est mappé
+    const sirenColumn = mapping.siren?.excelColumn;
+    if (!sirenColumn) {
+      // Si pas de SIREN mappé, pas de doublons possibles
+      return res.json({
+        success: true,
+        data: {
+          duplicates: [],
+          uniqueProspects: [],
+          totalRows: 0,
+          duplicatesCount: 0,
+          uniqueCount: 0
+        }
+      });
+    }
+
+    // Parser le fichier
+    const fileBuffer = req.file.buffer;
+    const fileData = await excelParser.parseFile(fileBuffer);
+
+    const { columns, rows } = fileData;
+    const sirenIndex = columns.indexOf(sirenColumn);
+    
+    if (sirenIndex < 0) {
+      return res.json({
+        success: true,
+        data: {
+          duplicates: [],
+          uniqueProspects: [],
+          totalRows: rows.length,
+          duplicatesCount: 0,
+          uniqueCount: rows.length
+        }
+      });
+    }
+
+    // Extraire tous les SIREN du fichier (non vides)
+    const fileSirens = new Map<string, any[]>(); // SIREN -> [lignes avec ce SIREN]
+    
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const sirenValue = row[sirenIndex];
+      
+      if (sirenValue && typeof sirenValue === 'string' && sirenValue.trim()) {
+        const siren = sirenValue.trim();
+        if (!fileSirens.has(siren)) {
+          fileSirens.set(siren, []);
+        }
+        fileSirens.get(siren)!.push({ rowIndex: i + 1, rowData: row });
+      }
+    }
+
+    if (fileSirens.size === 0) {
+      // Aucun SIREN dans le fichier
+      return res.json({
+        success: true,
+        data: {
+          duplicates: [],
+          uniqueProspects: [],
+          totalRows: rows.length,
+          duplicatesCount: 0,
+          uniqueCount: rows.length
+        }
+      });
+    }
+
+    // Vérifier dans la base de données quels SIREN existent déjà
+    const sirenList = Array.from(fileSirens.keys());
+    const { data: existingProspects, error: dbError } = await supabase
+      .from('prospects')
+      .select('id, siren, email, company_name, firstname, lastname')
+      .in('siren', sirenList)
+      .not('siren', 'is', null);
+
+    if (dbError) {
+      console.error('Erreur vérification doublons:', dbError);
+      return res.status(500).json({
+        success: false,
+        message: `Erreur lors de la vérification des doublons: ${dbError.message}`
+      });
+    }
+
+    const existingSirens = new Set((existingProspects || []).map((p: any) => p.siren));
+    
+    // Séparer les doublons des prospects uniques
+    const duplicates: Array<{
+      siren: string;
+      fileRows: Array<{ rowIndex: number; rowData: any[] }>;
+      existingProspect: any;
+    }> = [];
+    
+    const uniqueSirens: string[] = [];
+
+    for (const [siren, fileRows] of fileSirens.entries()) {
+      if (existingSirens.has(siren)) {
+        const existingProspect = (existingProspects || []).find((p: any) => p.siren === siren);
+        duplicates.push({
+          siren,
+          fileRows,
+          existingProspect: existingProspect || null
+        });
+      } else {
+        uniqueSirens.push(siren);
+      }
+    }
+
+    // Compter les prospects uniques (toutes les lignes sans SIREN + lignes avec SIREN unique)
+    const rowsWithSiren = Array.from(fileSirens.values()).flat().length;
+    const rowsWithoutSiren = rows.length - rowsWithSiren;
+    const uniqueRowsCount = rowsWithoutSiren + uniqueSirens.reduce((sum, siren) => sum + fileSirens.get(siren)!.length, 0);
+    const duplicatesRowsCount = duplicates.reduce((sum, dup) => sum + dup.fileRows.length, 0);
+
+    return res.json({
+      success: true,
+      data: {
+        duplicates,
+        uniqueSirens,
+        totalRows: rows.length,
+        duplicatesCount: duplicatesRowsCount,
+        uniqueCount: uniqueRowsCount,
+        duplicatesSirensCount: duplicates.length
+      }
+    });
+  } catch (error: any) {
+    console.error('Erreur vérification doublons:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur lors de la vérification des doublons'
+    });
+  }
+}));
+
+// ============================================================================
 // POST /api/admin/import-prospects/preview
 // Prévisualise les données transformées selon le mapping
 // ============================================================================
@@ -171,6 +335,18 @@ router.post('/execute', upload.single('file'), asyncHandler(async (req: Request,
       }
     }
 
+    // Récupérer les SIREN à exclure (doublons)
+    let excludedSirens: string[] = [];
+    if (req.body.excludedSirens) {
+      try {
+        excludedSirens = typeof req.body.excludedSirens === 'string' 
+          ? JSON.parse(req.body.excludedSirens) 
+          : req.body.excludedSirens;
+      } catch (e) {
+        console.warn('Format excludedSirens invalide, ignoré');
+      }
+    }
+
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -192,6 +368,11 @@ router.post('/execute', upload.single('file'), asyncHandler(async (req: Request,
     const { columns, rows } = fileData;
     const prospects: CreateProspectInput[] = [];
     const errors: Array<{ row: number; error: string }> = [];
+    let skippedCount = 0;
+
+    // Récupérer l'index de la colonne SIREN si mappée
+    const sirenColumn = mapping.siren?.excelColumn;
+    const sirenIndex = sirenColumn ? columns.indexOf(sirenColumn) : -1;
 
     // Transformer chaque ligne
     for (let i = 0; i < rows.length; i++) {
@@ -199,6 +380,19 @@ router.post('/execute', upload.single('file'), asyncHandler(async (req: Request,
       const prospectData: any = {};
 
       try {
+        // Vérifier si cette ligne doit être exclue (doublon SIREN)
+        if (sirenIndex >= 0 && excludedSirens.length > 0) {
+          const sirenValue = row[sirenIndex];
+          if (sirenValue && typeof sirenValue === 'string' && sirenValue.trim()) {
+            const siren = sirenValue.trim();
+            if (excludedSirens.includes(siren)) {
+              // Skip cette ligne car c'est un doublon
+              skippedCount++;
+              continue;
+            }
+          }
+        }
+
         // Email est obligatoire
         const emailColumn = mapping.email?.excelColumn;
         if (!emailColumn) {
@@ -301,7 +495,7 @@ router.post('/execute', upload.single('file'), asyncHandler(async (req: Request,
           total_rows: rows.length,
           success_count: successCount,
           error_count: errorCount,
-          skipped_count: 0,
+          skipped_count: skippedCount,
           results: { errors },
           status: errorCount > 0 && successCount === 0 ? 'failed' : 'completed',
           completed_at: new Date().toISOString()
@@ -315,7 +509,7 @@ router.post('/execute', upload.single('file'), asyncHandler(async (req: Request,
         totalRows: rows.length,
         successCount,
         errorCount,
-        skippedCount: 0,
+        skippedCount,
         errors: errors.slice(0, 100) // Limiter à 100 erreurs pour la réponse
       }
     });

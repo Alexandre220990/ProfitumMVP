@@ -187,6 +187,17 @@ export default function ProspectionAdmin() {
   });
   const [loadingSequences, setLoadingSequences] = useState(false);
 
+  // États pour la création manuelle de prospect
+  const [showCreateProspectModal, setShowCreateProspectModal] = useState(false);
+  const [creatingProspect, setCreatingProspect] = useState(false);
+  const [newProspect, setNewProspect] = useState({
+    email: '',
+    firstname: '',
+    lastname: '',
+    company_name: '',
+    siren: ''
+  });
+
   // Charger les données
   useEffect(() => {
     if (user && activeTab === 'list') {
@@ -430,6 +441,58 @@ export default function ProspectionAdmin() {
       setSortOrder('asc');
     }
     setPage(1);
+  };
+
+  const handleCreateProspect = async () => {
+    if (!newProspect.email.trim()) {
+      toast.error('L\'email est requis');
+      return;
+    }
+
+    setCreatingProspect(true);
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const response = await fetch(`${config.API_URL}/api/prospects`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: newProspect.email.trim(),
+          source: 'manuel' as const,
+          firstname: newProspect.firstname.trim() || undefined,
+          lastname: newProspect.lastname.trim() || undefined,
+          company_name: newProspect.company_name.trim() || undefined,
+          siren: newProspect.siren.trim() || undefined,
+          skip_enrichment: false
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Prospect créé avec succès');
+        setShowCreateProspectModal(false);
+        setNewProspect({
+          email: '',
+          firstname: '',
+          lastname: '',
+          company_name: '',
+          siren: ''
+        });
+        await fetchProspects();
+        await fetchStats();
+      } else {
+        toast.error(result.error || 'Erreur lors de la création du prospect');
+      }
+    } catch (error: any) {
+      console.error('Erreur création prospect:', error);
+      toast.error('Erreur lors de la création du prospect');
+    } finally {
+      setCreatingProspect(false);
+    }
   };
 
   const handleProspectClick = async (prospect: Prospect) => {
@@ -1745,8 +1808,19 @@ export default function ProspectionAdmin() {
       {/* Tableau */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Liste des Prospects ({total})</CardTitle>
-          <p className="text-sm text-gray-500 mt-1">Les prospects qui n'ont reçu aucun mail</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Liste des Prospects ({total})</CardTitle>
+              <p className="text-sm text-gray-500 mt-1">Les prospects qui n'ont reçu aucun mail</p>
+            </div>
+            <Button
+              onClick={() => setShowCreateProspectModal(true)}
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200 font-medium px-6 py-2.5 rounded-lg"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter un prospect
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">

@@ -108,6 +108,7 @@ import { startDailyActivityReportCron } from './cron/daily-activity-report';
 import { startNotificationEscalationCron } from './cron/notification-escalation';
 import { startRDVSlaRemindersCron } from './cron/rdv-sla-reminders';
 import { startProspectNotificationsCron } from './cron/prospect-notifications';
+import { startProspectEmailSequencesCron } from './cron/prospect-email-sequences';
 import { startGmailCheckerJob } from './jobs/gmail-checker';
 import routes from './routes';
 
@@ -864,6 +865,14 @@ server.listen(PORT, HOST, () => {
     // Notifications pour prospects prêts pour emailing et haute priorité
   } catch (error) {
     console.error('❌ Erreur démarrage cron job notifications prospects:', error);
+  }
+
+  // Démarrer le cron job pour les emails programmés des séquences
+  try {
+    startProspectEmailSequencesCron();
+    // Envoi automatique des emails programmés des séquences (toutes les 15 minutes)
+  } catch (error) {
+    console.error('❌ Erreur démarrage cron job emails séquences:', error);
   }
 
   // Démarrer le job de vérification Gmail (si configuré)

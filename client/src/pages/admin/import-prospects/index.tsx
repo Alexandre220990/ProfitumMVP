@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, Map, Eye, Play, CheckCircle, Mail, User, Building2, Phone, MapPin, Globe } from 'lucide-react';
+import { Upload, Map, Eye, Play, CheckCircle, Mail, User, Building2, Phone, MapPin, Globe, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -11,8 +11,9 @@ import { useNavigate } from 'react-router-dom';
 const STEPS = [
   { id: 1, name: 'Upload fichier', icon: Upload },
   { id: 2, name: 'Mapping colonnes', icon: Map },
-  { id: 3, name: 'Prévisualisation', icon: Eye },
-  { id: 4, name: 'Import', icon: Play }
+  { id: 3, name: 'Dédoublonnage SIREN', icon: AlertTriangle },
+  { id: 4, name: 'Prévisualisation', icon: Eye },
+  { id: 5, name: 'Import', icon: Play }
 ];
 
 interface FileData {
@@ -52,6 +53,9 @@ export default function ImportProspects() {
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [duplicatesData, setDuplicatesData] = useState<any>(null);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+  const [excludedSirens, setExcludedSirens] = useState<string[]>([]);
 
   const processFile = async (selectedFile: File | undefined) => {
     if (!selectedFile) return;
@@ -162,6 +166,52 @@ export default function ImportProspects() {
     }
   };
 
+  const handleCheckDuplicates = async () => {
+    if (!file || !mapping || !mapping.email?.excelColumn) {
+      toast.error('Veuillez mapper au moins la colonne email');
+      return;
+    }
+
+    setIsCheckingDuplicates(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('mapping', JSON.stringify(mapping));
+
+      const response = await fetch(`${config.API_URL}/api/admin/import-prospects/check-duplicates`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setDuplicatesData(result.data);
+        // Extraire les SIREN des doublons pour les exclure
+        const excluded = result.data.duplicates.map((dup: any) => dup.siren);
+        setExcludedSirens(excluded);
+        setCurrentStep(3);
+        if (result.data.duplicatesCount > 0) {
+          toast.warning(`${result.data.duplicatesCount} doublon(s) SIREN détecté(s)`);
+        } else {
+          toast.success('Aucun doublon SIREN détecté');
+        }
+      } else {
+        throw new Error(result.message || 'Erreur vérification doublons');
+      }
+    } catch (error: any) {
+      console.error('Erreur vérification doublons:', error);
+      toast.error(error.message || 'Erreur lors de la vérification des doublons');
+    } finally {
+      setIsCheckingDuplicates(false);
+    }
+  };
+
   const handlePreview = async () => {
     if (!fileData || !mapping || !mapping.email?.excelColumn) {
       toast.error('Veuillez mapper au moins la colonne email');
@@ -189,7 +239,7 @@ export default function ImportProspects() {
 
       if (result.success) {
         setPreviewData(result.data.transformedRows);
-        setCurrentStep(3);
+        setCurrentStep(4);
       } else {
         throw new Error(result.message || 'Erreur prévisualisation');
       }
@@ -211,6 +261,7 @@ export default function ImportProspects() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('mapping', JSON.stringify(mapping));
+      formData.append('excludedSirens', JSON.stringify(excludedSirens));
 
       const token = localStorage.getItem('token');
       const response = await fetch(`${config.API_URL}/api/admin/import-prospects/execute`, {
@@ -225,8 +276,8 @@ export default function ImportProspects() {
 
       if (result.success) {
         setImportResult(result.data);
-        setCurrentStep(4);
-        toast.success(`Import terminé: ${result.data.successCount} succès, ${result.data.errorCount} erreurs`);
+        setCurrentStep(5);
+        toast.success(`Import terminé: ${result.data.successCount} succès, ${result.data.errorCount} erreurs, ${result.data.skippedCount} doublons exclus`);
       } else {
         throw new Error(result.message || 'Erreur import');
       }
@@ -245,6 +296,8 @@ export default function ImportProspects() {
     setMapping({});
     setPreviewData([]);
     setImportResult(null);
+    setDuplicatesData(null);
+    setExcludedSirens([]);
   };
 
   return (
@@ -391,10 +444,10 @@ export default function ImportProspects() {
                   Retour
                 </Button>
                 <Button
-                  onClick={handlePreview}
-                  disabled={!mapping.email?.excelColumn}
+                  onClick={handleCheckDuplicates}
+                  disabled={!mapping.email?.excelColumn || isCheckingDuplicates}
                 >
-                  Prévisualiser
+                  {isCheckingDuplicates ? 'Vérification...' : 'Vérifier les doublons'}
                 </Button>
               </div>
             </div>
