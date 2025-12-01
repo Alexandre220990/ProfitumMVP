@@ -929,6 +929,7 @@ export function UniversalNotificationCenter({
                       {notification.sla.slaHours}h SLA
                     </Badge>
                   )}
+                  </div>
                 </div>
                 <p className={cn(
                   "text-xs md:text-sm line-clamp-2 break-words",
