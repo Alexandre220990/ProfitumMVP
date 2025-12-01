@@ -141,6 +141,7 @@ const ExpertEventSynthese = React.lazy(() => import('./pages/expert/event-synthe
 const ExpertDossier = React.lazy(() => import('./pages/expert/dossier/[id]'));
 const ExpertClient = React.lazy(() => import('./pages/expert/client/[id]'));
 const ExpertAjouterLead = React.lazy(() => import('./pages/expert/ajouter-lead'));
+const ExpertLeadSynthese = React.lazy(() => import('./pages/expert/leads/[id]'));
 
 // Cabinet pages (expert/owner)
 const CabinetProduitSynthese = React.lazy(() => import('./pages/cabinet/produit/[produitId]'));
@@ -354,6 +355,7 @@ function App() {
                         <Route path="mes-affaires" element={<ExpertMesAffaires />} />
                         <Route path="dossier/:id" element={<ExpertDossier />} />
                         <Route path="client/:id" element={<ExpertClient />} />
+                        <Route path="leads/:id" element={<ExpertLeadSynthese />} />
                         
                         {/* Documents */}
                         <Route path="documents" element={<ExpertDocumentsPage />} />

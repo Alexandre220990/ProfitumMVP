@@ -2394,6 +2394,108 @@ router.post('/leads', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/expert/leads/:id - Récupérer un lead (contact_message) pour expert
+router.get('/leads/:id', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    const authUser = req.user as AuthUser;
+    
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    const { id } = req.params;
+    
+    // Récupérer le lead depuis contact_messages
+    // Vérifier que l'expert a accès à ce lead (via sender_id ou via notification)
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: contactMessage, error } = await supabaseAdmin
+      .from('contact_messages')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !contactMessage) {
+      console.error('❌ Erreur récupération lead expert:', error);
+      return res.status(404).json({
+        success: false,
+        message: 'Lead introuvable'
+      });
+    }
+
+    // Vérifier que l'expert a accès à ce lead
+    // Un expert peut voir un lead s'il :
+    // 1. Est le sender (sender_id = expert.id et sender_type = 'expert')
+    // 2. A une notification pour ce lead (via metadata.contact_message_id ou action_url)
+    const expertId = authUser.database_id || authUser.id;
+    
+    let hasAccess = false;
+    
+    // Vérifier si l'expert est le sender
+    if (contactMessage.sender_id === expertId && contactMessage.sender_type === 'expert') {
+      hasAccess = true;
+    } else {
+      // Vérifier si l'expert a une notification pour ce lead
+      // Vérifier via metadata.contact_message_id
+      const { data: notificationByMetadata } = await supabaseAdmin
+        .from('notification')
+        .select('id')
+        .eq('user_id', authUser.id)
+        .eq('user_type', 'expert')
+        .eq('metadata->>contact_message_id', id)
+        .limit(1)
+        .maybeSingle();
+      
+      // Vérifier via action_url
+      const { data: notificationByUrl } = await supabaseAdmin
+        .from('notification')
+        .select('id')
+        .eq('user_id', authUser.id)
+        .eq('user_type', 'expert')
+        .ilike('action_url', `%/leads/${id}%`)
+        .limit(1)
+        .maybeSingle();
+      
+      if (notificationByMetadata || notificationByUrl) {
+        hasAccess = true;
+      }
+    }
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé à ce lead'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: contactMessage
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur route leads expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 // GET /api/expert/events/:id/synthese - Synthèse complète d'un événement pour expert
 router.get('/events/:id/synthese', async (req: Request, res: Response) => {
   try {
