@@ -505,7 +505,10 @@ export class NotificationTriggers {
    * Générer le template HTML pour l'email de notification
    */
   private static generateEmailTemplate(notification: any, data: NotificationData): string {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://app.profitum.fr';
+    const { SecureLinkService } = require('./secure-link-service');
+    // Déterminer le type d'utilisateur depuis la notification
+    const userType = notification.user_type || data.user_type || 'client';
+    const frontendUrl = SecureLinkService.getPlatformUrl(userType as 'admin' | 'expert' | 'client' | 'apporteur');
     const actionUrl = data.action_url ? `${frontendUrl}${data.action_url}` : null;
     
     const priorityColors: Record<string, string> = {
@@ -570,7 +573,8 @@ export class NotificationTriggers {
    * Générer le template HTML pour l'email de notification admin
    */
   private static generateAdminEmailTemplate(adminNotification: any, data: AdminNotificationData): string {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://app.profitum.fr';
+    const { SecureLinkService } = require('./secure-link-service');
+    const frontendUrl = SecureLinkService.getPlatformUrl('admin');
     const actionUrl = data.action_url ? `${frontendUrl}${data.action_url}` : null;
     
     const priorityColors: Record<string, string> = {

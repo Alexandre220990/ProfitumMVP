@@ -331,7 +331,7 @@ export class ContactLeadReminderService {
       'Voir et traiter la demande',
       actionPath,
       undefined,
-      undefined,
+      'admin',
       'cta-button'
     );
     
@@ -577,7 +577,7 @@ export class ContactLeadReminderService {
       <div class="footer-text">
         <p>Cet email a été envoyé automatiquement par le système de rappels Profitum.</p>
         <p style="margin-top: 12px;">
-          <a href="${process.env.FRONTEND_URL || 'https://app.profitum.fr'}" class="footer-link">Accéder à la plateforme</a>
+          <a href="${SecureLinkService.getPlatformUrl('admin')}" class="footer-link">Accéder à la plateforme</a>
         </p>
       </div>
     </div>

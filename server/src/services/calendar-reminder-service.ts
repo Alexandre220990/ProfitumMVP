@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NotificationService } from './NotificationService';
 import { EmailService } from './EmailService';
+import { SecureLinkService } from './secure-link-service';
 
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL!;
@@ -387,7 +388,8 @@ export class CalendarReminderService {
         event,
         minutesUntilEvent,
         eventStart,
-        recipient.name
+        recipient.name,
+        recipient.user_type
       );
 
       // Envoyer l'email
@@ -407,7 +409,8 @@ export class CalendarReminderService {
     event: any,
     minutesUntilEvent: number,
     eventStart: Date,
-    recipientName: string
+    recipientName: string,
+    userType?: string
   ): { subject: string; html: string; text: string } {
     const isUrgent = minutesUntilEvent <= 15;
     const urgencyColor = isUrgent ? '#dc2626' : minutesUntilEvent <= 60 ? '#f59e0b' : '#3b82f6';
@@ -662,7 +665,7 @@ export class CalendarReminderService {
       <div class="footer-text">
         <p>Cet email a été envoyé automatiquement par le système de rappels Profitum.</p>
         <p style="margin-top: 12px;">
-          <a href="${process.env.FRONTEND_URL || 'https://app.profitum.fr'}" class="footer-link">Accéder à la plateforme</a>
+          <a href="${SecureLinkService.getPlatformUrl(userType as 'admin' | 'expert' | 'client' | 'apporteur')}" class="footer-link">Accéder à la plateforme</a>
         </p>
       </div>
     </div>

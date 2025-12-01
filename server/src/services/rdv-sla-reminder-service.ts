@@ -10,7 +10,7 @@ const supabase = createClient(
 
 /**
  * Configuration SLA pour les RDV non traités
- * Seuils en heures depuis la création du RDV
+ * Seuils en heures depuis la date/heure prévue du RDV (scheduled_date + scheduled_time)
  */
 const RDV_SLA_CONFIG = {
   targetHours: 24,      // 24h : Rappel normal
@@ -100,6 +100,7 @@ export class RDVSlaReminderService {
       }
 
       let remindersSent = 0;
+      let startNotificationsSent = 0;
 
       for (const rdv of rdvs) {
         // Transformer les relations tableaux en objets
@@ -110,6 +111,13 @@ export class RDVSlaReminderService {
           ApporteurAffaires: Array.isArray(rdv.ApporteurAffaires) && rdv.ApporteurAffaires.length > 0 ? rdv.ApporteurAffaires[0] : undefined,
         };
         
+        // Vérifier si le RDV démarre maintenant
+        if (this.isRdvStartingNow(transformedRdv, now)) {
+          await this.sendRdvStartNotification(transformedRdv);
+          startNotificationsSent++;
+        }
+        
+        // Vérifier les rappels SLA (pour les RDV en retard)
         const shouldRemind = this.shouldSendReminder(transformedRdv, now);
         
         if (shouldRemind.should && shouldRemind.threshold) {
@@ -118,7 +126,7 @@ export class RDVSlaReminderService {
         }
       }
 
-      console.log(`✅ [RDV SLA Reminder] Vérification terminée - ${remindersSent} rappel(s) envoyé(s)`);
+      console.log(`✅ [RDV SLA Reminder] Vérification terminée - ${remindersSent} rappel(s) envoyé(s), ${startNotificationsSent} notification(s) de démarrage envoyée(s)`);
     } catch (error) {
       console.error('❌ [RDV SLA Reminder] Erreur lors de la vérification:', error);
     }
@@ -126,19 +134,29 @@ export class RDVSlaReminderService {
 
   /**
    * Détermine si un rappel doit être envoyé selon les seuils SLA
+   * Calcule le délai écoulé depuis la date/heure prévue du RDV (scheduled_date + scheduled_time)
+   * Un RDV est "overdue" quand la date/heure prévue dépasse la date/heure actuelle
    */
   static shouldSendReminder(
     rdv: RDVNotification,
     now: Date
   ): { should: boolean; threshold: '24h' | '48h' | '120h' | null } {
-    const createdAt = rdv.created_at;
-    
-    if (!createdAt) {
+    // Utiliser la date/heure prévue du RDV, pas la date de création
+    if (!rdv.scheduled_date || !rdv.scheduled_time) {
       return { should: false, threshold: null };
     }
 
-    const createdDate = new Date(createdAt);
-    const hoursElapsed = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60);
+    // Construire la date/heure complète du RDV prévu
+    const scheduledDateTime = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+    
+    // Vérifier si le RDV est passé (overdue)
+    if (scheduledDateTime > now) {
+      // RDV pas encore arrivé, pas de rappel SLA
+      return { should: false, threshold: null };
+    }
+
+    // Calculer les heures écoulées depuis la date/heure prévue
+    const hoursElapsed = (now.getTime() - scheduledDateTime.getTime()) / (1000 * 60 * 60);
 
     // Récupérer les métadonnées pour vérifier les rappels déjà envoyés
     const metadata = (rdv as any).metadata || {};
@@ -166,10 +184,15 @@ export class RDVSlaReminderService {
     threshold: '24h' | '48h' | '120h'
   ): Promise<void> {
     try {
-      const createdAt = rdv.created_at;
-      const hoursElapsed = createdAt 
-        ? (new Date().getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60)
-        : 0;
+      // Calculer le délai écoulé depuis la date/heure prévue du RDV
+      if (!rdv.scheduled_date || !rdv.scheduled_time) {
+        console.warn(`⚠️ [RDV SLA Reminder] RDV ${rdv.id} sans date/heure prévue`);
+        return;
+      }
+
+      const scheduledDateTime = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+      const now = new Date();
+      const hoursElapsed = (now.getTime() - scheduledDateTime.getTime()) / (1000 * 60 * 60);
       const daysElapsed = Math.floor(hoursElapsed / 24);
 
       // Déterminer la priorité et le message selon le seuil
@@ -366,7 +389,7 @@ export class RDVSlaReminderService {
       'Voir et traiter le RDV',
       actionPath,
       undefined,
-      undefined,
+      'admin',
       'cta-button'
     );
     
@@ -603,7 +626,7 @@ export class RDVSlaReminderService {
       <div class="footer-text">
         <p>Cet email a été envoyé automatiquement par le système de rappels Profitum.</p>
         <p style="margin-top: 12px;">
-          <a href="${process.env.FRONTEND_URL || 'https://app.profitum.fr'}" class="footer-link">Accéder à la plateforme</a>
+          <a href="${SecureLinkService.getPlatformUrl('admin')}" class="footer-link">Accéder à la plateforme</a>
         </p>
       </div>
     </div>
@@ -628,6 +651,444 @@ Statut : ${rdv.status === 'proposed' ? 'Proposé' : rdv.status === 'scheduled' ?
 Délai écoulé : ${daysElapsed} jour${daysElapsed > 1 ? 's' : ''} (${threshold})
 
 Voir le RDV : ${process.env.FRONTEND_URL || 'https://app.profitum.fr'}${actionPath}
+    `.trim();
+
+    return { subject, html, text };
+  }
+
+  /**
+   * Vérifie si un RDV démarre maintenant (heure de début = heure actuelle, avec une tolérance de 5 minutes)
+   */
+  static isRdvStartingNow(rdv: RDVNotification, now: Date): boolean {
+    if (!rdv.scheduled_date || !rdv.scheduled_time) {
+      return false;
+    }
+
+    try {
+      const scheduledDateTime = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+      const timeDiff = Math.abs(now.getTime() - scheduledDateTime.getTime());
+      const minutesDiff = timeDiff / (1000 * 60);
+
+      // RDV démarre maintenant si on est dans une fenêtre de ±5 minutes autour de l'heure prévue
+      return minutesDiff <= 5;
+    } catch (error) {
+      console.error(`❌ [RDV Start] Erreur calcul date/heure pour RDV ${rdv.id}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Envoie une notification spéciale pour les RDV qui démarrent maintenant
+   */
+  static async sendRdvStartNotification(rdv: RDVNotification): Promise<void> {
+    try {
+      const metadata = (rdv as any).metadata || {};
+      
+      // Vérifier si la notification de démarrage a déjà été envoyée
+      if (metadata.start_notification_sent) {
+        return; // Déjà envoyée
+      }
+
+      const clientName = rdv.Client?.company_name || rdv.Client?.name || 'Client';
+      const expertName = rdv.Expert?.name || 'Non assigné';
+      const apporteurName = rdv.ApporteurAffaires 
+        ? `${rdv.ApporteurAffaires.first_name || ''} ${rdv.ApporteurAffaires.last_name || ''}`.trim()
+        : null;
+
+      const rdvDate = rdv.scheduled_date ? new Date(rdv.scheduled_date).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }) : 'Date non définie';
+      const rdvTime = rdv.scheduled_time || 'Heure non définie';
+
+      // Récupérer tous les admins actifs
+      const { data: admins } = await supabase
+        .from('Admin')
+        .select('auth_user_id, email, name')
+        .eq('is_active', true)
+        .not('auth_user_id', 'is', null);
+
+      // Envoyer aux admins
+      if (admins && admins.length > 0) {
+        for (const admin of admins) {
+          if (!admin.auth_user_id || !admin.email) continue;
+          if (admin.email.includes('@profitum.temp') || admin.email.includes('temp_')) continue;
+
+          try {
+            const { subject, html, text } = this.generateRdvStartEmailTemplate(
+              rdv,
+              clientName,
+              expertName,
+              apporteurName,
+              rdvDate,
+              rdvTime,
+              admin.name || 'Administrateur',
+              'admin'
+            );
+
+            await EmailService.sendDailyReportEmail(admin.email, subject, html, text);
+            console.log(`✅ [RDV Start] Email envoyé à admin ${admin.email} pour RDV ${rdv.id}`);
+
+            // Notification in-app
+            await supabase.from('notification').insert({
+              user_id: admin.auth_user_id,
+              user_type: 'admin',
+              title: `🚀 RDV "${rdv.title || 'Sans titre'}" démarre maintenant`,
+              message: `Le RDV avec ${clientName} démarre maintenant (${rdvDate} à ${rdvTime})`,
+              notification_type: 'rdv_starting_now',
+              priority: 'urgent',
+              is_read: false,
+              status: 'unread',
+              action_url: `/admin/agenda-admin?rdvId=${rdv.id}`,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          } catch (error) {
+            console.error(`❌ [RDV Start] Erreur envoi email admin ${admin.email}:`, error);
+          }
+        }
+      }
+
+      // Envoyer au client si disponible
+      if (rdv.Client?.email && !rdv.Client.email.includes('@profitum.temp')) {
+        try {
+          const { subject, html, text } = this.generateRdvStartEmailTemplate(
+            rdv,
+            clientName,
+            expertName,
+            apporteurName,
+            rdvDate,
+            rdvTime,
+            clientName,
+            'client'
+          );
+
+          await EmailService.sendDailyReportEmail(rdv.Client.email, subject, html, text);
+          console.log(`✅ [RDV Start] Email envoyé au client ${rdv.Client.email} pour RDV ${rdv.id}`);
+        } catch (error) {
+          console.error(`❌ [RDV Start] Erreur envoi email client:`, error);
+        }
+      }
+
+      // Envoyer à l'expert si disponible
+      if (rdv.Expert?.email && !rdv.Expert.email.includes('@profitum.temp')) {
+        try {
+          const { subject, html, text } = this.generateRdvStartEmailTemplate(
+            rdv,
+            clientName,
+            expertName,
+            apporteurName,
+            rdvDate,
+            rdvTime,
+            expertName,
+            'expert'
+          );
+
+          await EmailService.sendDailyReportEmail(rdv.Expert.email, subject, html, text);
+          console.log(`✅ [RDV Start] Email envoyé à l'expert ${rdv.Expert.email} pour RDV ${rdv.id}`);
+        } catch (error) {
+          console.error(`❌ [RDV Start] Erreur envoi email expert:`, error);
+        }
+      }
+
+      // Marquer la notification comme envoyée
+      await supabase
+        .from('RDV')
+        .update({
+          metadata: {
+            ...metadata,
+            start_notification_sent: true,
+            start_notification_sent_at: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', rdv.id);
+
+      console.log(`✅ [RDV Start] Notification de démarrage envoyée pour RDV ${rdv.id}`);
+    } catch (error) {
+      console.error(`❌ [RDV Start] Erreur lors de l'envoi de la notification:`, error);
+    }
+  }
+
+  /**
+   * Génère le template email pour les RDV qui démarrent maintenant
+   */
+  static generateRdvStartEmailTemplate(
+    rdv: RDVNotification,
+    clientName: string,
+    expertName: string,
+    apporteurName: string | null,
+    rdvDate: string,
+    rdvTime: string,
+    recipientName: string,
+    recipientType: 'admin' | 'client' | 'expert'
+  ): { subject: string; html: string; text: string } {
+    const urgencyColor = '#10b981'; // Vert pour "démarre maintenant"
+    const urgencyBg = '#ecfdf5';
+    const icon = '🚀';
+
+    const subject = `${icon} Votre RDV "${rdv.title || 'Sans titre'}" démarre maintenant`;
+
+    const actionPath = recipientType === 'admin' 
+      ? `/admin/agenda-admin?rdvId=${rdv.id}`
+      : `/calendar/event/${rdv.id}`;
+    
+    const actionLink = SecureLinkService.generateSmartLinkHTML(
+      'Voir le RDV',
+      actionPath,
+      undefined,
+      recipientType,
+      'cta-button'
+    );
+
+    const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>${subject}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #1f2937;
+      background-color: #f3f4f6;
+      padding: 0;
+      margin: 0;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #ffffff;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    .header {
+      background: linear-gradient(135deg, ${urgencyColor} 0%, ${this.darkenColor(urgencyColor, 20)} 100%);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .header-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .header-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .header-subtitle {
+      font-size: 16px;
+      opacity: 0.95;
+      font-weight: 400;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .greeting {
+      font-size: 18px;
+      color: #1f2937;
+      margin-bottom: 24px;
+      font-weight: 500;
+    }
+    .alert-box {
+      background: ${urgencyBg};
+      border-left: 4px solid ${urgencyColor};
+      border-radius: 8px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+    .alert-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: ${urgencyColor};
+      margin-bottom: 8px;
+    }
+    .alert-text {
+      font-size: 14px;
+      color: #4b5563;
+      line-height: 1.6;
+    }
+    .info-card {
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .info-row {
+      display: flex;
+      padding: 12px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .info-row:last-child {
+      border-bottom: none;
+    }
+    .info-label {
+      font-weight: 600;
+      color: #6b7280;
+      width: 140px;
+      font-size: 14px;
+    }
+    .info-value {
+      color: #1f2937;
+      font-size: 14px;
+      flex: 1;
+    }
+    .cta-button {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      margin: 32px 0;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+    }
+    .cta-container {
+      text-align: center;
+    }
+    .footer {
+      background: #f9fafb;
+      padding: 30px;
+      text-align: center;
+      border-top: 1px solid #e5e7eb;
+    }
+    .footer-text {
+      font-size: 13px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+    .footer-link {
+      color: ${urgencyColor};
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
+      .email-container {
+        margin: 0;
+        border-radius: 0;
+      }
+      .content {
+        padding: 30px 20px;
+      }
+      .info-row {
+        flex-direction: column;
+      }
+      .info-label {
+        width: 100%;
+        margin-bottom: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="header">
+      <div class="header-icon">${icon}</div>
+      <div class="header-title">RDV démarre maintenant</div>
+      <div class="header-subtitle">${rdvDate} à ${rdvTime}</div>
+    </div>
+    
+    <div class="content">
+      <div class="greeting">
+        Bonjour ${recipientName},
+      </div>
+      
+      <div class="alert-box">
+        <div class="alert-title">
+          Votre rendez-vous démarre maintenant
+        </div>
+        <div class="alert-text">
+          Le rendez-vous <strong>"${rdv.title || 'Sans titre'}"</strong> est prévu pour commencer maintenant.
+        </div>
+      </div>
+      
+      <div class="info-card">
+        <div class="info-row">
+          <div class="info-label">Titre</div>
+          <div class="info-value">${rdv.title || 'Sans titre'}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Client</div>
+          <div class="info-value">${clientName}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Expert</div>
+          <div class="info-value">${expertName}</div>
+        </div>
+        ${apporteurName ? `
+        <div class="info-row">
+          <div class="info-label">Apporteur</div>
+          <div class="info-value">${apporteurName}</div>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <div class="info-label">Date</div>
+          <div class="info-value">${rdvDate}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Heure</div>
+          <div class="info-value">${rdvTime}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Statut</div>
+          <div class="info-value">${rdv.status === 'proposed' ? 'Proposé' : rdv.status === 'scheduled' ? 'Planifié' : rdv.status}</div>
+        </div>
+      </div>
+      
+      <div class="cta-container">
+        ${actionLink}
+      </div>
+    </div>
+    
+    <div class="footer">
+      <div class="footer-text">
+        <p>Cet email a été envoyé automatiquement par le système de notifications Profitum.</p>
+        <p style="margin-top: 12px;">
+          <a href="${SecureLinkService.getPlatformUrl(recipientType)}" class="footer-link">Accéder à la plateforme</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    const text = `
+${subject}
+
+Bonjour ${recipientName},
+
+Votre rendez-vous démarre maintenant :
+
+Titre : ${rdv.title || 'Sans titre'}
+Client : ${clientName}
+Expert : ${expertName}
+${apporteurName ? `Apporteur : ${apporteurName}` : ''}
+Date : ${rdvDate}
+Heure : ${rdvTime}
+Statut : ${rdv.status === 'proposed' ? 'Proposé' : rdv.status === 'scheduled' ? 'Planifié' : rdv.status}
+
+Voir le RDV : ${SecureLinkService.getPlatformUrl(recipientType)}${actionPath}
     `.trim();
 
     return { subject, html, text };
