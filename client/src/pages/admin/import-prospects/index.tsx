@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, Map, Eye, Play, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Upload, Map, Eye, Play, CheckCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -219,25 +219,7 @@ export default function ImportProspects() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/admin/prospection')}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour
-            </Button>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Import Prospects</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Importez des prospects depuis un fichier Excel avec mapping flexible
-          </p>
-        </div>
+    <div className="space-y-6">
 
         {/* Stepper */}
         <div className="mb-8">
@@ -462,14 +444,16 @@ export default function ImportProspects() {
                 <Button variant="outline" onClick={handleReset}>
                   Nouvel import
                 </Button>
-                <Button onClick={() => navigate('/admin/prospection')}>
+                <Button onClick={() => {
+                  navigate('/admin/prospection?tab=list');
+                  window.location.reload();
+                }}>
                   Voir les prospects
                 </Button>
               </div>
             </div>
           )}
         </Card>
-      </div>
     </div>
   );
 }

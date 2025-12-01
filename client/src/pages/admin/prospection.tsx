@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,10 +22,13 @@ import {
   RefreshCw,
   Search,
   TrendingUp,
-  ArrowUpDown
+  ArrowUpDown,
+  Upload,
+  List
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { cn } from "@/lib/utils";
+import ImportProspects from "./import-prospects";
 
 // Types
 interface Prospect {
@@ -96,6 +100,8 @@ type SortOrder = 'asc' | 'desc';
 
 export default function ProspectionAdmin() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'list';
   
   // États
   const [prospects, setProspects] = useState<Prospect[]>([]);
@@ -138,11 +144,11 @@ export default function ProspectionAdmin() {
 
   // Charger les données
   useEffect(() => {
-    if (user) {
+    if (user && activeTab === 'list') {
       fetchProspects();
       fetchStats();
     }
-  }, [user, page, sortBy, sortOrder, search, filterSource, filterEnrichment, filterAI, filterEmailing, filterSequences]);
+  }, [user, page, sortBy, sortOrder, search, filterSource, filterEnrichment, filterAI, filterEmailing, filterSequences, activeTab]);
 
   const fetchProspects = async () => {
     try {
@@ -368,7 +374,7 @@ export default function ProspectionAdmin() {
     </TableHead>
   );
 
-  if (loading && prospects.length === 0) {
+  if (loading && prospects.length === 0 && activeTab === 'list') {
     return <LoadingScreen />;
   }
 
@@ -380,70 +386,112 @@ export default function ProspectionAdmin() {
           <h1 className="text-3xl font-bold text-gray-900">Prospection</h1>
           <p className="text-gray-500 mt-1">Gestion des prospects et suivi des emailings</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={async () => {
-              setCheckingGmail(true);
-              try {
-                const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
-                
-                const response = await fetch(`${config.API_URL}/api/gmail/check-replies`, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    since_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-                  })
-                });
+        {activeTab === 'list' && (
+          <div className="flex gap-2">
+            <Button
+              onClick={async () => {
+                setCheckingGmail(true);
+                try {
+                  const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                  
+                  const response = await fetch(`${config.API_URL}/api/gmail/check-replies`, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${token}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      since_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+                    })
+                  });
 
-                const result = await response.json();
-                
-                if (result.success) {
-                  toast.success(
-                    `${result.data.updated} réponse(s) détectée(s) et mise(s) à jour sur ${result.data.processed} email(s) traité(s)`
-                  );
-                  if (result.data.errors && result.data.errors.length > 0) {
-                    toast.warning(`${result.data.errors.length} erreur(s) lors du traitement`);
+                  const result = await response.json();
+                  
+                  if (result.success) {
+                    toast.success(
+                      `${result.data.updated} réponse(s) détectée(s) et mise(s) à jour sur ${result.data.processed} email(s) traité(s)`
+                    );
+                    if (result.data.errors && result.data.errors.length > 0) {
+                      toast.warning(`${result.data.errors.length} erreur(s) lors du traitement`);
+                    }
+                    // Actualiser les données
+                    await fetchProspects();
+                    if (selectedProspect) {
+                      await fetchProspectEmails(selectedProspect.id);
+                    }
+                  } else {
+                    toast.error(result.error || 'Erreur lors de la vérification Gmail');
                   }
-                  // Actualiser les données
-                  await fetchProspects();
-                  if (selectedProspect) {
-                    await fetchProspectEmails(selectedProspect.id);
-                  }
-                } else {
-                  toast.error(result.error || 'Erreur lors de la vérification Gmail');
+                } catch (error: any) {
+                  console.error('Erreur vérification Gmail:', error);
+                  toast.error('Erreur lors de la vérification des réponses Gmail');
+                } finally {
+                  setCheckingGmail(false);
                 }
-              } catch (error: any) {
-                console.error('Erreur vérification Gmail:', error);
-                toast.error('Erreur lors de la vérification des réponses Gmail');
-              } finally {
-                setCheckingGmail(false);
-              }
-            }}
-            variant="outline"
-            size="sm"
-            disabled={checkingGmail}
-          >
-            {checkingGmail ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Vérification...
-              </>
-            ) : (
-              <>
-                <Mail className="h-4 w-4 mr-2" />
-                Vérifier réponses Gmail
-              </>
-            )}
-          </Button>
-          <Button onClick={fetchProspects} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualiser
-          </Button>
-        </div>
+              }}
+              variant="outline"
+              size="sm"
+              disabled={checkingGmail}
+            >
+              {checkingGmail ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Vérification...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Vérifier réponses Gmail
+                </>
+              )}
+            </Button>
+            <Button onClick={fetchProspects} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualiser
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* Onglets */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setSearchParams({ tab: 'list' })}
+            className={cn(
+              "py-4 px-1 border-b-2 font-medium text-sm transition-colors",
+              activeTab === 'list'
+                ? "border-red-600 text-red-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <List className="h-4 w-4" />
+              Liste des Prospects
+            </div>
+          </button>
+          <button
+            onClick={() => setSearchParams({ tab: 'import' })}
+            className={cn(
+              "py-4 px-1 border-b-2 font-medium text-sm transition-colors",
+              activeTab === 'import'
+                ? "border-red-600 text-red-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Import Prospects
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      {/* Contenu selon l'onglet */}
+      {activeTab === 'import' ? (
+        <ImportProspects />
+      ) : (
+        <>
 
       {/* Statistiques */}
       {stats && (
@@ -1160,6 +1208,8 @@ export default function ProspectionAdmin() {
           </div>
         </DialogContent>
       </Dialog>
+        </>
+      )}
     </div>
   );
 }
