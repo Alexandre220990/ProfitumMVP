@@ -81,6 +81,60 @@ router.get('/ready-for-emailing', async (req, res) => {
   }
 });
 
+// GET /api/prospects/scheduled-sequences - Prospects avec séquences programmées
+router.get('/scheduled-sequences', async (req, res) => {
+  try {
+    const filters: ProspectFilters = {
+      page: parseInt(req.query.page as string) || 1,
+      limit: parseInt(req.query.limit as string) || 20,
+      source: req.query.source as any,
+      enrichment_status: req.query.enrichment_status as any,
+      ai_status: req.query.ai_status as any,
+      emailing_status: req.query.emailing_status as any,
+      search: req.query.search as string,
+      sort_by: (req.query.sort_by as any) || 'created_at',
+      sort_order: (req.query.sort_order as any) || 'desc'
+    };
+
+    const result = await ProspectService.getProspectsWithScheduledSequences(filters);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/prospects/completed-sequences - Prospects avec séquences terminées
+router.get('/completed-sequences', async (req, res) => {
+  try {
+    const filters: ProspectFilters = {
+      page: parseInt(req.query.page as string) || 1,
+      limit: parseInt(req.query.limit as string) || 20,
+      source: req.query.source as any,
+      enrichment_status: req.query.enrichment_status as any,
+      ai_status: req.query.ai_status as any,
+      emailing_status: req.query.emailing_status as any,
+      search: req.query.search as string,
+      sort_by: (req.query.sort_by as any) || 'created_at',
+      sort_order: (req.query.sort_order as any) || 'desc'
+    };
+
+    const result = await ProspectService.getProspectsWithCompletedSequences(filters);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // POST /api/prospects - Créer un prospect
 router.post('/', async (req, res) => {
   try {

@@ -184,21 +184,49 @@ export class ProspectService {
 
       // Filtrer par séquences si demandé
       if (has_sequences !== undefined) {
-        // Récupérer les IDs des prospects avec séquences programmées
-        const { data: scheduledData } = await supabase
-          .from('prospect_email_scheduled')
-          .select('prospect_id')
-          .in('status', ['scheduled', 'paused']);
+        if (has_sequences) {
+          // Récupérer les IDs des prospects avec séquences programmées
+          const { data: scheduledData } = await supabase
+            .from('prospect_email_scheduled')
+            .select('prospect_id')
+            .in('status', ['scheduled', 'paused']);
 
-        const prospectIdsWithSequences = new Set(
-          (scheduledData || []).map((d: any) => d.prospect_id)
-        );
+          const prospectIdsWithSequences = new Set(
+            (scheduledData || []).map((d: any) => d.prospect_id)
+          );
 
-        // Filtrer les données
-        filteredData = filteredData.filter((p: Prospect) => {
-          const hasSeq = prospectIdsWithSequences.has(p.id);
-          return has_sequences ? hasSeq : !hasSeq;
-        });
+          // Filtrer pour ne garder que ceux avec séquences
+          filteredData = filteredData.filter((p: Prospect) => {
+            return prospectIdsWithSequences.has(p.id);
+          });
+        } else {
+          // Récupérer les IDs des prospects avec séquences programmées
+          const { data: scheduledData } = await supabase
+            .from('prospect_email_scheduled')
+            .select('prospect_id')
+            .in('status', ['scheduled', 'paused']);
+
+          const prospectIdsWithSequences = new Set(
+            (scheduledData || []).map((d: any) => d.prospect_id)
+          );
+
+          // Récupérer les IDs des prospects avec emails envoyés
+          const { data: emailsData } = await supabase
+            .from('prospects_emails')
+            .select('prospect_id')
+            .not('sent_at', 'is', null);
+
+          const prospectIdsWithEmails = new Set(
+            (emailsData || []).map((d: any) => d.prospect_id)
+          );
+
+          // Filtrer pour ne garder que ceux sans séquences ET sans emails envoyés
+          filteredData = filteredData.filter((p: Prospect) => {
+            const hasSeq = prospectIdsWithSequences.has(p.id);
+            const hasEmails = prospectIdsWithEmails.has(p.id);
+            return !hasSeq && !hasEmails;
+          });
+        }
 
         filteredCount = filteredData.length;
 
@@ -756,11 +784,11 @@ export class ProspectService {
   }
 
   /**
-   * Récupère toutes les séquences disponibles
+   * Récupère toutes les séquences disponibles avec le nombre de prospects qui les utilisent
    */
   static async getEmailSequences(): Promise<ApiResponse<any[]>> {
     try {
-      const { data, error } = await supabase
+      const { data: sequences, error } = await supabase
         .from('prospect_email_sequences')
         .select('*, prospect_email_sequence_steps(*)')
         .eq('is_active', true)
@@ -773,9 +801,38 @@ export class ProspectService {
         };
       }
 
+      if (!sequences || sequences.length === 0) {
+        return {
+          success: true,
+          data: []
+        };
+      }
+
+      // Pour chaque séquence, compter le nombre de prospects qui l'utilisent
+      const sequencesWithCounts = await Promise.all(
+        sequences.map(async (sequence) => {
+          // Compter les prospects uniques avec des emails programmés pour cette séquence
+          const { data: scheduledData, error: countError } = await supabase
+            .from('prospect_email_scheduled')
+            .select('prospect_id')
+            .eq('sequence_id', sequence.id)
+            .in('status', ['scheduled', 'paused']);
+
+          // Compter les prospects uniques
+          const uniqueProspects = new Set(
+            (scheduledData || []).map((item: any) => item.prospect_id)
+          );
+
+          return {
+            ...sequence,
+            prospects_count: countError ? 0 : uniqueProspects.size
+          };
+        })
+      );
+
       return {
         success: true,
-        data: data || []
+        data: sequencesWithCounts
       };
     } catch (error: any) {
       return {
@@ -1084,6 +1141,224 @@ export class ProspectService {
       return {
         success: true,
         data: { scheduled_count: data?.length || 0 }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Récupère les prospects avec des séquences programmées (en cours)
+   */
+  static async getProspectsWithScheduledSequences(filters: ProspectFilters = {}): Promise<ApiResponse<ProspectListResponse>> {
+    try {
+      const {
+        page = 1,
+        limit = 20,
+        sort_by = 'created_at',
+        sort_order = 'desc'
+      } = filters;
+
+      const offset = (page - 1) * limit;
+
+      // Récupérer les IDs des prospects avec des séquences programmées en cours
+      const { data: scheduledData, error: scheduledError } = await supabase
+        .from('prospect_email_scheduled')
+        .select('prospect_id')
+        .in('status', ['scheduled', 'paused']);
+
+      if (scheduledError) {
+        return {
+          success: false,
+          error: `Erreur récupération séquences programmées: ${scheduledError.message}`
+        };
+      }
+
+      const prospectIdsWithScheduledSequences = new Set(
+        (scheduledData || []).map((d: any) => d.prospect_id)
+      );
+
+      if (prospectIdsWithScheduledSequences.size === 0) {
+        return {
+          success: true,
+          data: {
+            data: [],
+            total: 0,
+            page,
+            limit,
+            total_pages: 0
+          }
+        };
+      }
+
+      // Récupérer les prospects correspondants
+      let query = supabase
+        .from('prospects')
+        .select('*', { count: 'exact' })
+        .in('id', Array.from(prospectIdsWithScheduledSequences));
+
+      // Application des filtres de base
+      if (filters.source) {
+        query = query.eq('source', filters.source);
+      }
+      if (filters.enrichment_status) {
+        query = query.eq('enrichment_status', filters.enrichment_status);
+      }
+      if (filters.ai_status) {
+        query = query.eq('ai_status', filters.ai_status);
+      }
+      if (filters.emailing_status) {
+        query = query.eq('emailing_status', filters.emailing_status);
+      }
+      if (filters.search) {
+        query = query.or(`email.ilike.%${filters.search}%,firstname.ilike.%${filters.search}%,lastname.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%`);
+      }
+
+      // Tri
+      query = query.order(sort_by, { ascending: sort_order === 'asc' });
+
+      const { data, error, count } = await query.range(offset, offset + limit - 1);
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération prospects: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          data: (data || []) as Prospect[],
+          total: count || 0,
+          page,
+          limit,
+          total_pages: Math.ceil((count || 0) / limit)
+        }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Récupère les prospects avec des séquences terminées (dernier email envoyé)
+   */
+  static async getProspectsWithCompletedSequences(filters: ProspectFilters = {}): Promise<ApiResponse<ProspectListResponse>> {
+    try {
+      const {
+        page = 1,
+        limit = 20,
+        sort_by = 'created_at',
+        sort_order = 'desc'
+      } = filters;
+
+      const offset = (page - 1) * limit;
+
+      // Récupérer tous les prospects avec des emails programmés
+      const { data: allScheduledData, error: scheduledError } = await supabase
+        .from('prospect_email_scheduled')
+        .select('prospect_id, step_number, status, sequence_id')
+        .order('step_number', { ascending: true });
+
+      if (scheduledError) {
+        return {
+          success: false,
+          error: `Erreur récupération séquences: ${scheduledError.message}`
+        };
+      }
+
+      // Grouper par prospect_id pour trouver ceux qui ont terminé leur séquence
+      const prospectsData = new Map<string, { maxStep: number; allSent: boolean; sequenceId: string | null }>();
+
+      for (const scheduled of allScheduledData || []) {
+        const prospectId = scheduled.prospect_id;
+        const current = prospectsData.get(prospectId) || { maxStep: 0, allSent: true, sequenceId: scheduled.sequence_id };
+
+        if (scheduled.step_number > current.maxStep) {
+          current.maxStep = scheduled.step_number;
+        }
+        if (scheduled.status !== 'sent' && scheduled.status !== 'cancelled') {
+          current.allSent = false;
+        }
+        if (scheduled.sequence_id) {
+          current.sequenceId = scheduled.sequence_id;
+        }
+
+        prospectsData.set(prospectId, current);
+      }
+
+      // Filtrer pour ne garder que ceux qui ont terminé (tous les emails envoyés)
+      const completedProspectIds: string[] = [];
+      for (const [prospectId, data] of prospectsData.entries()) {
+        if (data.allSent && data.maxStep > 0) {
+          completedProspectIds.push(prospectId);
+        }
+      }
+
+      if (completedProspectIds.length === 0) {
+        return {
+          success: true,
+          data: {
+            data: [],
+            total: 0,
+            page,
+            limit,
+            total_pages: 0
+          }
+        };
+      }
+
+      // Récupérer les prospects correspondants
+      let query = supabase
+        .from('prospects')
+        .select('*', { count: 'exact' })
+        .in('id', completedProspectIds);
+
+      // Application des filtres de base
+      if (filters.source) {
+        query = query.eq('source', filters.source);
+      }
+      if (filters.enrichment_status) {
+        query = query.eq('enrichment_status', filters.enrichment_status);
+      }
+      if (filters.ai_status) {
+        query = query.eq('ai_status', filters.ai_status);
+      }
+      if (filters.emailing_status) {
+        query = query.eq('emailing_status', filters.emailing_status);
+      }
+      if (filters.search) {
+        query = query.or(`email.ilike.%${filters.search}%,firstname.ilike.%${filters.search}%,lastname.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%`);
+      }
+
+      // Tri
+      query = query.order(sort_by, { ascending: sort_order === 'asc' });
+
+      const { data, error, count } = await query.range(offset, offset + limit - 1);
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération prospects: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          data: (data || []) as Prospect[],
+          total: count || 0,
+          page,
+          limit,
+          total_pages: Math.ceil((count || 0) / limit)
+        }
       };
     } catch (error: any) {
       return {

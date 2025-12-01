@@ -132,7 +132,6 @@ export default function ProspectionAdmin() {
   const [filterEnrichment, setFilterEnrichment] = useState<string>('all');
   const [filterAI, setFilterAI] = useState<string>('all');
   const [filterEmailing, setFilterEmailing] = useState<string>('all');
-  const [filterSequences, setFilterSequences] = useState<string>('all'); // 'all' | 'with_sequences' | 'without_sequences'
   
   // Sélection
   const [selectedProspectIds, setSelectedProspectIds] = useState<Set<string>>(new Set());
@@ -197,7 +196,13 @@ export default function ProspectionAdmin() {
     if (user && activeTab === 'sequences') {
       fetchSavedSequences();
     }
-  }, [user, page, sortBy, sortOrder, search, filterSource, filterEnrichment, filterAI, filterEmailing, filterSequences, activeTab]);
+    if (user && activeTab === 'scheduled-sequences') {
+      fetchScheduledSequencesProspects();
+    }
+    if (user && activeTab === 'completed-sequences') {
+      fetchCompletedSequencesProspects();
+    }
+  }, [user, page, sortBy, sortOrder, search, filterSource, filterEnrichment, filterAI, filterEmailing, activeTab]);
 
   const fetchProspects = async () => {
     try {
@@ -214,8 +219,8 @@ export default function ProspectionAdmin() {
         ...(filterEnrichment !== 'all' && { enrichment_status: filterEnrichment }),
         ...(filterAI !== 'all' && { ai_status: filterAI }),
         ...(filterEmailing !== 'all' && { emailing_status: filterEmailing }),
-        ...(filterSequences === 'with_sequences' && { has_sequences: 'true' }),
-        ...(filterSequences === 'without_sequences' && { has_sequences: 'false' }),
+        // Dans l'onglet "list", filtrer automatiquement pour n'afficher que les prospects sans email
+        ...(activeTab === 'list' && { has_sequences: 'false' }),
       });
 
       const response = await fetch(`${config.API_URL}/api/prospects?${params}`, {
@@ -236,6 +241,88 @@ export default function ProspectionAdmin() {
       }
     } catch (error: any) {
       console.error('Erreur chargement prospects:', error);
+      toast.error('Erreur lors du chargement des prospects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchScheduledSequencesProspects = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        sort_by: sortBy,
+        sort_order: sortOrder,
+        ...(search && { search }),
+        ...(filterSource !== 'all' && { source: filterSource }),
+        ...(filterEnrichment !== 'all' && { enrichment_status: filterEnrichment }),
+        ...(filterAI !== 'all' && { ai_status: filterAI }),
+        ...(filterEmailing !== 'all' && { emailing_status: filterEmailing }),
+      });
+
+      const response = await fetch(`${config.API_URL}/api/prospects/scheduled-sequences?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setProspects(result.data.data || []);
+        setTotal(result.data.total || 0);
+        setTotalPages(result.data.total_pages || 0);
+      } else {
+        toast.error(result.error || 'Erreur lors du chargement des prospects');
+      }
+    } catch (error: any) {
+      console.error('Erreur chargement prospects avec séquences programmées:', error);
+      toast.error('Erreur lors du chargement des prospects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCompletedSequencesProspects = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        sort_by: sortBy,
+        sort_order: sortOrder,
+        ...(search && { search }),
+        ...(filterSource !== 'all' && { source: filterSource }),
+        ...(filterEnrichment !== 'all' && { enrichment_status: filterEnrichment }),
+        ...(filterAI !== 'all' && { ai_status: filterAI }),
+        ...(filterEmailing !== 'all' && { emailing_status: filterEmailing }),
+      });
+
+      const response = await fetch(`${config.API_URL}/api/prospects/completed-sequences?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setProspects(result.data.data || []);
+        setTotal(result.data.total || 0);
+        setTotalPages(result.data.total_pages || 0);
+      } else {
+        toast.error(result.error || 'Erreur lors du chargement des prospects');
+      }
+    } catch (error: any) {
+      console.error('Erreur chargement prospects avec séquences terminées:', error);
       toast.error('Erreur lors du chargement des prospects');
     } finally {
       setLoading(false);
@@ -1059,6 +1146,34 @@ export default function ProspectionAdmin() {
             </div>
           </button>
           <button
+            onClick={() => setSearchParams({ tab: 'scheduled-sequences' })}
+            className={cn(
+              "py-4 px-1 border-b-2 font-medium text-sm transition-colors",
+              activeTab === 'scheduled-sequences'
+                ? "border-red-600 text-red-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Séquences programmées
+            </div>
+          </button>
+          <button
+            onClick={() => setSearchParams({ tab: 'completed-sequences' })}
+            className={cn(
+              "py-4 px-1 border-b-2 font-medium text-sm transition-colors",
+              activeTab === 'completed-sequences'
+                ? "border-red-600 text-red-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Séquences terminées
+            </div>
+          </button>
+          <button
             onClick={() => setSearchParams({ tab: 'sequences' })}
             className={cn(
               "py-4 px-1 border-b-2 font-medium text-sm transition-colors",
@@ -1069,7 +1184,7 @@ export default function ProspectionAdmin() {
           >
             <div className="flex items-center gap-2">
               <MailIcon className="h-4 w-4" />
-              Séquences emailing
+              Options séquences
             </div>
           </button>
         </nav>
@@ -1078,6 +1193,298 @@ export default function ProspectionAdmin() {
       {/* Contenu selon l'onglet */}
       {activeTab === 'import' ? (
         <ImportProspects />
+      ) : activeTab === 'scheduled-sequences' || activeTab === 'completed-sequences' ? (
+        <>
+          {/* Statistiques */}
+          {stats && activeTab === 'scheduled-sequences' && (
+            <Card className="mb-4">
+              <CardContent className="pt-6">
+                <p className="text-sm text-gray-600">
+                  Prospects avec des séquences programmées à venir ou en cours d'envoi
+                </p>
+              </CardContent>
+            </Card>
+          )}
+          {stats && activeTab === 'completed-sequences' && (
+            <Card className="mb-4">
+              <CardContent className="pt-6">
+                <p className="text-sm text-gray-600">
+                  Prospects qui ont envoyé le dernier mail de leur séquence
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Filtres */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Filtres</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Rechercher..."
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setPage(1);
+                    }}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={filterSource} onValueChange={(value) => { setFilterSource(value); setPage(1); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les sources</SelectItem>
+                    <SelectItem value="google_maps">Google Maps</SelectItem>
+                    <SelectItem value="import_csv">Import CSV</SelectItem>
+                    <SelectItem value="linkedin">LinkedIn</SelectItem>
+                    <SelectItem value="manuel">Manuel</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterEnrichment} onValueChange={(value) => { setFilterEnrichment(value); setPage(1); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Enrichissement" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="pending">En attente</SelectItem>
+                    <SelectItem value="in_progress">En cours</SelectItem>
+                    <SelectItem value="completed">Complété</SelectItem>
+                    <SelectItem value="failed">Échec</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterAI} onValueChange={(value) => { setFilterAI(value); setPage(1); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="IA" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="pending">En attente</SelectItem>
+                    <SelectItem value="in_progress">En cours</SelectItem>
+                    <SelectItem value="completed">Complété</SelectItem>
+                    <SelectItem value="failed">Échec</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterEmailing} onValueChange={(value) => { setFilterEmailing(value); setPage(1); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Emailing" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="pending">En attente</SelectItem>
+                    <SelectItem value="queued">En file</SelectItem>
+                    <SelectItem value="sent">Envoyé</SelectItem>
+                    <SelectItem value="opened">Ouvert</SelectItem>
+                    <SelectItem value="clicked">Cliqué</SelectItem>
+                    <SelectItem value="replied">Répondu</SelectItem>
+                    <SelectItem value="bounced">Bounced</SelectItem>
+                    <SelectItem value="unsubscribed">Désabonné</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tableau */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                {activeTab === 'scheduled-sequences' 
+                  ? 'Séquences programmées' 
+                  : 'Séquences terminées'} ({total})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <input
+                          type="checkbox"
+                          checked={prospects.length > 0 && prospects.every(p => selectedProspectIds.has(p.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedProspectIds(new Set(prospects.map(p => p.id)));
+                            } else {
+                              setSelectedProspectIds(new Set());
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                      </TableHead>
+                      <SortableHeader field="email">
+                        <Mail className="h-4 w-4 inline mr-2" />
+                        Email
+                      </SortableHeader>
+                      <SortableHeader field="firstname">
+                        <User className="h-4 w-4 inline mr-2" />
+                        Contact
+                      </SortableHeader>
+                      <SortableHeader field="company_name">
+                        <Building2 className="h-4 w-4 inline mr-2" />
+                        Entreprise
+                      </SortableHeader>
+                      <SortableHeader field="enrichment_status">
+                        Enrichissement
+                      </SortableHeader>
+                      <SortableHeader field="ai_status">
+                        IA
+                      </SortableHeader>
+                      <SortableHeader field="emailing_status">
+                        Emailing
+                      </SortableHeader>
+                      <SortableHeader field="score_priority">
+                        <TrendingUp className="h-4 w-4 inline mr-2" />
+                        Priorité
+                      </SortableHeader>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {prospects.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                          {loading ? 'Chargement...' : 'Aucun prospect trouvé'}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      prospects.map((prospect) => (
+                        <TableRow key={prospect.id} className="cursor-pointer hover:bg-gray-50" onClick={() => handleProspectClick(prospect)}>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={selectedProspectIds.has(prospect.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                const newSet = new Set(selectedProspectIds);
+                                if (e.target.checked) {
+                                  newSet.add(prospect.id);
+                                } else {
+                                  newSet.delete(prospect.id);
+                                }
+                                setSelectedProspectIds(newSet);
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-gray-400" />
+                              <span className="font-medium">{prospect.email}</span>
+                              {prospect.email_validity === 'valid' && (
+                                <Badge className="bg-green-100 text-green-800 text-xs">✓ Valid</Badge>
+                              )}
+                              {prospect.email_validity === 'risky' && (
+                                <Badge className="bg-yellow-100 text-yellow-800 text-xs">⚠ Risky</Badge>
+                              )}
+                              {prospect.email_validity === 'invalid' && (
+                                <Badge className="bg-red-100 text-red-800 text-xs">✗ Invalid</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {prospect.firstname || prospect.lastname ? (
+                              <div>
+                                <div className="font-medium">
+                                  {prospect.firstname} {prospect.lastname}
+                                </div>
+                                {prospect.job_title && (
+                                  <div className="text-sm text-gray-500">{prospect.job_title}</div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {prospect.company_name ? (
+                              <div>
+                                <div className="font-medium">{prospect.company_name}</div>
+                                {prospect.siren && (
+                                  <div className="text-sm text-gray-500">SIREN: {prospect.siren}</div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(prospect.enrichment_status, 'enrichment')}
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(prospect.ai_status, 'ai')}
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(prospect.emailing_status, 'emailing')}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{prospect.score_priority}</span>
+                              {prospect.score_priority >= 80 && (
+                                <Badge className="bg-red-100 text-red-800">Haute</Badge>
+                              )}
+                              {prospect.score_priority >= 50 && prospect.score_priority < 80 && (
+                                <Badge className="bg-yellow-100 text-yellow-800">Moyenne</Badge>
+                              )}
+                              {prospect.score_priority < 50 && (
+                                <Badge className="bg-gray-100 text-gray-800">Basse</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleProspectClick(prospect);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-gray-500">
+                    Page {page} sur {totalPages} ({total} prospects)
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(page - 1)}
+                      disabled={page === 1}
+                    >
+                      Précédent
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(page + 1)}
+                      disabled={page === totalPages}
+                    >
+                      Suivant
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       ) : activeTab === 'sequences' ? (
         <div className="space-y-6">
           {/* En-tête avec bouton créer */}
@@ -1142,8 +1549,15 @@ export default function ProspectionAdmin() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      <div className="text-sm font-medium text-gray-700">
-                        {sequence.prospect_email_sequence_steps?.length || 0} email{sequence.prospect_email_sequence_steps?.length > 1 ? 's' : ''}
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium text-gray-700">
+                          {sequence.prospect_email_sequence_steps?.length || 0} email{sequence.prospect_email_sequence_steps?.length > 1 ? 's' : ''}
+                        </div>
+                        {sequence.prospects_count !== undefined && sequence.prospects_count > 0 && (
+                          <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            {sequence.prospects_count} prospect{sequence.prospects_count > 1 ? 's' : ''}
+                          </div>
+                        )}
                       </div>
                       <div className="space-y-1 max-h-40 overflow-y-auto">
                         {sequence.prospect_email_sequence_steps
@@ -1221,7 +1635,7 @@ export default function ProspectionAdmin() {
           <CardTitle className="text-lg">Filtres</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -1286,16 +1700,6 @@ export default function ProspectionAdmin() {
                 <SelectItem value="unsubscribed">Désabonné</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterSequences} onValueChange={(value) => { setFilterSequences(value); setPage(1); }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Séquences" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="with_sequences">Avec séquences</SelectItem>
-                <SelectItem value="without_sequences">Sans séquences</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
@@ -1342,6 +1746,7 @@ export default function ProspectionAdmin() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Liste des Prospects ({total})</CardTitle>
+          <p className="text-sm text-gray-500 mt-1">Les prospects qui n'ont reçu aucun mail</p>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
