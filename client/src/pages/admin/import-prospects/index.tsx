@@ -52,9 +52,9 @@ export default function ImportProspects() {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
+  const processFile = async (selectedFile: File | undefined) => {
     if (!selectedFile) return;
 
     // Vérifier le type
@@ -130,6 +130,36 @@ export default function ImportProspects() {
       console.error('Erreur upload:', error);
       toast.error(error.message || 'Erreur lors de l\'upload');
       setFile(null);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      await processFile(selectedFile);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile) {
+      await processFile(droppedFile);
     }
   };
 
@@ -282,12 +312,21 @@ export default function ImportProspects() {
           {currentStep === 1 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Upload du fichier Excel</h2>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+              <div
+                className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+                  isDragging
+                    ? 'border-red-600 bg-red-50'
+                    : 'border-gray-300 bg-white hover:border-gray-400'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <Upload className={`mx-auto h-12 w-12 ${isDragging ? 'text-red-600' : 'text-gray-400'}`} />
                 <div className="mt-4">
                   <label htmlFor="file-upload" className="cursor-pointer">
                     <span className="mt-2 block text-sm font-medium text-gray-900">
-                      Cliquez pour sélectionner un fichier
+                      {isDragging ? 'Déposez le fichier ici' : 'Cliquez pour sélectionner un fichier ou glissez-déposez'}
                     </span>
                   </label>
                   <input
