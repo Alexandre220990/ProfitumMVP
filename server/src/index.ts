@@ -105,6 +105,7 @@ import { startCalendarRemindersCron } from './cron/calendar-reminders';
 import { startRefundRemindersCron } from './cron/refund-reminder';
 import { startActionTypeRemindersCron } from './cron/action-type-reminders';
 import { startDailyActivityReportCron } from './cron/daily-activity-report';
+import { startMorningReportCron } from './cron/morning-report';
 import { startNotificationEscalationCron } from './cron/notification-escalation';
 import { startRDVSlaRemindersCron } from './cron/rdv-sla-reminders';
 import { startProspectNotificationsCron } from './cron/prospect-notifications';
@@ -835,10 +836,18 @@ server.listen(PORT, HOST, () => {
     console.error('❌ Erreur démarrage cron job relances actionType:', error);
   }
 
+  // Démarrer le cron job pour les rapports matinaux
+  try {
+    startMorningReportCron();
+    // Envoi automatique du rapport matinal à tous les admins à 7h (RDV du jour + notifications)
+  } catch (error) {
+    console.error('❌ Erreur démarrage cron job rapports matinaux:', error);
+  }
+
   // Démarrer le cron job pour les rapports d'activité quotidiens
   try {
     startDailyActivityReportCron();
-    // Envoi automatique du rapport d'activité quotidien à tous les admins à 20h
+    // Envoi automatique du rapport d'activité quotidien à tous les admins à 18h15
   } catch (error) {
     console.error('❌ Erreur démarrage cron job rapports d\'activité quotidiens:', error);
   }

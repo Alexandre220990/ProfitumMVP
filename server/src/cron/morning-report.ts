@@ -1,18 +1,18 @@
 /**
- * Cron job pour envoyer le rapport d'activité quotidien aux admins
- * Exécution : Tous les jours à 18h15 (timezone Europe/Paris)
+ * Cron job pour envoyer le rapport matinal aux admins
+ * Exécution : Tous les jours à 7h (timezone Europe/Paris)
  */
 
 import cron from 'node-cron';
 import { supabase } from '../lib/supabase';
-import { DailyActivityReportServiceV2 } from '../services/daily-activity-report-service-v2';
+import { MorningReportService } from '../services/morning-report-service';
 
 /**
- * Envoyer le rapport d'activité quotidien à tous les admins actifs
+ * Envoyer le rapport matinal à tous les admins actifs
  */
-async function sendDailyReportsToAllAdmins() {
+async function sendMorningReportsToAllAdmins() {
   try {
-    console.log('⏰ [CRON] Démarrage envoi rapports d\'activité quotidiens');
+    console.log('⏰ [CRON] Démarrage envoi rapports matinaux');
 
     // Récupérer tous les admins actifs avec leur auth_user_id
     const { data: admins, error: adminsError } = await supabase
@@ -43,7 +43,7 @@ async function sendDailyReportsToAllAdmins() {
       return;
     }
 
-    console.log(`📧 [CRON] Envoi du rapport à ${validAdmins.length} admin(s) sur ${admins.length} total`);
+    console.log(`📧 [CRON] Envoi du rapport matinal à ${validAdmins.length} admin(s) sur ${admins.length} total`);
 
     // Envoyer le rapport à chaque admin
     const results = await Promise.allSettled(
@@ -53,7 +53,7 @@ async function sendDailyReportsToAllAdmins() {
           
           console.log(`📧 [CRON] Traitement admin: ${admin.email} (auth_user_id: ${admin.auth_user_id || 'non défini'})`);
           
-          const success = await DailyActivityReportServiceV2.sendDailyReport(
+          const success = await MorningReportService.sendMorningReport(
             admin.email,
             adminName,
             admin.auth_user_id || undefined,
@@ -61,14 +61,14 @@ async function sendDailyReportsToAllAdmins() {
           );
 
           if (success) {
-            console.log(`✅ [CRON] Rapport envoyé avec succès à ${admin.email}`);
+            console.log(`✅ [CRON] Rapport matinal envoyé avec succès à ${admin.email}`);
           } else {
-            console.error(`❌ [CRON] Échec envoi rapport à ${admin.email} - vérifier les logs ci-dessus`);
+            console.error(`❌ [CRON] Échec envoi rapport matinal à ${admin.email} - vérifier les logs ci-dessus`);
           }
 
           return { admin: admin.email, success };
         } catch (error: any) {
-          console.error(`❌ [CRON] Erreur envoi rapport à ${admin.email}:`, error.message);
+          console.error(`❌ [CRON] Erreur envoi rapport matinal à ${admin.email}:`, error.message);
           console.error(`❌ [CRON] Stack trace:`, error.stack);
           return { admin: admin.email, success: false, error: error.message };
         }
@@ -82,37 +82,37 @@ async function sendDailyReportsToAllAdmins() {
     console.log(`📊 [CRON] Résumé : ${successful} succès, ${failed} échec(s)`);
 
   } catch (error) {
-    console.error('❌ [CRON] Erreur générale envoi rapports:', error);
+    console.error('❌ [CRON] Erreur générale envoi rapports matinaux:', error);
   }
 }
 
 /**
  * Démarrer le cron job
- * Exécution : Tous les jours à 18h15 (timezone Europe/Paris)
+ * Exécution : Tous les jours à 7h (timezone Europe/Paris)
  */
-export function startDailyActivityReportCron() {
-  // Cron expression: 15 18 * * * = Tous les jours à 18h15
-  cron.schedule('15 18 * * *', async () => {
-    console.log('⏰ [CRON] Démarrage vérification rapports d\'activité quotidiens');
-    await sendDailyReportsToAllAdmins();
+export function startMorningReportCron() {
+  // Cron expression: 0 7 * * * = Tous les jours à 7h
+  cron.schedule('0 7 * * *', async () => {
+    console.log('⏰ [CRON] Démarrage vérification rapports matinaux');
+    await sendMorningReportsToAllAdmins();
   }, {
     timezone: 'Europe/Paris'
   });
 
-  console.log('✅ Cron job rapports d\'activité quotidiens activé (tous les jours à 18h15)');
+  console.log('✅ Cron job rapports matinaux activé (tous les jours à 7h)');
 
-  // Vérifier si on doit exécuter le rapport maintenant (si redémarrage après 18h15)
+  // Vérifier si on doit exécuter le rapport maintenant (si redémarrage après 7h)
   const now = new Date();
   const parisTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
   const currentHour = parisTime.getHours();
   const currentMinute = parisTime.getMinutes();
 
-  // Si on démarre après 18h15 et avant 18h45, exécuter le rapport (rattrapage)
-  if (currentHour === 18 && currentMinute >= 15 && currentMinute < 45) {
-    console.log('🔄 [CRON] Redémarrage détecté après 18h15 - Exécution immédiate du rapport quotidien');
+  // Si on démarre après 7h00 et avant 7h30, exécuter le rapport (rattrapage)
+  if (currentHour === 7 && currentMinute < 30) {
+    console.log('🔄 [CRON] Redémarrage détecté après 7h - Exécution immédiate du rapport matinal');
     // Exécuter avec un petit délai pour laisser le serveur finir de démarrer
     setTimeout(async () => {
-      await sendDailyReportsToAllAdmins();
+      await sendMorningReportsToAllAdmins();
     }, 5000); // 5 secondes de délai
   }
 }
@@ -120,8 +120,8 @@ export function startDailyActivityReportCron() {
 /**
  * Exécution manuelle (pour tests)
  */
-export async function sendDailyReportsNow() {
-  console.log('🧪 Exécution manuelle sendDailyReportsToAllAdmins');
-  await sendDailyReportsToAllAdmins();
+export async function sendMorningReportsNow() {
+  console.log('🧪 Exécution manuelle sendMorningReportsToAllAdmins');
+  await sendMorningReportsToAllAdmins();
 }
 
