@@ -2870,6 +2870,118 @@ export default function ProspectionAdmin() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Création de Prospect */}
+      <Dialog open={showCreateProspectModal} onOpenChange={setShowCreateProspectModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Ajouter un nouveau prospect</DialogTitle>
+            <p className="text-sm text-gray-500 mt-1">Créez un prospect manuellement sans passer par l'upload</p>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label htmlFor="prospect-email" className="text-sm font-medium">
+                Email <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="prospect-email"
+                type="email"
+                value={newProspect.email}
+                onChange={(e) => setNewProspect({ ...newProspect, email: e.target.value })}
+                placeholder="exemple@entreprise.fr"
+                className="mt-1.5"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="prospect-firstname" className="text-sm font-medium">
+                  Prénom
+                </Label>
+                <Input
+                  id="prospect-firstname"
+                  value={newProspect.firstname}
+                  onChange={(e) => setNewProspect({ ...newProspect, firstname: e.target.value })}
+                  placeholder="Prénom"
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="prospect-lastname" className="text-sm font-medium">
+                  Nom
+                </Label>
+                <Input
+                  id="prospect-lastname"
+                  value={newProspect.lastname}
+                  onChange={(e) => setNewProspect({ ...newProspect, lastname: e.target.value })}
+                  placeholder="Nom"
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="prospect-company" className="text-sm font-medium">
+                Nom de l'entreprise
+              </Label>
+              <Input
+                id="prospect-company"
+                value={newProspect.company_name}
+                onChange={(e) => setNewProspect({ ...newProspect, company_name: e.target.value })}
+                placeholder="Nom de l'entreprise"
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label htmlFor="prospect-siren" className="text-sm font-medium">
+                SIREN
+              </Label>
+              <Input
+                id="prospect-siren"
+                value={newProspect.siren}
+                onChange={(e) => setNewProspect({ ...newProspect, siren: e.target.value })}
+                placeholder="123456789"
+                className="mt-1.5"
+                maxLength={9}
+              />
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCreateProspectModal(false);
+                  setNewProspect({
+                    email: '',
+                    firstname: '',
+                    lastname: '',
+                    company_name: '',
+                    siren: ''
+                  });
+                }}
+                disabled={creatingProspect}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleCreateProspect}
+                disabled={creatingProspect || !newProspect.email.trim()}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                {creatingProspect ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Création...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Créer le prospect
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
         </>
       )}
     </div>
