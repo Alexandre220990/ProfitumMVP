@@ -579,66 +579,219 @@ router.post('/generate-ai-sequence', async (req, res) => {
     const decisionMaker = prospectInfo.firstname && prospectInfo.lastname
       ? `${prospectInfo.firstname} ${prospectInfo.lastname}`
       : prospectInfo.firstname || prospectInfo.lastname || 'le décisionnaire';
-    const siren = prospectInfo.siren ? ` (SIREN: ${prospectInfo.siren})` : '';
+    const siren = prospectInfo.siren || '';
+    const nafCode = prospectInfo.naf_code || '';
+    const nafLabel = prospectInfo.naf_label || '';
+    
+    // Construire les informations secteur
+    let secteurInfo = '';
+    if (siren) {
+      secteurInfo += `SIREN: ${siren}`;
+    }
+    if (nafCode) {
+      secteurInfo += secteurInfo ? ` | Code NAF: ${nafCode}` : `Code NAF: ${nafCode}`;
+    }
+    if (nafLabel) {
+      secteurInfo += secteurInfo ? ` | Activité: ${nafLabel}` : `Activité: ${nafLabel}`;
+    }
+    if (!secteurInfo) {
+      secteurInfo = 'non renseigné';
+    }
 
+    const numSteps = steps.length;
     const stepsInfo = steps.map((step: any, index: number) => {
-      const stepType = index === 0 
-        ? 'email initial de prise de contact'
-        : index === steps.length - 1
-        ? 'dernière relance'
-        : 'relance';
+      let stepType = '';
+      if (index === 0) {
+        stepType = 'Email 1 — Prise de contact (objectif : RDV OU documents)';
+      } else if (index === numSteps - 1) {
+        stepType = `Email ${index + 1} — Dernière tentative courtoise`;
+      } else {
+        stepType = `Email ${index + 1} — Relance`;
+      }
       
-      return `Étape ${step.stepNumber}: ${stepType} (délai: ${step.delayDays} jours après l'étape précédente)`;
+      return `Étape ${step.stepNumber}: ${stepType} (délai: ${step.delayDays} jour${step.delayDays > 1 ? 's' : ''} après l'étape précédente)`;
     }).join('\n');
 
-    // Prompt système de base
-    let systemPrompt = `Tu es un expert en prospection commerciale B2B pour une entreprise de financement et d'investissement.
+    // Déterminer la structure des emails selon le nombre d'étapes
+    let emailStructureGuide = '';
+    if (numSteps === 1) {
+      emailStructureGuide = `Email 1 — Prise de contact (110–130 mots max)
+- Icebreaker personnalisé obligatoire
+- Rappel ultra court de ce que fait Profitum
+- Angle bénéfice adapté au secteur
+- Proposition d'un micro-RDV ou d'un simple renvoi de documents`;
+    } else if (numSteps === 2) {
+      emailStructureGuide = `Email 1 — Prise de contact (110–130 mots max)
+- Icebreaker personnalisé obligatoire
+- Rappel ultra court de ce que fait Profitum
+- Angle bénéfice adapté au secteur
+- Proposition d'un micro-RDV ou d'un simple renvoi de documents
 
-CONTEXTE:
-- Entreprise cible: ${companyName}${siren}
-- Décisionnaire: ${decisionMaker}
-- Email: ${prospectInfo.email || 'non renseigné'}
+Email 2 — Dernière tentative courtoise (50–70 mots)
+- Ton élégant, respectueux
+- Phrase de clôture : "je clos ma boucle si vous n'êtes pas concerné(e)"`;
+    } else if (numSteps === 3) {
+      emailStructureGuide = `Email 1 — Prise de contact (110–130 mots max)
+- Icebreaker personnalisé obligatoire
+- Rappel ultra court de ce que fait Profitum
+- Angle bénéfice adapté au secteur
+- Proposition d'un micro-RDV ou d'un simple renvoi de documents
 
-OBJECTIF:
-Générer une séquence d'emails de prospection professionnelle, personnalisée et pertinente pour cette entreprise et ce décisionnaire.
+Email 2 — Relance douce (80–100 mots)
+- Rappel sans pression
+- Bénéfice concret lié au secteur (via code NAF/libellé ou SIREN)
+- Suggestion : "si vous préférez, vous pouvez juste m'envoyer X document(s)"
 
-STRUCTURE DE LA SÉQUENCE:
-${stepsInfo}
+Email 3 — Dernière tentative courtoise (50–70 mots)
+- Ton élégant, respectueux
+- Phrase de clôture : "je clos ma boucle si vous n'êtes pas concerné(e)"`;
+    } else {
+      emailStructureGuide = `Email 1 — Prise de contact (110–130 mots max)
+- Icebreaker personnalisé obligatoire
+- Rappel ultra court de ce que fait Profitum
+- Angle bénéfice adapté au secteur
+- Proposition d'un micro-RDV ou d'un simple renvoi de documents
 
-CONTRAINTES:
-- Les emails doivent être professionnels, concis et percutants
-- Personnaliser le contenu en fonction du nom de l'entreprise et du décisionnaire
-- Le premier email doit être une prise de contact initiale
-- Les emails suivants doivent être des relances progressives
-- Le dernier email doit être une dernière tentative de contact
-- Ne pas être trop insistant, rester professionnel
-- Adapter le ton selon le type d'entreprise (utiliser le SIREN si disponible pour comprendre le secteur)`;
+Email 2 — Relance douce (80–100 mots)
+- Rappel sans pression
+- Bénéfice concret lié au secteur (via code NAF/libellé ou SIREN)
+- Suggestion : "si vous préférez, vous pouvez juste m'envoyer X document(s)"
+
+Email 3 — Relance orientée résultat (70–90 mots)
+- Nouveau bénéfice différent, toujours sectorisé
+- Mention discrète : "vos homologues y gagnent souvent…"
+- Proposition claire : RDV 10 min ou documents`;
+      if (numSteps > 3) {
+        emailStructureGuide += `\n\nEmail 4 à ${numSteps} — Relances intermédiaires (70–90 mots chacune)
+- Varier les bénéfices et angles sectorisés
+- Toujours proposer RDV ou documents
+- Rester professionnel et non intrusif`;
+      }
+      emailStructureGuide += `\n\nEmail ${numSteps} — Dernière tentative courtoise (50–70 mots)
+- Ton élégant, respectueux
+- Phrase de clôture : "je clos ma boucle si vous n'êtes pas concerné(e)"`;
+    }
+
+    // Prompt système final
+    let systemPrompt = `Tu es un assistant expert en prospection B2B pour Profitum, une plateforme qui aide les entreprises françaises à identifier, vérifier et activer les dispositifs d'optimisation fiscale, sociale, énergétique et foncière adaptés à leur situation réelle (TICPE, URSSAF, DFS, Foncier, CEE, Énergie, etc.).
+
+Ta mission est de rédiger ${numSteps} e-mail${numSteps > 1 ? 's' : ''} professionnel${numSteps > 1 ? 's' : ''}, concis${numSteps > 1 ? 's' : ''}, personnalisé${numSteps > 1 ? 's' : ''} à partir du SIREN, du code NAF/libellé NAF, du nom d'entreprise, du décisionnaire et d'un champ "CONTEXTE" optionnel.
+
+Les e-mails doivent provoquer :
+➡️ un RDV court (10–12 min) ou
+➡️ un envoi de documents pour réaliser une pré-étude rapide.
+
+IMPORTANT : Ne jamais utiliser le mot "gratuit" dans les emails (mot interdit anti-spam). Utilise plutôt "sans engagement", "sans frais", "complémentaire", ou formule autrement.
+
+🎯 RÈGLES GÉNÉRALES
+
+Le style doit être sobre, humain, non-marketing, sans termes vendeurs ni artificiels.
+Chaque e-mail doit être court, ultra clair et 100 % personnalisé.
+
+Toujours utiliser :
+- le nom de l'entreprise : ${companyName}
+- le nom du décisionnaire : ${decisionMaker}
+- les informations secteur : ${secteurInfo}
+  → Le SIREN permet d'identifier l'entreprise de manière unique
+  → Le code NAF (code APE) et son libellé révèlent précisément le secteur d'activité
+  → Utilise ces informations pour déduire les enjeux métier probables et créer un icebreaker intelligent
+  → Exemples de déductions : code NAF commençant par "49" = transport, "43" = BTP, "25" = industrie métallurgie, "56" = restauration, etc.
+- le champ CONTEXTE → pour enrichir et rendre l'e-mail encore plus pertinent
+
+Ne jamais inventer des chiffres précis, mais utiliser des formulations plausibles :
+- "souvent vos homologues ont…"
+- "dans votre secteur, il est fréquent que…"
+- "selon votre activité, plusieurs leviers existent…"
+
+Ne jamais dépasser 5 lignes par paragraphe et éviter les e-mails trop longs.
+
+❄️ ICEBREAKER (OBLIGATOIRE pour l'Email 1)
+
+Toujours ouvrir le premier email par 1 phrase personnalisée basée sur :
+- le secteur d'activité identifié via le code NAF/libellé NAF ou le SIREN,
+- un enjeu métier logique déduit du secteur :
+  * transport/logistique (code NAF 49) : carburant, cotisations sociales, parc véhicules, énergie
+  * BTP (code NAF 43) : masse salariale, engins, carburant, intérim, foncier
+  * industrie (code NAF 25-30) : énergie, foncier, process, équipements
+  * services (code NAF 62-82) : URSSAF, frais professionnels, masse salariale, multi-activités
+  * commerce (code NAF 47) : énergie, saisonnalité, taxe foncière, salariés
+  * restauration (code NAF 56) : énergie, masse salariale, foncier
+  * agriculture (code NAF 01) : carburant agricole, équipements, saisonnalité
+- ou le CONTEXTE si disponible (priorité au contexte s'il fournit des informations spécifiques).
+
+Objectif : montrer que tu sais à qui tu écris, sans être intrusif.
+
+Exemples d'angles icebreaker :
+- transport : carburant, cotisations, parc véhicules, énergie
+- BTP : masse salariale, engins, carburant, intérim
+- industrie : énergie, foncier, process
+- services : URSSAF, frais, masse salariale, multi-activités
+- commerce : énergie, saisonnalité, taxe foncière, salariés
+
+Toujours subtil, jamais intrusif.
+
+📩 STRUCTURE DES EMAILS
+
+${emailStructureGuide}
+
+🔐 ANTI-SPAM ABSOLU
+
+Toujours éviter :
+- mots interdits ABSOLUS : gratuit, gratuitement, urgent, urgence, promotion, limité, limitation, garantie, garanties (utiliser plutôt "sans engagement", "sans frais", "complémentaire", "non engagé")
+- emojis (même dans les sujets)
+- points d'exclamation (maximum 1 par email, uniquement si vraiment nécessaire)
+- majuscules commerciales (COMMENCER PAR ÇA, PROFITUM, etc.)
+- call-to-action agressifs ("Répondez maintenant !", "Agissez vite !", etc.)
+- liens multiples (si lien, un seul et propre, de préférence vers le site Profitum)
+- formules génériques sans personnalisation
+
+Préférer :
+- phrases courtes
+- style naturel
+- formulation consultative, jamais commerciale
+
+🧠 OBJECTIF FINAL
+
+Rédiger une séquence de ${numSteps} e-mail${numSteps > 1 ? 's' : ''} :
+👉 toujours personnalisée (nom + entreprise + décisionnaire + secteur via SIREN/NAF + CONTEXTE)
+👉 orientée RDV 10–12 minutes ou envoi de documents
+👉 courte, humaine, crédible, sectorisée
+👉 haute délivrabilité (anti-spam optimisé)
+
+STRUCTURE DE LA SÉQUENCE À GÉNÉRER :
+${stepsInfo}`;
 
     // Ajouter le contexte personnalisé s'il est fourni
     if (context && context.trim()) {
-      systemPrompt += `\n\nCONTEXTE SUPPLÉMENTAIRE FOURNI PAR L'ADMINISTRATEUR:
+      systemPrompt += `\n\n⚠️ CONTEXTE SUPPLÉMENTAIRE FOURNI PAR L'ADMINISTRATEUR :
 ${context.trim()}
 
-Ce contexte doit être pris en compte pour personnaliser davantage les emails. Intègre ces informations de manière naturelle et pertinente dans la séquence.`;
+Ce contexte doit être pris en compte pour personnaliser davantage les emails. Intègre ces informations de manière naturelle et pertinente dans la séquence. Tu dois TOUJOURS tenir compte du champ "CONTEXTE", mais le PROMPT SYSTÈME reste l'autorité principale (le contexte enrichit, il ne remplace jamais tes règles).`;
+    } else {
+      systemPrompt += `\n\nNote : Aucun contexte supplémentaire n'a été fourni. Utilise uniquement les informations du secteur (SIREN, code NAF, libellé NAF), du nom d'entreprise et du décisionnaire pour personnaliser les emails.`;
     }
 
     const userPrompt = `FORMAT DE RÉPONSE:
-Retourne un JSON avec cette structure exacte:
+Retourne un JSON avec cette structure exacte, en générant EXACTEMENT ${numSteps} email${numSteps > 1 ? 's' : ''} :
 {
   "steps": [
     {
       "stepNumber": 1,
-      "subject": "Sujet de l'email",
-      "body": "Corps de l'email (peut contenir des sauts de ligne avec \\n)"
-    },
-    ...
+      "subject": "Sujet de l'email (sans emojis, sans majuscules agressives)",
+      "body": "Corps de l'email (peut contenir des sauts de ligne avec \\n, respecter les longueurs indiquées pour chaque email)"
+    }${numSteps > 1 ? ',\n    {\n      "stepNumber": 2,\n      "subject": "...",\n      "body": "..."\n    }' : ''}${numSteps > 2 ? ',\n    ...' : ''}
   ]
 }
 
 IMPORTANT: 
-- Ne modifie PAS les délais entre emails (delayDays)
+- Génère EXACTEMENT ${numSteps} email${numSteps > 1 ? 's' : ''} correspondant aux ${numSteps} étape${numSteps > 1 ? 's' : ''} de la séquence
+- Ne modifie PAS les délais entre emails (delayDays) - ils sont déjà définis
+- Chaque email doit suivre la structure et les longueurs définies dans le prompt système
+- Le premier email (stepNumber: 1) DOIT absolument commencer par un icebreaker personnalisé basé sur le secteur d'activité (code NAF/libellé NAF ou SIREN)
+- Le dernier email (stepNumber: ${numSteps}) doit inclure la phrase de clôture "je clos ma boucle si vous n'êtes pas concerné(e)"
+- Respecter scrupuleusement les règles anti-spam (pas de mots interdits, pas d'emojis, etc.)
 - Retourne UNIQUEMENT le JSON, sans texte avant ou après
-- Le corps des emails doit être en français, professionnel, et adapté au contexte`;
+- Le corps des emails doit être en français, professionnel, sobre et humain`;
 
     // Appeler ChatGPT
     const completion = await openai.chat.completions.create({
@@ -653,7 +806,7 @@ IMPORTANT:
           content: userPrompt
         }
       ],
-      temperature: 0.7,
+      temperature: 0.6, // Température légèrement réduite pour des emails plus cohérents et professionnels
       response_format: { type: 'json_object' }
     });
 
@@ -685,6 +838,12 @@ IMPORTANT:
         success: false,
         error: 'Format de réponse IA invalide'
       });
+    }
+
+    // Vérifier que le nombre d'emails générés correspond au nombre demandé
+    if (generatedSteps.steps.length !== numSteps) {
+      console.warn(`Nombre d'emails générés (${generatedSteps.steps.length}) ne correspond pas au nombre demandé (${numSteps})`);
+      // Continuer quand même mais avec un avertissement
     }
 
     // Mapper les résultats avec les délais originaux
