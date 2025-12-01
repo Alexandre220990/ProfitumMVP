@@ -372,6 +372,36 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       return value === null || value === '' ? undefined : value;
     };
 
+    // Transformer les participants du format frontend { id, name, email, type, status }
+    // vers le format API { user_id, user_type, user_email, user_name, status }
+    const transformParticipants = (participants: any[] | undefined): any[] | undefined => {
+      if (!participants || participants.length === 0) {
+        return undefined;
+      }
+      
+      return participants.map((participant: any) => {
+        // Si déjà au format API, retourner tel quel
+        if (participant.user_id && participant.user_type) {
+          return {
+            user_id: participant.user_id,
+            user_type: participant.user_type,
+            user_email: participant.user_email || participant.email,
+            user_name: participant.user_name || participant.name,
+            status: participant.status || 'pending'
+          };
+        }
+        
+        // Sinon, transformer du format frontend vers format API
+        return {
+          user_id: participant.id || participant.user_id,
+          user_type: participant.type || participant.user_type,
+          user_email: participant.email || participant.user_email,
+          user_name: participant.name || participant.user_name,
+          status: participant.status || 'pending'
+        };
+      });
+    };
+
     // Nettoyer les données pour l'API
     const cleaned: any = {
       title: eventData.title,
@@ -389,7 +419,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       expert_id: nullToUndefined(eventData.expert_id),
       apporteur_id: nullToUndefined(eventData.apporteur_id),
       dossier_id: nullToUndefined(eventData.dossier_id),
-      participants: eventData.participants && eventData.participants.length > 0 ? eventData.participants : undefined
+      participants: transformParticipants(eventData.participants)
     };
 
     // Ne pas inclure le champ status (interdit dans le schéma de validation)

@@ -222,7 +222,8 @@ const eventSchema = Joi.object({
     user_id: Joi.string().uuid().required(),
     user_type: Joi.string().valid('client', 'expert', 'apporteur', 'admin').required(),
     user_email: Joi.string().email().optional(),
-    user_name: Joi.string().optional()
+    user_name: Joi.string().optional(),
+    status: Joi.string().valid('pending', 'accepted', 'declined', 'tentative').optional()
   })).optional()
 });
 
@@ -923,6 +924,28 @@ router.put('/events/:id', calendarLimiter, validateEvent, asyncHandler(async (re
     if (updates.client_id !== undefined) rdvUpdates.client_id = updates.client_id;
     if (updates.expert_id !== undefined) rdvUpdates.expert_id = updates.expert_id;
     if (updates.apporteur_id !== undefined) rdvUpdates.apporteur_id = updates.apporteur_id;
+    
+    // Si la date/heure est modifiée et que l'événement était terminé ou annulé, réinitialiser le statut si déplacé vers le futur
+    const isDateChanged = transformedUpdates.scheduled_date !== undefined || transformedUpdates.scheduled_time !== undefined;
+    if (isDateChanged && (existingEvent.status === 'completed' || existingEvent.status === 'cancelled')) {
+      // Calculer la nouvelle date/heure complète
+      const newScheduledDate = transformedUpdates.scheduled_date || existingEvent.scheduled_date;
+      const newScheduledTime = transformedUpdates.scheduled_time || existingEvent.scheduled_time;
+      const newDateTime = new Date(`${newScheduledDate}T${newScheduledTime}`);
+      const now = new Date();
+      
+      // Si la nouvelle date est dans le futur, réinitialiser le statut
+      if (newDateTime > now) {
+        // Remettre le statut à "scheduled" par défaut quand on déplace un événement terminé/annulé vers le futur
+        console.log(`📅 Événement ${id} déplacé vers le futur (${newScheduledDate} ${newScheduledTime}) - Réinitialisation statut de "${existingEvent.status}" à "scheduled"`);
+        rdvUpdates.status = 'scheduled';
+        
+        // Réinitialiser completed_at si présent
+        if (existingEvent.completed_at) {
+          rdvUpdates.completed_at = null;
+        }
+      }
+    }
     
     rdvUpdates.updated_at = new Date().toISOString();
 
