@@ -464,6 +464,31 @@ const AdminCabinetDetailPage: React.FC = () => {
     return () => clearTimeout(handler);
   }, [expertSearch, fetchAvailableExperts]);
 
+  // Tous les hooks doivent être appelés AVANT les retours anticipés
+  const hierarchyMembers = useMemo(() => {
+    if (!cabinet?.hierarchy) return [];
+    const flat: any[] = [];
+    const walk = (nodes: any[]) => {
+      nodes.forEach((node) => {
+        flat.push(node);
+        if (node.children?.length) {
+          walk(node.children);
+        }
+      });
+    };
+    walk(cabinet.hierarchy);
+    return flat;
+  }, [cabinet?.hierarchy]);
+
+  const members = useMemo(() => {
+    return hierarchyMembers.length ? hierarchyMembers : (cabinet?.members || []);
+  }, [hierarchyMembers, cabinet?.members]);
+
+  const managerMembers = useMemo(
+    () => members.filter((member: any) => member.team_role === 'MANAGER'),
+    [members]
+  );
+
   if (!cabinetId) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -504,30 +529,6 @@ const AdminCabinetDetailPage: React.FC = () => {
       </div>
     );
   }
-
-  const hierarchyMembers = useMemo(() => {
-    if (!cabinet?.hierarchy) return [];
-    const flat: any[] = [];
-    const walk = (nodes: any[]) => {
-      nodes.forEach((node) => {
-        flat.push(node);
-        if (node.children?.length) {
-          walk(node.children);
-        }
-      });
-    };
-    walk(cabinet.hierarchy);
-    return flat;
-  }, [cabinet?.hierarchy]);
-
-  const members = useMemo(() => {
-    return hierarchyMembers.length ? hierarchyMembers : (cabinet?.members || []);
-  }, [hierarchyMembers, cabinet?.members]);
-
-  const managerMembers = useMemo(
-    () => members.filter((member: any) => member.team_role === 'MANAGER'),
-    [members]
-  );
   const ownerDisplayName =
     cabinet?.owner?.name ||
     members.find((member: any) => member.team_role === 'OWNER')?.profile?.name ||

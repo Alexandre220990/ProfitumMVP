@@ -164,8 +164,6 @@ export function UniversalNotificationCenter({
           metadata.event_status === 'completed';
         const eventId = metadata.event_id;
         return isEventCompleted && eventId && 
-               !eventReports[eventId] && 
-               eventReports[eventId] !== null &&
                !loadingReportsRef.current.has(eventId);
       });
 
@@ -190,28 +188,42 @@ export function UniversalNotificationCenter({
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.data) {
-              setEventReports(prev => ({
-                ...prev,
-                [eventId]: data.data
-              }));
+              setEventReports(prev => {
+                // Éviter les mises à jour inutiles si la valeur est identique
+                if (prev[eventId] === data.data) return prev;
+                return {
+                  ...prev,
+                  [eventId]: data.data
+                };
+              });
             } else {
-              setEventReports(prev => ({
-                ...prev,
-                [eventId]: null
-              }));
+              setEventReports(prev => {
+                // Éviter les mises à jour inutiles si la valeur est déjà null
+                if (prev[eventId] === null) return prev;
+                return {
+                  ...prev,
+                  [eventId]: null
+                };
+              });
             }
           } else {
-            setEventReports(prev => ({
-              ...prev,
-              [eventId]: null
-            }));
+            setEventReports(prev => {
+              if (prev[eventId] === null) return prev;
+              return {
+                ...prev,
+                [eventId]: null
+              };
+            });
           }
         } catch (error) {
           console.error('Erreur chargement rapport:', error);
-          setEventReports(prev => ({
-            ...prev,
-            [eventId]: null
-          }));
+          setEventReports(prev => {
+            if (prev[eventId] === null) return prev;
+            return {
+              ...prev,
+              [eventId]: null
+            };
+          });
         } finally {
           loadingReportsRef.current.delete(eventId);
         }
@@ -221,7 +233,13 @@ export function UniversalNotificationCenter({
     };
 
     loadEventReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifications]);
+
+  // Utiliser une clé de version pour éviter les re-renders inutiles
+  const eventReportsVersion = useMemo(() => {
+    return Object.keys(eventReports).length;
+  }, [eventReports]);
 
   const enrichedNotifications = useMemo(() => {
     const now = Date.now();
@@ -264,7 +282,7 @@ export function UniversalNotificationCenter({
         }
       };
     });
-  }, [notifications, eventReports]);
+  }, [notifications, eventReportsVersion, eventReports]);
 
   // Statistiques
   // Pour toutes les notifications: status peut être 'unread' (non lu), 'read' (lu), 'archived' (archivé)
