@@ -116,10 +116,10 @@ router.use('/messaging', enhancedAuthMiddleware, unifiedMessagingRoutes);
 router.use('/admin', enhancedAuthMiddleware, requireUserType('admin'), adminCandidaturesRoutes);
 
 // Routes prospects (admin uniquement)
-router.use('/api/prospects', enhancedAuthMiddleware, requireUserType('admin'), prospectsRoutes);
+router.use('/prospects', enhancedAuthMiddleware, requireUserType('admin'), prospectsRoutes);
 
 // Routes Gmail (admin uniquement)
-router.use('/api/gmail', enhancedAuthMiddleware, requireUserType('admin'), gmailRoutes);
+router.use('/gmail', enhancedAuthMiddleware, requireUserType('admin'), gmailRoutes);
 
 // Routes pour les images statiques
 router.get('/avatar.png', (req, res) => {

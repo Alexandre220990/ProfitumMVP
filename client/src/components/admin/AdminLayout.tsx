@@ -139,10 +139,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       current: location.pathname === '/admin/ajouter-lead'
     },
     {
-      name: 'Import de données',
+      name: 'Import Client',
       href: '/admin/import-data',
       icon: Upload,
       current: location.pathname.includes('/admin/import-data')
+    },
+    {
+      name: 'Import Prospects',
+      href: '/admin/import-prospects',
+      icon: Upload,
+      current: location.pathname.includes('/admin/import-prospects')
     }
   ];
 

@@ -131,6 +131,7 @@ const AdminCabinetsList = React.lazy(() => import('./pages/admin/cabinets/index'
 const AdminCabinetDetail = React.lazy(() => import('./pages/admin/cabinets/[id]'));
 const AdminCabinetNew = React.lazy(() => import('./pages/admin/cabinets/new'));
 const AdminImportData = React.lazy(() => import('./pages/admin/import-data'));
+const ImportProspects = React.lazy(() => import('./pages/admin/import-prospects'));
 const ProspectionAdmin = React.lazy(() => import('./pages/admin/prospection'));
 
 // Expert pages
@@ -446,6 +447,7 @@ function App() {
                         <Route path="formulaire-admin" element={<AdminFormulaireAdmin />} />
                         <Route path="ajouter-lead" element={<AjouterLead />} />
                         <Route path="import-data" element={<AdminImportData />} />
+                        <Route path="import-prospects" element={<ImportProspects />} />
                         <Route path="contact/:id" element={<AdminContactMessage />} />
                       </Route>
                       

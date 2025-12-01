@@ -33,6 +33,7 @@ import expertRoutes from './routes/expert';
 import adminRoutes from './routes/admin';
 import adminCabinetsRoutes from './routes/admin/cabinets';
 import adminImportRoutes from './routes/admin-import';
+import adminImportProspectsRoutes from './routes/admin-import-prospects';
 import auditRoutes from './routes/audit';
 // SUPPRIMÉ: import simulationRoute from './routes/simulation'; (fichier obsolète, doublon de simulationRoutes)
 
@@ -410,6 +411,7 @@ app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expert
 app.use('/api/admin/cabinets', enhancedAuthMiddleware, requireUserType('admin'), adminCabinetsRoutes);
 app.use('/api/admin/documents', enhancedAuthMiddleware, requireUserType('admin'), adminDocumentsUnifiedRoutes);
 app.use('/api/admin/import', enhancedAuthMiddleware, requireUserType('admin'), adminImportRoutes);
+app.use('/api/admin/import-prospects', enhancedAuthMiddleware, requireUserType('admin'), adminImportProspectsRoutes);
 app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
 
 // Routes de notifications admin - PROTÉGÉES
