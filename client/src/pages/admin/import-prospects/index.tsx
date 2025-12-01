@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Upload, Map, Eye, Play, CheckCircle } from 'lucide-react';
+import { Upload, Map, Eye, Play, CheckCircle, Mail, User, Building2, Phone, MapPin, Globe } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
 import { useNavigate } from 'react-router-dom';
@@ -403,40 +402,105 @@ export default function ImportProspects() {
 
           {currentStep === 3 && previewData.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Prévisualisation</h2>
-              <p className="text-sm text-gray-600">
-                Vérifiez les données transformées avant l'import ({fileData?.totalRows} lignes au total)
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Prévisualisation</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {previewData.length} prospect{previewData.length > 1 ? 's' : ''} affiché{previewData.length > 1 ? 's' : ''} sur {fileData?.totalRows} au total
+                  </p>
+                </div>
+              </div>
               
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {Object.keys(previewData[0] || {}).map((key) => (
-                        <TableHead key={key}>{key}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {previewData.slice(0, 10).map((row, idx) => (
-                      <TableRow key={idx}>
-                        {Object.values(row).map((value, cellIdx) => {
-                          const displayValue = value !== null && value !== undefined && value !== '' 
-                            ? String(value) 
-                            : null;
-                          return (
-                            <TableCell key={cellIdx}>
-                              {displayValue || <span className="text-gray-400">-</span>}
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <div className="max-h-[500px] overflow-y-auto pr-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {previewData.slice(0, 15).map((row, idx) => {
+                    const email = row.email || row.Email || row.EMAIL || '';
+                    const firstname = row.firstname || row.firstName || row.FirstName || row.prénom || '';
+                    const lastname = row.lastname || row.lastName || row.LastName || row.nom || '';
+                    const company = row.company_name || row.companyName || row.CompanyName || row.entreprise || row.société || '';
+                    const phone = row.phone_direct || row.phone || row.Phone || row.téléphone || row.telephone || '';
+                    const city = row.city || row.City || row.ville || '';
+                    const postalCode = row.postal_code || row.postalCode || row.PostalCode || row['code postal'] || row.cp || '';
+                    const website = row.company_website || row.website || row.Website || row.site || '';
+                    const siren = row.siren || row.SIREN || '';
+                    
+                    const fullName = [firstname, lastname].filter(Boolean).join(' ') || email.split('@')[0];
+                    
+                    return (
+                      <Card key={idx} className="p-3 hover:shadow-md transition-shadow border border-gray-200">
+                        <div className="space-y-2">
+                          {/* Nom/Email principal */}
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <User className="h-3.5 w-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                                <span className="font-medium text-sm text-gray-900 truncate">
+                                  {fullName}
+                                </span>
+                              </div>
+                              {email && (
+                                <div className="flex items-center gap-1.5 text-xs text-gray-600 truncate">
+                                  <Mail className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                  <span className="truncate">{email}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Entreprise */}
+                          {company && (
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                              <Building2 className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                              <span className="truncate">{company}</span>
+                            </div>
+                          )}
+
+                          {/* Téléphone */}
+                          {phone && (
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                              <Phone className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                              <span>{phone}</span>
+                            </div>
+                          )}
+
+                          {/* Localisation */}
+                          {(city || postalCode) && (
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                              <MapPin className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                              <span className="truncate">
+                                {[city, postalCode].filter(Boolean).join(' ')}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Site web */}
+                          {website && (
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600 truncate">
+                              <Globe className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                              <span className="truncate">{website}</span>
+                            </div>
+                          )}
+
+                          {/* SIREN */}
+                          {siren && (
+                            <div className="text-xs text-gray-500">
+                              SIREN: {siren}
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
+              {previewData.length > 15 && (
+                <div className="text-center text-sm text-gray-500 py-2">
+                  ... et {previewData.length - 15} autre{previewData.length - 15 > 1 ? 's' : ''} prospect{previewData.length - 15 > 1 ? 's' : ''}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button variant="outline" onClick={() => setCurrentStep(2)}>
                   Retour
                 </Button>
