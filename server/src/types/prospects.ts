@@ -84,6 +84,7 @@ export interface CreateProspectInput {
   company_name?: string;
   siren?: string;
   metadata?: Record<string, any>;
+  skip_enrichment?: boolean; // Si true, ne pas déclencher l'enrichissement automatique
 }
 
 export interface UpdateProspectInput {

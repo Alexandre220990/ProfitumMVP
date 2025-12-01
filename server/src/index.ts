@@ -107,6 +107,7 @@ import { startActionTypeRemindersCron } from './cron/action-type-reminders';
 import { startDailyActivityReportCron } from './cron/daily-activity-report';
 import { startNotificationEscalationCron } from './cron/notification-escalation';
 import { startRDVSlaRemindersCron } from './cron/rdv-sla-reminders';
+import { startProspectNotificationsCron } from './cron/prospect-notifications';
 import { startGmailCheckerJob } from './jobs/gmail-checker';
 import routes from './routes';
 
@@ -855,6 +856,14 @@ server.listen(PORT, HOST, () => {
     // Rappels automatiques pour les RDV non traités selon les SLA (24h, 48h, 120h)
   } catch (error) {
     console.error('❌ Erreur démarrage cron job rappels SLA RDV:', error);
+  }
+
+  // Démarrer le cron job pour les notifications prospects
+  try {
+    startProspectNotificationsCron();
+    // Notifications pour prospects prêts pour emailing et haute priorité
+  } catch (error) {
+    console.error('❌ Erreur démarrage cron job notifications prospects:', error);
   }
 
   // Démarrer le job de vérification Gmail (si configuré)

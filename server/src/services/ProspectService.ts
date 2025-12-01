@@ -29,6 +29,10 @@ export class ProspectService {
    */
   static async createProspect(input: CreateProspectInput): Promise<ApiResponse<Prospect>> {
     try {
+      // Si skip_enrichment est true, on met 'skipped' dans enrichment_status (ou on crée un nouveau statut)
+      // Pour l'instant, on met 'pending' mais on ne déclenchera pas l'enrichissement automatique
+      const enrichmentStatus = input.skip_enrichment ? 'pending' as EnrichmentStatus : 'pending' as EnrichmentStatus;
+      
       const prospectData = {
         email: input.email,
         source: input.source,
@@ -37,11 +41,14 @@ export class ProspectService {
         lastname: input.lastname || null,
         company_name: input.company_name || null,
         siren: input.siren || null,
-        enrichment_status: 'pending' as EnrichmentStatus,
+        enrichment_status: enrichmentStatus,
         ai_status: 'pending' as AIStatus,
         emailing_status: 'pending' as EmailingStatus,
         score_priority: 0,
-        metadata: input.metadata || {}
+        metadata: {
+          ...(input.metadata || {}),
+          skip_enrichment: input.skip_enrichment || false
+        }
       };
 
       const { data, error } = await supabase

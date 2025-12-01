@@ -755,5 +755,118 @@ export class AdminNotificationService {
       return { success: false, notification_ids: [] };
     }
   }
+
+  /**
+   * Notifier les admins : X prospects prêts pour emailing
+   */
+  static async notifyProspectsReadyForEmailing(count: number): Promise<{ success: boolean; notification_ids: string[] }> {
+    try {
+      const adminIds = await this.getAdminIds();
+      
+      if (adminIds.length === 0) {
+        console.warn('⚠️ Aucun admin trouvé pour recevoir la notification');
+        return { success: false, notification_ids: [] };
+      }
+
+      const notificationIds: string[] = [];
+
+      // Créer une notification pour chaque admin
+      for (const adminId of adminIds) {
+        const { data: notification, error } = await supabase
+          .from('AdminNotification')
+          .insert({
+            admin_id: adminId,
+            notification_type: 'prospects_ready_for_emailing',
+            title: `📧 ${count} prospect${count > 1 ? 's' : ''} prêt${count > 1 ? 's' : ''} pour emailing`,
+            message: `${count} prospect${count > 1 ? 's' : ''} ${count > 1 ? 'sont' : 'est'} prêt${count > 1 ? 's' : ''} à recevoir un email`,
+            priority: 'medium',
+            status: 'unread',
+            action_url: '/admin/prospection?filter=ready_for_emailing',
+            action_data: {
+              count,
+              filter: 'ready_for_emailing'
+            },
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (!error && notification) {
+          notificationIds.push(notification.id);
+          
+          // Envoyer via SSE
+          const sse = getSSEService();
+          if (sse) {
+            sse.sendNotificationToUser(adminId, notification);
+          }
+        }
+      }
+
+      return {
+        success: notificationIds.length > 0,
+        notification_ids: notificationIds
+      };
+    } catch (error) {
+      console.error('❌ Erreur notifyProspectsReadyForEmailing:', error);
+      return { success: false, notification_ids: [] };
+    }
+  }
+
+  /**
+   * Notifier les admins : Prospects avec score de priorité élevé
+   */
+  static async notifyHighPriorityProspects(count: number, minScore: number = 80): Promise<{ success: boolean; notification_ids: string[] }> {
+    try {
+      const adminIds = await this.getAdminIds();
+      
+      if (adminIds.length === 0) {
+        console.warn('⚠️ Aucun admin trouvé pour recevoir la notification');
+        return { success: false, notification_ids: [] };
+      }
+
+      const notificationIds: string[] = [];
+
+      // Créer une notification pour chaque admin
+      for (const adminId of adminIds) {
+        const { data: notification, error } = await supabase
+          .from('AdminNotification')
+          .insert({
+            admin_id: adminId,
+            notification_type: 'high_priority_prospects',
+            title: `⭐ ${count} prospect${count > 1 ? 's' : ''} haute priorité`,
+            message: `${count} prospect${count > 1 ? 's' : ''} avec un score de priorité ≥ ${minScore}/100`,
+            priority: 'high',
+            status: 'unread',
+            action_url: `/admin/prospection?filter=high_priority&min_score=${minScore}`,
+            action_data: {
+              count,
+              min_score: minScore,
+              filter: 'high_priority'
+            },
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (!error && notification) {
+          notificationIds.push(notification.id);
+          
+          // Envoyer via SSE
+          const sse = getSSEService();
+          if (sse) {
+            sse.sendNotificationToUser(adminId, notification);
+          }
+        }
+      }
+
+      return {
+        success: notificationIds.length > 0,
+        notification_ids: notificationIds
+      };
+    } catch (error) {
+      console.error('❌ Erreur notifyHighPriorityProspects:', error);
+      return { success: false, notification_ids: [] };
+    }
+  }
 }
 
