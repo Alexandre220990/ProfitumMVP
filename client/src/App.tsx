@@ -132,6 +132,7 @@ const AdminCabinetDetail = React.lazy(() => import('./pages/admin/cabinets/[id]'
 const AdminCabinetNew = React.lazy(() => import('./pages/admin/cabinets/new'));
 const AdminImportData = React.lazy(() => import('./pages/admin/import-data'));
 const ProspectionAdmin = React.lazy(() => import('./pages/admin/prospection'));
+const ProspectSequenceSynthese = React.lazy(() => import('./pages/admin/prospect-sequence-synthese'));
 
 // Expert pages
 const ExpertDashboard = React.lazy(() => import('./pages/expert/dashboard'));
@@ -423,6 +424,7 @@ function App() {
                         
                         {/* Prospection */}
                         <Route path="prospection" element={<ProspectionAdmin />} />
+                        <Route path="prospection/sequence/:prospectId" element={<ProspectSequenceSynthese />} />
                         
                         {/* Gestion */}
                         <Route path="gestion-clients" element={<AdminGestionClients />} />

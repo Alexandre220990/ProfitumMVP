@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,6 @@ import {
   Building2, 
   ChevronUp, 
   ChevronDown, 
-  Eye, 
   RefreshCw,
   Search,
   TrendingUp,
@@ -114,6 +113,7 @@ type SortOrder = 'asc' | 'desc';
 
 export default function ProspectionAdmin() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'list';
   
@@ -505,10 +505,15 @@ export default function ProspectionAdmin() {
   };
 
   const handleProspectClick = async (prospect: Prospect) => {
-    setSelectedProspect(prospect);
-    setShowDetails(true);
-    await fetchProspectEmails(prospect.id);
-    await fetchScheduledEmails(prospect.id);
+    // Rediriger vers la synthèse de la séquence
+    if (activeTab === 'scheduled-sequences' || activeTab === 'completed-sequences') {
+      navigate(`/admin/prospection/sequence/${prospect.id}`);
+    } else {
+      setSelectedProspect(prospect);
+      setShowDetails(true);
+      await fetchProspectEmails(prospect.id);
+      await fetchScheduledEmails(prospect.id);
+    }
   };
 
   // Fonctions pour la programmation de séquences
@@ -887,39 +892,12 @@ export default function ProspectionAdmin() {
   };
 
   // Fonctions pour gérer les séquences en cours/terminées
-  const handlePauseSequence = async (prospectId: string) => {
-    if (!confirm('Voulez-vous suspendre cette séquence ? Les emails programmés seront mis en pause.')) {
-      return;
+  const handlePauseSequence = async (prospectId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
     }
-
-    try {
-      setIsPausingSequence(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
-      
-      const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/pause-sequence`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        toast.success(`Séquence suspendue (${result.data.updated_count} email(s) mis en pause)`);
-        if (activeTab === 'scheduled-sequences') {
-          await fetchScheduledSequencesProspects();
-        }
-      } else {
-        toast.error(result.error || 'Erreur lors de la suspension');
-      }
-    } catch (error: any) {
-      console.error('Erreur suspension séquence:', error);
-      toast.error('Erreur lors de la suspension de la séquence');
-    } finally {
-      setIsPausingSequence(false);
-    }
+    // Rediriger vers la synthèse où l'utilisateur pourra suspendre
+    navigate(`/admin/prospection/sequence/${prospectId}`);
   };
 
   const handleResumeSequence = async (prospectId: string) => {
@@ -953,33 +931,12 @@ export default function ProspectionAdmin() {
     }
   };
 
-  const handleOpenEditSequenceModal = async (prospect: Prospect) => {
-    try {
-      setEditingProspectSequence(prospect);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
-      
-      // Récupérer les emails programmés pour ce prospect
-      const response = await fetch(`${config.API_URL}/api/prospects/${prospect.id}/scheduled-emails`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        // Filtrer pour ne garder que les emails non envoyés
-        const unsentEmails = (result.data || []).filter((email: any) => email.status !== 'sent');
-        setProspectSequenceEmails(unsentEmails);
-        setShowEditSequenceModal(true);
-      } else {
-        toast.error(result.error || 'Erreur lors du chargement des emails');
-      }
-    } catch (error: any) {
-      console.error('Erreur chargement emails:', error);
-      toast.error('Erreur lors du chargement des emails');
+  const handleOpenEditSequenceModal = async (prospect: Prospect, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
     }
+    // Rediriger vers la synthèse où l'utilisateur pourra modifier
+    navigate(`/admin/prospection/sequence/${prospect.id}`);
   };
 
   const handleRestartSequence = async (prospect: Prospect, scheduledEmails?: any[]) => {
@@ -1253,8 +1210,8 @@ export default function ProspectionAdmin() {
     );
   };
 
-  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <TableHead className="cursor-pointer hover:bg-gray-50 select-none" onClick={() => handleSort(field)}>
+  const SortableHeader = ({ field, children, className }: { field: SortField; children: React.ReactNode; className?: string }) => (
+    <TableHead className={cn("cursor-pointer hover:bg-gray-50 select-none", className)} onClick={() => handleSort(field)}>
       <div className="flex items-center gap-2">
         {children}
         {sortBy === field ? (
@@ -1549,32 +1506,32 @@ export default function ProspectionAdmin() {
                           className="rounded border-gray-300"
                         />
                       </TableHead>
-                      <SortableHeader field="email">
+                      <SortableHeader field="email" className="min-w-[200px]">
                         <Mail className="h-4 w-4 inline mr-2" />
                         Email
                       </SortableHeader>
-                      <SortableHeader field="firstname">
+                      <SortableHeader field="firstname" className="min-w-[150px]">
                         <User className="h-4 w-4 inline mr-2" />
                         Contact
                       </SortableHeader>
-                      <SortableHeader field="company_name">
+                      <SortableHeader field="company_name" className="min-w-[180px]">
                         <Building2 className="h-4 w-4 inline mr-2" />
                         Entreprise
                       </SortableHeader>
-                      <SortableHeader field="enrichment_status">
+                      <SortableHeader field="enrichment_status" className="w-[120px]">
                         Enrichissement
                       </SortableHeader>
-                      <SortableHeader field="ai_status">
+                      <SortableHeader field="ai_status" className="w-[100px]">
                         IA
                       </SortableHeader>
-                      <SortableHeader field="emailing_status">
+                      <SortableHeader field="emailing_status" className="w-[120px]">
                         Emailing
                       </SortableHeader>
-                      <SortableHeader field="score_priority">
+                      <SortableHeader field="score_priority" className="w-[120px]">
                         <TrendingUp className="h-4 w-4 inline mr-2" />
                         Priorité
                       </SortableHeader>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="w-[140px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1670,26 +1627,12 @@ export default function ProspectionAdmin() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleProspectClick(prospect);
-                                }}
-                                title="Voir détails"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
                               {activeTab === 'scheduled-sequences' && (
                                 <>
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePauseSequence(prospect.id);
-                                    }}
+                                    onClick={(e) => handlePauseSequence(prospect.id, e)}
                                     disabled={isPausingSequence}
                                     title="Suspendre la séquence"
                                   >
@@ -1698,10 +1641,7 @@ export default function ProspectionAdmin() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenEditSequenceModal(prospect);
-                                    }}
+                                    onClick={(e) => handleOpenEditSequenceModal(prospect, e)}
                                     title="Modifier la séquence"
                                   >
                                     <Edit2 className="h-4 w-4 text-blue-600" />
@@ -1713,10 +1653,7 @@ export default function ProspectionAdmin() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenEditSequenceModal(prospect);
-                                    }}
+                                    onClick={(e) => handleOpenEditSequenceModal(prospect, e)}
                                     title="Modifier et relancer"
                                   >
                                     <Edit2 className="h-4 w-4 text-blue-600" />
@@ -2066,32 +2003,32 @@ export default function ProspectionAdmin() {
                       className="rounded border-gray-300"
                     />
                   </TableHead>
-                  <SortableHeader field="email">
+                  <SortableHeader field="email" className="min-w-[200px]">
                     <Mail className="h-4 w-4 inline mr-2" />
                     Email
                   </SortableHeader>
-                  <SortableHeader field="firstname">
+                  <SortableHeader field="firstname" className="min-w-[150px]">
                     <User className="h-4 w-4 inline mr-2" />
                     Contact
                   </SortableHeader>
-                  <SortableHeader field="company_name">
+                  <SortableHeader field="company_name" className="min-w-[180px]">
                     <Building2 className="h-4 w-4 inline mr-2" />
                     Entreprise
                   </SortableHeader>
-                  <SortableHeader field="enrichment_status">
+                  <SortableHeader field="enrichment_status" className="w-[120px]">
                     Enrichissement
                   </SortableHeader>
-                  <SortableHeader field="ai_status">
+                  <SortableHeader field="ai_status" className="w-[100px]">
                     IA
                   </SortableHeader>
-                  <SortableHeader field="emailing_status">
+                  <SortableHeader field="emailing_status" className="w-[120px]">
                     Emailing
                   </SortableHeader>
-                  <SortableHeader field="score_priority">
+                  <SortableHeader field="score_priority" className="w-[120px]">
                     <TrendingUp className="h-4 w-4 inline mr-2" />
                     Priorité
                   </SortableHeader>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -2186,16 +2123,7 @@ export default function ProspectionAdmin() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleProspectClick(prospect);
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        {/* Le clic sur la ligne gère déjà l'ouverture des détails */}
                       </TableCell>
                     </TableRow>
                   ))
