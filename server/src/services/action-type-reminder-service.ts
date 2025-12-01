@@ -801,30 +801,9 @@ export class ActionTypeReminderService {
               console.log(`⏭️ Notification in-app non créée pour ${admin.email} - préférences désactivées pour ${notificationType}`);
             }
 
-            // Envoyer l'email à l'admin si autorisé
-            if (admin.email && !admin.email.includes('@profitum.temp') && !admin.email.includes('temp_')) {
-              if (!shouldSendEmail) {
-                console.log(`⏭️ Email non envoyé à ${admin.email} - préférences utilisateur désactivées pour ${notificationType}`);
-                continue;
-              }
-
-              try {
-                const { subject, html, text } = this.generateActionReminderEmailTemplate(
-                  dossier,
-                  reminderConfig,
-                  daysSinceAction,
-                  clientName,
-                  expert?.name || 'N/A',
-                  produitNom,
-                  admin.name || 'Administrateur'
-                );
-
-                await EmailService.sendDailyReportEmail(admin.email, subject, html, text);
-                console.log(`✅ Email action reminder envoyé à ${admin.email} pour dossier ${dossier.id}`);
-              } catch (error) {
-                console.error(`❌ Erreur envoi email action reminder à ${admin.email}:`, error);
-              }
-            }
+            // ⚠️ EMAILS GROUPÉS DÉSACTIVÉS - Les rappels sont maintenant intégrés au rapport matinal
+            // Les notifications in-app sont toujours créées ci-dessus
+            // Plus d'envoi d'email individuel à 9h
           }
         }
       }

@@ -266,17 +266,10 @@ export class ContactLeadReminderService {
           return;
         }
 
-        const { subject, html, text } = this.generateReminderEmailTemplate(
-          notification,
-          threshold,
-          daysElapsed,
-          hoursElapsed,
-          metadata,
-          userName
-        );
-
-        await EmailService.sendDailyReportEmail(userEmail, subject, html, text);
-        console.log(`✅ [ContactLead Reminder] Email envoyé à ${userEmail} pour ${notificationType} (${threshold})`);
+        // ⚠️ EMAILS GROUPÉS DÉSACTIVÉS - Les rappels sont maintenant intégrés au rapport matinal
+        // Les notifications in-app sont toujours créées ci-dessus
+        // Plus d'envoi d'email individuel à 9h
+        console.log(`✅ [ContactLead Reminder] Notification in-app créée pour ${notificationType} (${threshold}) - Email groupé désactivé`);
       }
     } catch (error) {
       console.error('❌ [ContactLead Reminder] Erreur envoi email rappel:', error);

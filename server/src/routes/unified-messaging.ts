@@ -890,6 +890,100 @@ router.post('/conversations/:id/messages', async (req, res) => {
       }
     }
 
+    // Envoyer un email en temps réel aux admins qui reçoivent un message
+    try {
+      const { EmailService } = await import('../services/EmailService');
+      
+      // Récupérer les participants de la conversation (sauf l'expéditeur)
+      const recipientIds = participantIds.filter((id: string) => id !== senderId);
+      
+      for (const recipientId of recipientIds) {
+        // Vérifier si le destinataire est un admin
+        const { data: admin } = await supabaseAdmin
+          .from('Admin')
+          .select('id, email, name, auth_user_id')
+          .eq('id', recipientId)
+          .single();
+        
+        if (admin && admin.email && !admin.email.includes('@profitum.temp') && !admin.email.includes('temp_')) {
+          try {
+            // Récupérer le nom de l'expéditeur
+            let senderName = 'Un utilisateur';
+            if (authUser.type === 'client') {
+              const { data: client } = await supabaseAdmin
+                .from('Client')
+                .select('name, company_name')
+                .eq('id', authUser.database_id || authUser.id)
+                .single();
+              senderName = client?.company_name || client?.name || 'Un client';
+            } else if (authUser.type === 'expert') {
+              const { data: expert } = await supabaseAdmin
+                .from('Expert')
+                .select('name')
+                .eq('id', authUser.database_id || authUser.id)
+                .single();
+              senderName = expert?.name || 'Un expert';
+            } else if (authUser.type === 'apporteur') {
+              const { data: apporteur } = await supabaseAdmin
+                .from('ApporteurAffaires')
+                .select('first_name, last_name, company_name')
+                .eq('id', authUser.database_id || authUser.id)
+                .single();
+              senderName = apporteur?.company_name || `${apporteur?.first_name || ''} ${apporteur?.last_name || ''}`.trim() || 'Un apporteur';
+            }
+            
+            const subject = `💬 Nouveau message de ${senderName}`;
+            const messagePreview = content.trim().substring(0, 100);
+            const conversationUrl = `${process.env.FRONTEND_URL || 'https://app.profitum.fr'}/admin/messaging?conversation=${conversationId}`;
+            
+            const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; }
+    .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; }
+    .message-box { background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
+    .button { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>💬 Nouveau message</h1>
+    </div>
+    <div class="content">
+      <p>Bonjour ${admin.name || 'Administrateur'},</p>
+      <p>Vous avez reçu un nouveau message de <strong>${senderName}</strong> :</p>
+      <div class="message-box">
+        <p>${messagePreview}${content.trim().length > 100 ? '...' : ''}</p>
+      </div>
+      <a href="${conversationUrl}" class="button">Voir la conversation</a>
+    </div>
+  </div>
+</body>
+</html>
+            `;
+            
+            const text = `${subject}\n\nBonjour ${admin.name || 'Administrateur'},\n\nVous avez reçu un nouveau message de ${senderName} :\n\n${content.trim()}\n\nVoir la conversation : ${conversationUrl}`;
+            
+            await EmailService.sendDailyReportEmail(admin.email, subject, html, text);
+            console.log(`✅ Email en temps réel envoyé à l'admin ${admin.email} pour le message ${message.id}`);
+          } catch (emailError) {
+            console.error(`❌ Erreur envoi email admin ${admin.id}:`, emailError);
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error('❌ Erreur envoi emails temps réel:', emailError);
+      // Ne pas faire échouer la requête si l'email échoue
+    }
+
     // Broadcast du message via WebSocket
     try {
       // SUPPRIMER : const wsService = getUnifiedWebSocket();

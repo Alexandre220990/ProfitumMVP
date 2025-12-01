@@ -56,15 +56,74 @@ interface NotificationData {
   action_url?: string;
 }
 
+interface OverdueRDV {
+  id: string;
+  title: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  hoursOverdue: number;
+  threshold: '24h' | '48h' | '120h';
+  Client?: {
+    name?: string;
+    company_name?: string;
+  };
+  Expert?: {
+    name?: string;
+  };
+}
+
+interface PendingAction {
+  dossier_id: string;
+  actionType: string;
+  daysWaiting: number;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  Client?: {
+    name?: string;
+    company_name?: string;
+  };
+  ProduitEligible?: {
+    nom?: string;
+  };
+}
+
+interface PendingContactLead {
+  id: string;
+  notification_type: 'contact_message' | 'lead_to_treat';
+  hoursOverdue: number;
+  threshold: '24h' | '48h' | '120h';
+  metadata: {
+    name?: string;
+    email?: string;
+  };
+}
+
+interface EscalatedNotification {
+  id: string;
+  notification_type: string;
+  escalation_level: number;
+  priority: string;
+  title: string;
+  message: string;
+  created_at: string;
+}
+
 interface MorningReportData {
   reportDate: string;
   rdvToday: RDVData[];
   unreadNotifications: NotificationData[];
   readNotifications: NotificationData[];
+  overdueRDVs: OverdueRDV[];
+  pendingActions: PendingAction[];
+  pendingContactsLeads: PendingContactLead[];
+  escalatedNotifications: EscalatedNotification[];
   stats: {
     totalRDVToday: number;
     totalUnreadNotifications: number;
     totalReadNotifications: number;
+    totalOverdueRDVs: number;
+    totalPendingActions: number;
+    totalPendingContactsLeads: number;
+    totalEscalatedNotifications: number;
   };
 }
 
@@ -145,6 +204,19 @@ export class MorningReportService {
       console.error('❌ Erreur récupération notifications lues:', readError);
     }
 
+    // 4. Récupérer les RDV en retard (24h, 48h, 120h)
+    const now = new Date();
+    const overdueRDVs = await this.getOverdueRDVs(now);
+
+    // 5. Récupérer les dossiers nécessitant une action
+    const pendingActions = await this.getPendingActions(now);
+
+    // 6. Récupérer les contacts/leads en attente
+    const pendingContactsLeads = await this.getPendingContactsLeads(now);
+
+    // 7. Récupérer les notifications escaladées
+    const escalatedNotifications = await this.getEscalatedNotifications();
+
     return {
       reportDate: dateStr,
       rdvToday: (rdvToday || []).map(normalizeRDV),
@@ -168,12 +240,242 @@ export class MorningReportService {
         is_read: n.is_read,
         action_url: n.action_url || (n.action_data?.action_url || null)
       })),
+      overdueRDVs,
+      pendingActions,
+      pendingContactsLeads,
+      escalatedNotifications,
       stats: {
         totalRDVToday: (rdvToday || []).length,
         totalUnreadNotifications: (unreadNotifications || []).length,
-        totalReadNotifications: (readNotifications || []).length
+        totalReadNotifications: (readNotifications || []).length,
+        totalOverdueRDVs: overdueRDVs.length,
+        totalPendingActions: pendingActions.length,
+        totalPendingContactsLeads: pendingContactsLeads.length,
+        totalEscalatedNotifications: escalatedNotifications.length
       }
     };
+  }
+
+  /**
+   * Récupérer les RDV en retard (24h, 48h, 120h)
+   */
+  private static async getOverdueRDVs(now: Date): Promise<OverdueRDV[]> {
+    try {
+      const { data: rdvs, error } = await supabase
+        .from('RDV')
+        .select(`
+          id,
+          title,
+          scheduled_date,
+          scheduled_time,
+          status,
+          Client:client_id(id, name, company_name),
+          Expert:expert_id(id, name)
+        `)
+        .in('status', ['proposed', 'scheduled'])
+        .limit(500);
+
+      if (error) {
+        console.error('❌ Erreur récupération RDV en retard:', error);
+        return [];
+      }
+
+      const overdueRDVs: OverdueRDV[] = [];
+
+      for (const rdv of rdvs || []) {
+        if (!rdv.scheduled_date || !rdv.scheduled_time) continue;
+
+        const scheduledDateTime = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+        
+        // Vérifier si le RDV est passé
+        if (scheduledDateTime > now) continue;
+
+        const hoursElapsed = (now.getTime() - scheduledDateTime.getTime()) / (1000 * 60 * 60);
+        
+        let threshold: '24h' | '48h' | '120h' | null = null;
+        if (hoursElapsed >= 120) {
+          threshold = '120h';
+        } else if (hoursElapsed >= 48) {
+          threshold = '48h';
+        } else if (hoursElapsed >= 24) {
+          threshold = '24h';
+        }
+
+        if (threshold) {
+          overdueRDVs.push({
+            id: rdv.id,
+            title: rdv.title || 'RDV sans titre',
+            scheduled_date: rdv.scheduled_date,
+            scheduled_time: rdv.scheduled_time,
+            hoursOverdue: Math.floor(hoursElapsed),
+            threshold,
+            Client: Array.isArray(rdv.Client) ? rdv.Client[0] : rdv.Client,
+            Expert: Array.isArray(rdv.Expert) ? rdv.Expert[0] : rdv.Expert
+          });
+        }
+      }
+
+      // Grouper par seuil
+      return overdueRDVs.sort((a, b) => {
+        const thresholdOrder = { '120h': 3, '48h': 2, '24h': 1 };
+        return (thresholdOrder[b.threshold] || 0) - (thresholdOrder[a.threshold] || 0);
+      });
+    } catch (error) {
+      console.error('❌ Erreur récupération RDV en retard:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Récupérer les dossiers nécessitant une action
+   */
+  private static async getPendingActions(now: Date): Promise<PendingAction[]> {
+    try {
+      // Récupérer les dossiers avec actionType
+      const { data: dossiers, error } = await supabase
+        .from('Dossier')
+        .select(`
+          id,
+          actionType,
+          updated_at,
+          Client:client_id(id, name, company_name),
+          ProduitEligible:produit_id(nom)
+        `)
+        .not('actionType', 'is', null)
+        .limit(500);
+
+      if (error) {
+        console.error('❌ Erreur récupération dossiers avec actions:', error);
+        return [];
+      }
+
+      const pendingActions: PendingAction[] = [];
+
+      for (const dossier of dossiers || []) {
+        if (!dossier.actionType || !dossier.updated_at) continue;
+
+        const updatedAt = new Date(dossier.updated_at);
+        const daysWaiting = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Déterminer la priorité selon les jours d'attente
+        let priority: 'low' | 'medium' | 'high' | 'critical' = 'low';
+        if (daysWaiting >= 15) {
+          priority = 'critical';
+        } else if (daysWaiting >= 10) {
+          priority = 'high';
+        } else if (daysWaiting >= 5) {
+          priority = 'medium';
+        }
+
+        pendingActions.push({
+          dossier_id: dossier.id,
+          actionType: dossier.actionType,
+          daysWaiting,
+          priority,
+          Client: Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client,
+          ProduitEligible: Array.isArray(dossier.ProduitEligible) ? dossier.ProduitEligible[0] : dossier.ProduitEligible
+        });
+      }
+
+      // Trier par priorité et jours d'attente
+      return pendingActions.sort((a, b) => {
+        const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
+        const priorityDiff = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+        if (priorityDiff !== 0) return priorityDiff;
+        return b.daysWaiting - a.daysWaiting;
+      });
+    } catch (error) {
+      console.error('❌ Erreur récupération dossiers avec actions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Récupérer les contacts/leads en attente
+   */
+  private static async getPendingContactsLeads(now: Date): Promise<PendingContactLead[]> {
+    try {
+      const { data: notifications, error } = await supabase
+        .from('notification')
+        .select('id, notification_type, created_at, metadata')
+        .in('notification_type', ['contact_message', 'lead_to_treat'])
+        .eq('is_read', false)
+        .in('status', ['unread', 'active'])
+        .limit(500);
+
+      if (error) {
+        console.error('❌ Erreur récupération contacts/leads:', error);
+        return [];
+      }
+
+      const pendingContactsLeads: PendingContactLead[] = [];
+
+      for (const notification of notifications || []) {
+        const createdAt = new Date(notification.created_at);
+        const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        
+        let threshold: '24h' | '48h' | '120h' | null = null;
+        if (hoursElapsed >= 120) {
+          threshold = '120h';
+        } else if (hoursElapsed >= 48) {
+          threshold = '48h';
+        } else if (hoursElapsed >= 24) {
+          threshold = '24h';
+        }
+
+        if (threshold) {
+          pendingContactsLeads.push({
+            id: notification.id,
+            notification_type: notification.notification_type as 'contact_message' | 'lead_to_treat',
+            hoursOverdue: Math.floor(hoursElapsed),
+            threshold,
+            metadata: notification.metadata || {}
+          });
+        }
+      }
+
+      // Trier par seuil
+      return pendingContactsLeads.sort((a, b) => {
+        const thresholdOrder = { '120h': 3, '48h': 2, '24h': 1 };
+        return (thresholdOrder[b.threshold] || 0) - (thresholdOrder[a.threshold] || 0);
+      });
+    } catch (error) {
+      console.error('❌ Erreur récupération contacts/leads:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Récupérer les notifications escaladées
+   */
+  private static async getEscalatedNotifications(): Promise<EscalatedNotification[]> {
+    try {
+      const { data: notifications, error } = await supabase
+        .from('notification')
+        .select('id, notification_type, priority, title, message, created_at, metadata')
+        .eq('user_type', 'admin')
+        .eq('status', 'late')
+        .not('metadata->escalation_level', 'is', null)
+        .limit(100);
+
+      if (error) {
+        console.error('❌ Erreur récupération notifications escaladées:', error);
+        return [];
+      }
+
+      return (notifications || []).map((n: any) => ({
+        id: n.id,
+        notification_type: n.notification_type,
+        escalation_level: Number(n.metadata?.escalation_level || 0),
+        priority: n.priority || 'medium',
+        title: n.title,
+        message: n.message,
+        created_at: n.created_at
+      })).sort((a, b) => b.escalation_level - a.escalation_level);
+    } catch (error) {
+      console.error('❌ Erreur récupération notifications escaladées:', error);
+      return [];
+    }
   }
 
   /**
@@ -403,6 +705,22 @@ export class MorningReportService {
         <div class="stat-number">${reportData.stats.totalReadNotifications}</div>
         <div class="stat-label">Notifications lues</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-number">${reportData.stats.totalOverdueRDVs}</div>
+        <div class="stat-label">RDV en retard</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">${reportData.stats.totalPendingActions}</div>
+        <div class="stat-label">Actions en attente</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">${reportData.stats.totalPendingContactsLeads}</div>
+        <div class="stat-label">Contacts/Leads</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">${reportData.stats.totalEscalatedNotifications}</div>
+        <div class="stat-label">Notifications escaladées</div>
+      </div>
     </div>
 
     ${reportData.rdvToday.length > 0 ? `
@@ -481,6 +799,127 @@ export class MorningReportService {
     </div>
     ` : ''}
 
+    ${reportData.overdueRDVs.length > 0 ? `
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">🚨</div>
+        <div>
+          <div class="section-title">RDV en retard</div>
+          <div class="section-subtitle">${reportData.overdueRDVs.length} RDV non traité${reportData.overdueRDVs.length > 1 ? 's' : ''}</div>
+        </div>
+      </div>
+      ${Object.entries({
+        '120h': reportData.overdueRDVs.filter(r => r.threshold === '120h'),
+        '48h': reportData.overdueRDVs.filter(r => r.threshold === '48h'),
+        '24h': reportData.overdueRDVs.filter(r => r.threshold === '24h')
+      }).filter(([_, rdvs]) => rdvs.length > 0).map(([threshold, rdvs]) => `
+        <div style="margin-bottom: 24px;">
+          <h4 style="font-size: 16px; font-weight: 600; color: ${threshold === '120h' ? '#dc2626' : threshold === '48h' ? '#f59e0b' : '#3b82f6'}; margin-bottom: 12px;">
+            ${threshold === '120h' ? '🚨 Critique' : threshold === '48h' ? '⚠️ Important' : '📋 Normal'} - ${threshold} de retard
+          </h4>
+          ${rdvs.map(rdv => `
+            <div class="rdv-item" style="border-left-color: ${threshold === '120h' ? '#dc2626' : threshold === '48h' ? '#f59e0b' : '#3b82f6'};">
+              <div class="rdv-header">${rdv.title}</div>
+              <div class="rdv-details"><strong>Client:</strong> ${rdv.Client?.company_name || rdv.Client?.name || 'Non renseigné'}</div>
+              <div class="rdv-details"><strong>Expert:</strong> ${rdv.Expert?.name || 'Non assigné'}</div>
+              <div class="rdv-details"><strong>Date prévue:</strong> ${new Date(rdv.scheduled_date).toLocaleDateString('fr-FR')} à ${formatTime(rdv.scheduled_time)}</div>
+              <div class="rdv-details"><strong>Retard:</strong> ${rdv.hoursOverdue} heure${rdv.hoursOverdue > 1 ? 's' : ''}</div>
+              <a href="${SecureLinkService.generateSimpleLink(`/admin/rdv/${rdv.id}`, adminId, adminType)}" style="color: #3b82f6; text-decoration: none; font-weight: 600; margin-top: 8px; display: inline-block;">Voir le RDV →</a>
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}
+    </div>
+    ` : ''}
+
+    ${reportData.pendingActions.length > 0 ? `
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">⚡</div>
+        <div>
+          <div class="section-title">Dossiers nécessitant une action</div>
+          <div class="section-subtitle">${reportData.pendingActions.length} dossier${reportData.pendingActions.length > 1 ? 's' : ''} avec actions en attente</div>
+        </div>
+      </div>
+      ${Object.entries({
+        critical: reportData.pendingActions.filter(a => a.priority === 'critical'),
+        high: reportData.pendingActions.filter(a => a.priority === 'high'),
+        medium: reportData.pendingActions.filter(a => a.priority === 'medium'),
+        low: reportData.pendingActions.filter(a => a.priority === 'low')
+      }).filter(([_, actions]) => actions.length > 0).map(([priority, actions]) => `
+        <div style="margin-bottom: 24px;">
+          <h4 style="font-size: 16px; font-weight: 600; color: ${priority === 'critical' ? '#dc2626' : priority === 'high' ? '#f59e0b' : priority === 'medium' ? '#3b82f6' : '#6b7280'}; margin-bottom: 12px;">
+            ${priority === 'critical' ? '🚨 Critique' : priority === 'high' ? '⚠️ Élevée' : priority === 'medium' ? '📋 Moyenne' : 'ℹ️ Faible'} - ${actions.length} dossier${actions.length > 1 ? 's' : ''}
+          </h4>
+          ${actions.map(action => `
+            <div class="rdv-item" style="border-left-color: ${priority === 'critical' ? '#dc2626' : priority === 'high' ? '#f59e0b' : priority === 'medium' ? '#3b82f6' : '#6b7280'};">
+              <div class="rdv-header">${action.actionType}</div>
+              <div class="rdv-details"><strong>Client:</strong> ${action.Client?.company_name || action.Client?.name || 'Non renseigné'}</div>
+              <div class="rdv-details"><strong>Produit:</strong> ${action.ProduitEligible?.nom || 'Non renseigné'}</div>
+              <div class="rdv-details"><strong>Jours d'attente:</strong> ${action.daysWaiting} jour${action.daysWaiting > 1 ? 's' : ''}</div>
+              <a href="${SecureLinkService.generateSimpleLink(`/admin/dossiers/${action.dossier_id}`, adminId, adminType)}" style="color: #3b82f6; text-decoration: none; font-weight: 600; margin-top: 8px; display: inline-block;">Voir le dossier →</a>
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}
+    </div>
+    ` : ''}
+
+    ${reportData.pendingContactsLeads.length > 0 ? `
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">📧</div>
+        <div>
+          <div class="section-title">Contacts/Leads en attente</div>
+          <div class="section-subtitle">${reportData.pendingContactsLeads.length} contact${reportData.pendingContactsLeads.length > 1 ? 's' : ''}/lead${reportData.pendingContactsLeads.length > 1 ? 's' : ''} non traité${reportData.pendingContactsLeads.length > 1 ? 's' : ''}</div>
+        </div>
+      </div>
+      ${Object.entries({
+        '120h': reportData.pendingContactsLeads.filter(c => c.threshold === '120h'),
+        '48h': reportData.pendingContactsLeads.filter(c => c.threshold === '48h'),
+        '24h': reportData.pendingContactsLeads.filter(c => c.threshold === '24h')
+      }).filter(([_, contacts]) => contacts.length > 0).map(([threshold, contacts]) => `
+        <div style="margin-bottom: 24px;">
+          <h4 style="font-size: 16px; font-weight: 600; color: ${threshold === '120h' ? '#dc2626' : threshold === '48h' ? '#f59e0b' : '#3b82f6'}; margin-bottom: 12px;">
+            ${threshold === '120h' ? '🚨 Critique' : threshold === '48h' ? '⚠️ Important' : '📋 Normal'} - ${threshold} de retard
+          </h4>
+          ${contacts.map(contact => `
+            <div class="notification-item" style="border-left-color: ${threshold === '120h' ? '#dc2626' : threshold === '48h' ? '#f59e0b' : '#3b82f6'};">
+              <div class="notification-header">${contact.notification_type === 'contact_message' ? '📧 Message de contact' : '🎯 Lead à traiter'}</div>
+              <div class="notification-details"><strong>Nom:</strong> ${contact.metadata?.name || 'Non renseigné'}</div>
+              <div class="notification-details"><strong>Email:</strong> ${contact.metadata?.email || 'Non renseigné'}</div>
+              <div class="notification-details"><strong>Retard:</strong> ${contact.hoursOverdue} heure${contact.hoursOverdue > 1 ? 's' : ''}</div>
+              <a href="${SecureLinkService.generateSimpleLink(`/admin/contact/${(contact.metadata as any)?.contact_message_id || contact.id}`, adminId, adminType)}" style="color: #3b82f6; text-decoration: none; font-weight: 600; margin-top: 8px; display: inline-block;">Voir les détails →</a>
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}
+    </div>
+    ` : ''}
+
+    ${reportData.escalatedNotifications.length > 0 ? `
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">🚨</div>
+        <div>
+          <div class="section-title">Notifications escaladées</div>
+          <div class="section-subtitle">${reportData.escalatedNotifications.length} notification${reportData.escalatedNotifications.length > 1 ? 's' : ''} ayant atteint les seuils d'escalade</div>
+        </div>
+      </div>
+      ${reportData.escalatedNotifications.map(notif => {
+        const priorityStyle = priorityColors[notif.priority as keyof typeof priorityColors] || priorityColors.medium;
+        return `
+          <div class="notification-item" style="border-left-color: ${priorityStyle.border};">
+            <div class="notification-header">${notif.title}</div>
+            <div class="notification-details">${notif.message}</div>
+            <div class="notification-meta">Niveau d'escalade: ${notif.escalation_level} • Type: ${notif.notification_type} • ${formatNotificationDate(notif.created_at)}</div>
+            <a href="${SecureLinkService.generateSimpleLink(`/admin/notifications/${notif.id}`, adminId, adminType)}" style="color: #3b82f6; text-decoration: none; font-weight: 600; margin-top: 8px; display: inline-block;">Voir les détails →</a>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    ` : ''}
+
     <div class="footer">
       <div class="footer-text">
         <p>Rapport généré automatiquement par Profitum</p>
@@ -532,6 +971,37 @@ ${reportData.unreadNotifications.map(n => `- ${n.title}: ${n.message}`).join('\n
 
 Notifications lues récentes (${reportData.stats.totalReadNotifications}) :
 ${reportData.readNotifications.map(n => `- ${n.title}: ${n.message}`).join('\n') || 'Aucune notification'}
+
+RDV en retard (${reportData.stats.totalOverdueRDVs}) :
+${reportData.overdueRDVs.length > 0 ? Object.entries({
+  '120h': reportData.overdueRDVs.filter(r => r.threshold === '120h'),
+  '48h': reportData.overdueRDVs.filter(r => r.threshold === '48h'),
+  '24h': reportData.overdueRDVs.filter(r => r.threshold === '24h')
+}).filter(([_, rdvs]) => rdvs.length > 0).map(([threshold, rdvs]) => 
+  `${threshold} de retard (${rdvs.length}) :\n${rdvs.map(r => `  - ${r.title} : ${r.Client?.company_name || r.Client?.name || 'Client'} / ${r.Expert?.name || 'Expert'} - ${r.hoursOverdue}h de retard`).join('\n')}`
+).join('\n\n') : 'Aucun RDV en retard'}
+
+Dossiers nécessitant une action (${reportData.stats.totalPendingActions}) :
+${reportData.pendingActions.length > 0 ? Object.entries({
+  critical: reportData.pendingActions.filter(a => a.priority === 'critical'),
+  high: reportData.pendingActions.filter(a => a.priority === 'high'),
+  medium: reportData.pendingActions.filter(a => a.priority === 'medium'),
+  low: reportData.pendingActions.filter(a => a.priority === 'low')
+}).filter(([_, actions]) => actions.length > 0).map(([priority, actions]) => 
+  `${priority.toUpperCase()} (${actions.length}) :\n${actions.map(a => `  - ${a.actionType} : ${a.Client?.company_name || a.Client?.name || 'Client'} / ${a.ProduitEligible?.nom || 'Produit'} - ${a.daysWaiting} jours d'attente`).join('\n')}`
+).join('\n\n') : 'Aucun dossier nécessitant une action'}
+
+Contacts/Leads en attente (${reportData.stats.totalPendingContactsLeads}) :
+${reportData.pendingContactsLeads.length > 0 ? Object.entries({
+  '120h': reportData.pendingContactsLeads.filter(c => c.threshold === '120h'),
+  '48h': reportData.pendingContactsLeads.filter(c => c.threshold === '48h'),
+  '24h': reportData.pendingContactsLeads.filter(c => c.threshold === '24h')
+}).filter(([_, contacts]) => contacts.length > 0).map(([threshold, contacts]) => 
+  `${threshold} de retard (${contacts.length}) :\n${contacts.map(c => `  - ${c.notification_type === 'contact_message' ? 'Message' : 'Lead'} : ${c.metadata?.name || 'Non renseigné'} (${c.metadata?.email || 'Non renseigné'}) - ${c.hoursOverdue}h de retard`).join('\n')}`
+).join('\n\n') : 'Aucun contact/lead en attente'}
+
+Notifications escaladées (${reportData.stats.totalEscalatedNotifications}) :
+${reportData.escalatedNotifications.map(n => `- ${n.title} : ${n.message} (Niveau ${n.escalation_level}, ${n.notification_type})`).join('\n') || 'Aucune notification escaladée'}
       `.trim();
 
       const subject = `🌅 Rapport matinal - ${new Date(reportData.reportDate).toLocaleDateString('fr-FR')}`;

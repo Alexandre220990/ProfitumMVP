@@ -284,30 +284,9 @@ export class RDVSlaReminderService {
           console.log(`⏭️ [RDV SLA Reminder] Notification in-app non créée pour ${admin.email} - préférences désactivées`);
         }
 
-        // Envoyer l'email à l'admin si autorisé
-        if (admin.email && !admin.email.includes('@profitum.temp') && !admin.email.includes('temp_')) {
-          if (!shouldSendEmail) {
-            console.log(`⏭️ [RDV SLA Reminder] Email non envoyé à ${admin.email} - préférences utilisateur désactivées pour rdv_sla_reminder (${threshold})`);
-            continue;
-          }
-
-          try {
-            const { subject, html, text } = this.generateReminderEmailTemplate(
-              rdv,
-              threshold,
-              daysElapsed,
-              hoursElapsed,
-              clientName,
-              expertName,
-              admin.name || 'Administrateur'
-            );
-
-            await EmailService.sendDailyReportEmail(admin.email, subject, html, text);
-            console.log(`✅ [RDV SLA Reminder] Email envoyé à ${admin.email} pour RDV ${rdv.id}`);
-          } catch (error) {
-            console.error(`❌ [RDV SLA Reminder] Erreur envoi email à ${admin.email}:`, error);
-          }
-        }
+        // ⚠️ EMAILS GROUPÉS DÉSACTIVÉS - Les rappels sont maintenant intégrés au rapport matinal
+        // Les notifications in-app sont toujours créées ci-dessus
+        // Plus d'envoi d'email individuel à 9h
       }
 
       // Mettre à jour les métadonnées du RDV pour marquer le rappel comme envoyé
