@@ -1248,6 +1248,124 @@ export class ProspectService {
   }
 
   /**
+   * Suspend ou reprend une séquence pour un prospect
+   */
+  static async pauseResumeSequence(prospectId: string, pause: boolean): Promise<ApiResponse<{ updated_count: number }>> {
+    try {
+      // Récupérer tous les emails programmés non envoyés pour ce prospect
+      const { data: scheduledEmails, error: fetchError } = await supabase
+        .from('prospect_email_scheduled')
+        .select('id')
+        .eq('prospect_id', prospectId)
+        .in('status', pause ? ['scheduled'] : ['paused']);
+
+      if (fetchError) {
+        return {
+          success: false,
+          error: `Erreur récupération emails: ${fetchError.message}`
+        };
+      }
+
+      if (!scheduledEmails || scheduledEmails.length === 0) {
+        return {
+          success: true,
+          data: { updated_count: 0 }
+        };
+      }
+
+      // Mettre à jour le statut
+      const newStatus = pause ? 'paused' : 'scheduled';
+      const { error: updateError } = await supabase
+        .from('prospect_email_scheduled')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .in('id', scheduledEmails.map(e => e.id));
+
+      if (updateError) {
+        return {
+          success: false,
+          error: `Erreur mise à jour: ${updateError.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: { updated_count: scheduledEmails.length }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Relance une séquence terminée pour un prospect
+   */
+  static async restartSequence(
+    prospectId: string,
+    scheduledEmails: Array<{
+      step_number: number;
+      subject: string;
+      body: string;
+      scheduled_for: string;
+      status?: string;
+    }>
+  ): Promise<ApiResponse<{ scheduled_count: number }>> {
+    try {
+      // Vérifier que le prospect existe
+      const { data: prospect, error: prospectError } = await supabase
+        .from('prospects')
+        .select('id, email')
+        .eq('id', prospectId)
+        .single();
+
+      if (prospectError || !prospect) {
+        return {
+          success: false,
+          error: `Prospect non trouvé: ${prospectError?.message}`
+        };
+      }
+
+      // Préparer les emails programmés
+      const emailsToInsert = scheduledEmails.map(email => ({
+        prospect_id: prospectId,
+        step_number: email.step_number,
+        subject: email.subject,
+        body: email.body,
+        scheduled_for: email.scheduled_for,
+        status: email.status || 'scheduled'
+      }));
+
+      // Insérer tous les emails programmés
+      const { data, error } = await supabase
+        .from('prospect_email_scheduled')
+        .insert(emailsToInsert)
+        .select();
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur relance séquence: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: { scheduled_count: data?.length || 0 }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
    * Récupère les prospects avec des séquences terminées (dernier email envoyé)
    */
   static async getProspectsWithCompletedSequences(filters: ProspectFilters = {}): Promise<ApiResponse<ProspectListResponse>> {

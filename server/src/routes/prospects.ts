@@ -464,5 +464,60 @@ router.post('/send-scheduled', async (req, res) => {
   }
 });
 
+// ===== GESTION SÉQUENCES =====
+
+// PUT /api/prospects/:id/pause-sequence - Suspendre une séquence
+router.put('/:id/pause-sequence', async (req, res) => {
+  try {
+    const result = await ProspectService.pauseResumeSequence(req.params.id, true);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/prospects/:id/resume-sequence - Reprendre une séquence
+router.put('/:id/resume-sequence', async (req, res) => {
+  try {
+    const result = await ProspectService.pauseResumeSequence(req.params.id, false);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/prospects/:id/restart-sequence - Relancer une séquence terminée
+router.post('/:id/restart-sequence', async (req, res) => {
+  try {
+    const { scheduled_emails } = req.body;
+    
+    if (!scheduled_emails || !Array.isArray(scheduled_emails) || scheduled_emails.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'scheduled_emails (array) est requis' 
+      });
+    }
+
+    const result = await ProspectService.restartSequence(
+      req.params.id,
+      scheduled_emails
+    );
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    return res.status(201).json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
 

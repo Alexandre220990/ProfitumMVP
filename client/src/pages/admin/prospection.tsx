@@ -36,7 +36,9 @@ import {
   Trash2,
   FileText,
   Mail as MailIcon,
-  Edit2
+  Edit2,
+  Pause,
+  RotateCcw
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { cn } from "@/lib/utils";
@@ -186,6 +188,13 @@ export default function ProspectionAdmin() {
     ]
   });
   const [loadingSequences, setLoadingSequences] = useState(false);
+
+  // États pour la gestion des séquences (suspendre/modifier/relancer)
+  const [showEditSequenceModal, setShowEditSequenceModal] = useState(false);
+  const [editingProspectSequence, setEditingProspectSequence] = useState<Prospect | null>(null);
+  const [prospectSequenceEmails, setProspectSequenceEmails] = useState<any[]>([]);
+  const [isPausingSequence, setIsPausingSequence] = useState(false);
+  const [isRestartingSequence, setIsRestartingSequence] = useState(false);
 
   // États pour la création manuelle de prospect
   const [showCreateProspectModal, setShowCreateProspectModal] = useState(false);
@@ -877,6 +886,165 @@ export default function ProspectionAdmin() {
     }
   };
 
+  // Fonctions pour gérer les séquences en cours/terminées
+  const handlePauseSequence = async (prospectId: string) => {
+    if (!confirm('Voulez-vous suspendre cette séquence ? Les emails programmés seront mis en pause.')) {
+      return;
+    }
+
+    try {
+      setIsPausingSequence(true);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/pause-sequence`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(`Séquence suspendue (${result.data.updated_count} email(s) mis en pause)`);
+        if (activeTab === 'scheduled-sequences') {
+          await fetchScheduledSequencesProspects();
+        }
+      } else {
+        toast.error(result.error || 'Erreur lors de la suspension');
+      }
+    } catch (error: any) {
+      console.error('Erreur suspension séquence:', error);
+      toast.error('Erreur lors de la suspension de la séquence');
+    } finally {
+      setIsPausingSequence(false);
+    }
+  };
+
+  const handleResumeSequence = async (prospectId: string) => {
+    try {
+      setIsPausingSequence(true);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/resume-sequence`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(`Séquence reprise (${result.data.updated_count} email(s) réactivé(s))`);
+        if (activeTab === 'scheduled-sequences') {
+          await fetchScheduledSequencesProspects();
+        }
+      } else {
+        toast.error(result.error || 'Erreur lors de la reprise');
+      }
+    } catch (error: any) {
+      console.error('Erreur reprise séquence:', error);
+      toast.error('Erreur lors de la reprise de la séquence');
+    } finally {
+      setIsPausingSequence(false);
+    }
+  };
+
+  const handleOpenEditSequenceModal = async (prospect: Prospect) => {
+    try {
+      setEditingProspectSequence(prospect);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      // Récupérer les emails programmés pour ce prospect
+      const response = await fetch(`${config.API_URL}/api/prospects/${prospect.id}/scheduled-emails`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Filtrer pour ne garder que les emails non envoyés
+        const unsentEmails = (result.data || []).filter((email: any) => email.status !== 'sent');
+        setProspectSequenceEmails(unsentEmails);
+        setShowEditSequenceModal(true);
+      } else {
+        toast.error(result.error || 'Erreur lors du chargement des emails');
+      }
+    } catch (error: any) {
+      console.error('Erreur chargement emails:', error);
+      toast.error('Erreur lors du chargement des emails');
+    }
+  };
+
+  const handleRestartSequence = async (prospect: Prospect, scheduledEmails?: any[]) => {
+    try {
+      setIsRestartingSequence(true);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      // Si des emails modifiés sont fournis, les utiliser, sinon récupérer les emails existants
+      let emailsToSchedule = scheduledEmails;
+      if (!emailsToSchedule) {
+        const response = await fetch(`${config.API_URL}/api/prospects/${prospect.id}/scheduled-emails`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const result = await response.json();
+        if (result.success) {
+          // Utiliser les emails envoyés comme base pour la relance
+          const sentEmails = (result.data || []).filter((email: any) => email.status === 'sent');
+          emailsToSchedule = sentEmails.map((email: any) => ({
+            step_number: email.step_number,
+            subject: email.subject,
+            body: email.body,
+            scheduled_for: new Date(Date.now() + (email.step_number * 3 * 24 * 60 * 60 * 1000)).toISOString(),
+            status: 'scheduled'
+          }));
+        }
+      }
+
+      if (!emailsToSchedule || emailsToSchedule.length === 0) {
+        toast.error('Aucun email à relancer');
+        return;
+      }
+
+      const restartResponse = await fetch(`${config.API_URL}/api/prospects/${prospect.id}/restart-sequence`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          scheduled_emails: emailsToSchedule
+        })
+      });
+
+      const restartResult = await restartResponse.json();
+      
+      if (restartResult.success) {
+        toast.success(`Séquence relancée (${restartResult.data.scheduled_count} email(s) programmé(s))`);
+        setShowEditSequenceModal(false);
+        if (activeTab === 'completed-sequences') {
+          await fetchCompletedSequencesProspects();
+        }
+      } else {
+        toast.error(restartResult.error || 'Erreur lors de la relance');
+      }
+    } catch (error: any) {
+      console.error('Erreur relance séquence:', error);
+      toast.error('Erreur lors de la relance de la séquence');
+    } finally {
+      setIsRestartingSequence(false);
+    }
+  };
+
   const addStepToForm = () => {
     const maxStepNumber = sequenceForm.steps.length > 0 
       ? Math.max(...sequenceForm.steps.map(s => s.stepNumber))
@@ -1501,16 +1669,73 @@ export default function ProspectionAdmin() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleProspectClick(prospect);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleProspectClick(prospect);
+                                }}
+                                title="Voir détails"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {activeTab === 'scheduled-sequences' && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePauseSequence(prospect.id);
+                                    }}
+                                    disabled={isPausingSequence}
+                                    title="Suspendre la séquence"
+                                  >
+                                    <Pause className="h-4 w-4 text-yellow-600" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenEditSequenceModal(prospect);
+                                    }}
+                                    title="Modifier la séquence"
+                                  >
+                                    <Edit2 className="h-4 w-4 text-blue-600" />
+                                  </Button>
+                                </>
+                              )}
+                              {activeTab === 'completed-sequences' && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenEditSequenceModal(prospect);
+                                    }}
+                                    title="Modifier et relancer"
+                                  >
+                                    <Edit2 className="h-4 w-4 text-blue-600" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRestartSequence(prospect);
+                                    }}
+                                    disabled={isRestartingSequence}
+                                    title="Relancer la séquence"
+                                  >
+                                    <RotateCcw className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -2868,6 +3093,233 @@ export default function ProspectionAdmin() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Modification/Relance Séquence */}
+      <Dialog open={showEditSequenceModal} onOpenChange={setShowEditSequenceModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingProspectSequence && activeTab === 'completed-sequences' 
+                ? 'Modifier et relancer la séquence' 
+                : 'Modifier la séquence'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {editingProspectSequence && (
+            <div className="space-y-6">
+              {/* Informations prospect */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Prospect</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-gray-400" />
+                      <span className="font-medium">{editingProspectSequence.email}</span>
+                    </div>
+                    {editingProspectSequence.company_name && (
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-gray-400" />
+                        <span>{editingProspectSequence.company_name}</span>
+                      </div>
+                    )}
+                    {(editingProspectSequence.firstname || editingProspectSequence.lastname) && (
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-gray-400" />
+                        <span>
+                          {[editingProspectSequence.firstname, editingProspectSequence.lastname]
+                            .filter(Boolean)
+                            .join(' ')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Liste des emails de la séquence */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-base font-semibold">
+                    {activeTab === 'completed-sequences' 
+                      ? 'Emails de la séquence (seront relancés)' 
+                      : 'Emails programmés'}
+                  </Label>
+                </div>
+                <div className="space-y-4">
+                  {prospectSequenceEmails.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-8 text-center text-gray-500">
+                        {activeTab === 'completed-sequences' 
+                          ? 'Aucun email envoyé trouvé pour cette séquence'
+                          : 'Aucun email programmé trouvé'}
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    prospectSequenceEmails
+                      .sort((a, b) => a.step_number - b.step_number)
+                      .map((email: any, index: number) => (
+                        <Card key={email.id} className="border-2">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline">Étape {email.step_number}</Badge>
+                                <Badge 
+                                  variant={email.status === 'sent' ? 'default' : email.status === 'paused' ? 'secondary' : 'outline'}
+                                >
+                                  {email.status === 'sent' ? 'Envoyé' : email.status === 'paused' ? 'En pause' : 'Programmé'}
+                                </Badge>
+                                {email.scheduled_for && (
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(email.scheduled_for).toLocaleDateString('fr-FR', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div>
+                              <Label>Sujet de l'email</Label>
+                              <Input
+                                value={email.subject}
+                                onChange={(e) => {
+                                  const updated = [...prospectSequenceEmails];
+                                  updated[index].subject = e.target.value;
+                                  setProspectSequenceEmails(updated);
+                                }}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label>Corps de l'email</Label>
+                              <Textarea
+                                value={email.body}
+                                onChange={(e) => {
+                                  const updated = [...prospectSequenceEmails];
+                                  updated[index].body = e.target.value;
+                                  setProspectSequenceEmails(updated);
+                                }}
+                                className="mt-1"
+                                rows={6}
+                              />
+                            </div>
+                            {activeTab === 'completed-sequences' && (
+                              <div>
+                                <Label>Date d'envoi programmée</Label>
+                                <Input
+                                  type="datetime-local"
+                                  value={email.scheduled_for ? new Date(email.scheduled_for).toISOString().slice(0, 16) : ''}
+                                  onChange={(e) => {
+                                    const updated = [...prospectSequenceEmails];
+                                    updated[index].scheduled_for = new Date(e.target.value).toISOString();
+                                    setProspectSequenceEmails(updated);
+                                  }}
+                                  className="mt-1"
+                                />
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEditSequenceModal(false);
+                    setEditingProspectSequence(null);
+                    setProspectSequenceEmails([]);
+                  }}
+                >
+                  Annuler
+                </Button>
+                {activeTab === 'scheduled-sequences' && (
+                  <>
+                    {editingProspectSequence && prospectSequenceEmails.some((e: any) => e.status === 'paused') && (
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          if (!editingProspectSequence) return;
+                          await handleResumeSequence(editingProspectSequence.id);
+                          // Recharger les emails après reprise
+                          const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                          const response = await fetch(`${config.API_URL}/api/prospects/${editingProspectSequence.id}/scheduled-emails`, {
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                              'Content-Type': 'application/json'
+                            }
+                          });
+                          const result = await response.json();
+                          if (result.success) {
+                            const unsentEmails = (result.data || []).filter((email: any) => email.status !== 'sent');
+                            setProspectSequenceEmails(unsentEmails);
+                          }
+                        }}
+                        disabled={isPausingSequence}
+                        className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Reprendre la séquence
+                      </Button>
+                    )}
+                    <Button
+                      onClick={async () => {
+                        // Pour les séquences en cours, on peut juste mettre à jour les emails
+                        // ou suspendre/reprendre via les boutons du tableau
+                        toast.info('Utilisez les boutons Suspendre/Reprendre pour gérer la séquence');
+                        setShowEditSequenceModal(false);
+                      }}
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Enregistrer les modifications
+                    </Button>
+                  </>
+                )}
+                {activeTab === 'completed-sequences' && (
+                  <Button
+                    onClick={() => {
+                      if (!editingProspectSequence) return;
+                      const emailsToSchedule = prospectSequenceEmails.map((email: any) => ({
+                        step_number: email.step_number,
+                        subject: email.subject,
+                        body: email.body,
+                        scheduled_for: email.scheduled_for || new Date(Date.now() + (email.step_number * 3 * 24 * 60 * 60 * 1000)).toISOString(),
+                        status: 'scheduled'
+                      }));
+                      handleRestartSequence(editingProspectSequence, emailsToSchedule);
+                    }}
+                    disabled={isRestartingSequence}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {isRestartingSequence ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Relance en cours...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Modifier et relancer
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
