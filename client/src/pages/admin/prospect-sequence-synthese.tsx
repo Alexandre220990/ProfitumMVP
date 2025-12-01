@@ -78,6 +78,10 @@ export default function ProspectSequenceSynthese() {
   const [showEditSequenceModal, setShowEditSequenceModal] = useState(false);
   const [editingDelayId, setEditingDelayId] = useState<string | null>(null);
   const [delayValue, setDelayValue] = useState<number>(0);
+  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
+  const [editingDateId, setEditingDateId] = useState<string | null>(null);
+  const [subjectValue, setSubjectValue] = useState<string>("");
+  const [dateValue, setDateValue] = useState<string>("");
 
   useEffect(() => {
     if (prospectId) {
@@ -294,6 +298,45 @@ export default function ProspectSequenceSynthese() {
     }
   };
 
+  const updateEmailSubjectAndDate = async (emailId: string, subject?: string, scheduledFor?: string) => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const body: any = {};
+      if (subject !== undefined) body.subject = subject;
+      if (scheduledFor !== undefined) {
+        // Convertir la date datetime-local (format "YYYY-MM-DDTHH:mm") en ISO
+        // new Date() interprète la chaîne comme étant dans le fuseau horaire local
+        body.scheduled_for = new Date(scheduledFor).toISOString();
+      }
+
+      const response = await fetch(`${config.API_URL}/api/prospects/scheduled-emails/${emailId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Email mis à jour avec succès');
+        await fetchScheduledEmails();
+        setEditingSubjectId(null);
+        setEditingDateId(null);
+        setSubjectValue("");
+        setDateValue("");
+      } else {
+        toast.error(result.error || 'Erreur lors de la mise à jour');
+      }
+    } catch (error: any) {
+      console.error('Erreur mise à jour email:', error);
+      toast.error('Erreur lors de la mise à jour de l\'email');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { label: string; className: string }> = {
       'pending': { label: '⏳ En attente', className: 'bg-yellow-100 text-yellow-800' },
@@ -460,7 +503,7 @@ export default function ProspectSequenceSynthese() {
           ) : (
             <div className="space-y-3">
               {scheduledEmails.map((scheduled) => (
-                <div key={scheduled.id} className="border rounded-lg p-4">
+                <div key={scheduled.id} className="border rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-medium">Étape #{scheduled.step_number}</div>
                     <Badge className={
@@ -477,22 +520,138 @@ export default function ProspectSequenceSynthese() {
                        scheduled.status}
                     </Badge>
                   </div>
-                  <div className="text-sm font-medium mb-1">{scheduled.subject}</div>
-                  <div className="text-xs text-gray-500 mb-2">
-                    Programmé pour le {new Date(scheduled.scheduled_for).toLocaleString('fr-FR')}
+
+                  {/* Objet du mail */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-gray-600">Objet de l'email</Label>
+                    {editingSubjectId === scheduled.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="text"
+                          value={subjectValue}
+                          onChange={(e) => setSubjectValue(e.target.value)}
+                          className="flex-1 h-8 text-sm"
+                          placeholder="Objet de l'email"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => updateEmailSubjectAndDate(scheduled.id, subjectValue)}
+                          className="h-8"
+                        >
+                          ✓
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingSubjectId(null);
+                            setSubjectValue("");
+                          }}
+                          className="h-8"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium">{scheduled.subject}</div>
+                        {scheduled.status === 'scheduled' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingSubjectId(scheduled.id);
+                              setSubjectValue(scheduled.subject);
+                            }}
+                            className="h-7 text-xs"
+                          >
+                            <Edit2 className="h-3 w-3 mr-1" />
+                            Modifier
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Date d'envoi */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-gray-600">Date d'envoi programmée</Label>
+                    {editingDateId === scheduled.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="datetime-local"
+                          value={dateValue}
+                          onChange={(e) => setDateValue(e.target.value)}
+                          className="flex-1 h-8 text-sm"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => updateEmailSubjectAndDate(scheduled.id, undefined, dateValue)}
+                          className="h-8"
+                        >
+                          ✓
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingDateId(null);
+                            setDateValue("");
+                          }}
+                          className="h-8"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs text-gray-500">
+                          {new Date(scheduled.scheduled_for).toLocaleString('fr-FR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                        {scheduled.status === 'scheduled' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingDateId(scheduled.id);
+                              // Convertir la date ISO en format datetime-local
+                              const date = new Date(scheduled.scheduled_for);
+                              const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+                              setDateValue(localDate.toISOString().slice(0, 16));
+                            }}
+                            className="h-7 text-xs"
+                          >
+                            <Edit2 className="h-3 w-3 mr-1" />
+                            Modifier
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Délai avant envoi */}
                   {scheduled.status === 'scheduled' && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <Label className="text-xs">Délai (jours):</Label>
+                    <div className="space-y-1 pt-2 border-t">
+                      <Label className="text-xs font-medium text-gray-600">
+                        Délai avant envoi (par rapport à l'étape précédente)
+                      </Label>
                       {editingDelayId === scheduled.id ? (
                         <div className="flex items-center gap-2">
                           <Input
                             type="number"
                             value={delayValue}
                             onChange={(e) => setDelayValue(parseInt(e.target.value) || 0)}
-                            className="w-20 h-8 text-sm"
+                            className="w-24 h-8 text-sm"
                             min="0"
+                            placeholder="Jours"
                           />
+                          <span className="text-xs text-gray-500">jour(s)</span>
                           <Button
                             size="sm"
                             onClick={() => updateEmailDelay(scheduled.id, delayValue)}
@@ -513,27 +672,29 @@ export default function ProspectSequenceSynthese() {
                           </Button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-700">
                             {scheduled.delay_days_override !== null && scheduled.delay_days_override !== undefined
-                              ? scheduled.delay_days_override
-                              : 'Par défaut'}
+                              ? `${scheduled.delay_days_override} jour(s)`
+                              : 'Délai par défaut de la séquence'}
                           </span>
                           <Button
                             size="sm"
-                            variant="outline"
+                            variant="ghost"
                             onClick={() => {
                               setEditingDelayId(scheduled.id);
                               setDelayValue(scheduled.delay_days_override || 0);
                             }}
-                            className="h-8 text-xs"
+                            className="h-7 text-xs"
                           >
+                            <Edit2 className="h-3 w-3 mr-1" />
                             Modifier
                           </Button>
                         </div>
                       )}
                     </div>
                   )}
+
                   {scheduled.cancelled_reason && (
                     <div className="text-xs text-red-600 mt-2">
                       Raison: {scheduled.cancelled_reason}

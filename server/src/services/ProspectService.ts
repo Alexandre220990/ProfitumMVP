@@ -1075,6 +1075,68 @@ export class ProspectService {
   }
 
   /**
+   * Met à jour le sujet et/ou la date d'envoi d'un email programmé
+   */
+  static async updateScheduledEmail(
+    emailId: string,
+    updates: {
+      subject?: string;
+      scheduled_for?: string;
+    }
+  ): Promise<ApiResponse<void>> {
+    try {
+      if (!updates.subject && !updates.scheduled_for) {
+        return {
+          success: false,
+          error: 'Au moins un champ (subject ou scheduled_for) doit être fourni'
+        };
+      }
+
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (updates.subject) {
+        updateData.subject = updates.subject;
+      }
+
+      if (updates.scheduled_for) {
+        // Valider le format de date
+        const date = new Date(updates.scheduled_for);
+        if (isNaN(date.getTime())) {
+          return {
+            success: false,
+            error: 'Format de date invalide'
+          };
+        }
+        updateData.scheduled_for = date.toISOString();
+      }
+
+      const { error: updateError } = await supabase
+        .from('prospect_email_scheduled')
+        .update(updateData)
+        .eq('id', emailId)
+        .eq('status', 'scheduled'); // Ne permettre la modification que si l'email n'est pas encore envoyé
+
+      if (updateError) {
+        return {
+          success: false,
+          error: `Erreur mise à jour: ${updateError.message}`
+        };
+      }
+
+      return {
+        success: true
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
    * Programme une séquence personnalisée pour un prospect
    */
   static async scheduleCustomSequenceForProspect(

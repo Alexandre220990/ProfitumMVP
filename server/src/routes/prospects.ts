@@ -387,6 +387,36 @@ router.put('/scheduled-emails/:emailId/delay', async (req, res) => {
   }
 });
 
+// PUT /api/prospects/scheduled-emails/:emailId - Modifier le sujet et/ou la date d'envoi d'un email programmé
+router.put('/scheduled-emails/:emailId', async (req, res) => {
+  try {
+    const { subject, scheduled_for } = req.body;
+    
+    if (!subject && !scheduled_for) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Au moins un champ (subject ou scheduled_for) doit être fourni' 
+      });
+    }
+
+    const result = await ProspectService.updateScheduledEmail(
+      req.params.emailId,
+      {
+        subject,
+        scheduled_for
+      }
+    );
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===== ENVOI D'EMAILS =====
 
 // POST /api/prospects/:id/send-email - Envoyer un email à un prospect
