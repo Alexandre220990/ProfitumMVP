@@ -6330,134 +6330,97 @@ router.get('/notifications', async (req, res) => {
     const { status, priority, limit = 100 } = req.query;
     const authUser = (req as any).user as AuthUser;
     
-    console.log('🔍 Récupération notifications admin - authUser:', {
-      id: authUser?.id,
-      type: authUser?.type,
-      database_id: authUser?.database_id
-    });
+    if (!authUser || authUser.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
     
-    // Récupérer depuis AdminNotification (table globale pour tous les admins)
-    let adminNotificationQuery = supabaseClient
-      .from('AdminNotification')
+    // Récupérer l'admin_id (database_id) depuis la table Admin
+    let adminDatabaseId = authUser.database_id;
+    
+    if (!adminDatabaseId) {
+      // Si pas de database_id, récupérer depuis Admin via auth_user_id
+      const authUserId = authUser.id || authUser.auth_user_id;
+      if (authUserId) {
+        const { data: adminData } = await supabaseAdmin
+          .from('Admin')
+          .select('id')
+          .eq('auth_user_id', authUserId)
+          .single();
+        
+        if (adminData) {
+          adminDatabaseId = adminData.id;
+        }
+      }
+    }
+    
+    if (!adminDatabaseId) {
+      return res.status(500).json({
+        success: false,
+        message: 'Impossible de récupérer l\'ID admin'
+      });
+    }
+    
+    console.log('🔍 Récupération notifications admin - admin_id:', adminDatabaseId);
+    
+    // Utiliser la vue AdminNotificationWithStatus pour récupérer avec statuts individuels
+    let query = supabaseClient
+      .from('AdminNotificationWithStatus')
       .select('*')
+      .eq('admin_id', adminDatabaseId)
       .order('created_at', { ascending: false });
     
-    // Si un status spécifique est demandé, filtrer
+    // Filtrer par statut individuel (user_status)
     if (status && status !== 'all') {
-      adminNotificationQuery = adminNotificationQuery.eq('status', status);
+      query = query.eq('user_status', status);
     }
     
     if (priority) {
-      adminNotificationQuery = adminNotificationQuery.eq('priority', priority);
+      query = query.eq('priority', priority);
     }
     
-    // Appliquer la limite seulement si demandée
     if (limit && Number(limit) > 0) {
-      adminNotificationQuery = adminNotificationQuery.limit(Number(limit));
+      query = query.limit(Number(limit));
     }
     
-    const { data: adminNotifications, error: adminError } = await adminNotificationQuery;
+    const { data: notifications, error } = await query;
     
-    if (adminError) {
-      console.error('❌ Erreur récupération AdminNotification:', adminError);
+    if (error) {
+      console.error('❌ Erreur récupération notifications:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des notifications'
+      });
     }
     
-    // Récupérer aussi depuis notification (pour les notifications d'événement)
-    let eventNotifications: any[] = [];
-    const userId = authUser?.id || authUser?.database_id || authUser?.auth_user_id;
-    
-    if (userId) {
-      console.log(`🔍 Recherche notifications événement pour user_id: ${userId}`);
-      
-      let eventNotificationQuery = supabaseClient
-        .from('notification')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('user_type', 'admin')
-        .order('created_at', { ascending: false });
-      
-      // Filtrer par type de notification d'événement
-      eventNotificationQuery = eventNotificationQuery.in('notification_type', [
-        'event_upcoming',
-        'event_in_progress',
-        'event_completed'
-      ]);
-      
-      // Si un status spécifique est demandé, filtrer
-      if (status && status !== 'all') {
-        if (status === 'unread') {
-          eventNotificationQuery = eventNotificationQuery.eq('is_read', false);
-        } else if (status === 'read') {
-          eventNotificationQuery = eventNotificationQuery.eq('is_read', true);
-        } else if (status === 'archived') {
-          eventNotificationQuery = eventNotificationQuery.eq('status', 'archived');
-        }
-      }
-      
-      if (priority) {
-        eventNotificationQuery = eventNotificationQuery.eq('priority', priority);
-      }
-      
-      // Appliquer la limite seulement si demandée
-      if (limit && Number(limit) > 0) {
-        eventNotificationQuery = eventNotificationQuery.limit(Number(limit));
-      }
-      
-      const { data: eventNotifs, error: eventError } = await eventNotificationQuery;
-      
-      if (eventError) {
-        console.error('❌ Erreur récupération notifications événement:', eventError);
-      } else {
-        eventNotifications = eventNotifs || [];
-        console.log(`✅ ${eventNotifications.length} notifications d'événement trouvées`);
-      }
-    } else {
-      console.warn('⚠️ Aucun user_id trouvé dans authUser, impossible de récupérer les notifications d\'événement');
-    }
-    
-    // Normaliser les notifications AdminNotification pour le front-end
-    const normalizedAdminNotifications = (adminNotifications || []).map((notif: any) => ({
-      ...notif,
-      // Pour AdminNotification: 'unread' = non lu, 'read' = lu, 'archived' = archivé
-      // Synchroniser is_read avec status si nécessaire
-      is_read: notif.is_read !== undefined ? notif.is_read : (notif.status === 'read' || (notif.read_at !== null && notif.read_at !== undefined)),
-      status: notif.status || 'unread', // Assurer que status existe
-      notification_type: notif.type || notif.notification_type,
+    // Normaliser pour le front-end
+    const normalizedNotifications = (notifications || []).map((notif: any) => ({
+      id: notif.id,
+      type: notif.type,
+      notification_type: notif.type,
+      title: notif.title,
+      message: notif.message,
+      priority: notif.priority,
+      metadata: notif.metadata,
+      action_url: notif.action_url,
+      action_label: notif.action_label,
+      created_at: notif.created_at,
+      updated_at: notif.updated_at,
+      // Statuts individuels
+      is_read: notif.is_read || false,
+      read_at: notif.read_at,
+      is_archived: notif.is_archived || false,
+      archived_at: notif.archived_at,
+      status: notif.user_status || 'unread', // Utiliser user_status au lieu de global_status
     }));
     
-    // Normaliser les notifications d'événement pour le front-end
-    const normalizedEventNotifications = (eventNotifications || []).map((notif: any) => ({
-      ...notif,
-      // Pour notification: is_read est déjà défini, status peut être 'unread', 'read', 'archived'
-      is_read: notif.is_read !== undefined ? notif.is_read : (notif.status === 'read'),
-      status: notif.status || (notif.is_read ? 'read' : 'unread'),
-      notification_type: notif.notification_type || notif.type,
-      // Mapper les champs pour correspondre au format AdminNotification si nécessaire
-      type: notif.notification_type || notif.type,
-      // S'assurer que action_url est préservé (important pour les notifications d'événement)
-      action_url: notif.action_url || null,
-    }));
-    
-    // Fusionner les deux listes de notifications
-    const allNotifications = [...normalizedAdminNotifications, ...normalizedEventNotifications];
-    
-    // Trier par date de création (plus récentes en premier)
-    allNotifications.sort((a, b) => {
-      const dateA = new Date(a.created_at || 0).getTime();
-      const dateB = new Date(b.created_at || 0).getTime();
-      return dateB - dateA;
-    });
-    
-    // Appliquer la limite globale si nécessaire
-    const limitedNotifications = limit && Number(limit) > 0 
-      ? allNotifications.slice(0, Number(limit))
-      : allNotifications;
-    
-    console.log(`✅ Notifications récupérées: ${normalizedAdminNotifications.length} AdminNotification + ${normalizedEventNotifications.length} événements = ${limitedNotifications.length} total`);
+    console.log(`✅ ${normalizedNotifications.length} notifications récupérées pour admin ${adminDatabaseId}`);
     
     return res.json({
       success: true,
-      data: { notifications: limitedNotifications }
+      data: { notifications: normalizedNotifications }
     });
     
   } catch (error) {
@@ -6609,155 +6572,86 @@ router.patch('/notifications/:id/read', async (req, res) => {
       });
     }
     
-    // ✅ CORRECTION: Récupérer l'auth_user_id pour filtrer les notifications
-    // Les notifications utilisent auth_user_id (Supabase Auth ID) dans user_id
-    let userId = (user as any).id || (user as any).auth_user_id;
+    // Récupérer l'admin_id (database_id)
+    let adminDatabaseId = user.database_id;
     
-    // Si user.id et auth_user_id sont undefined, récupérer depuis la table Admin
-    if (!userId || userId === 'undefined' || userId === undefined) {
-      const databaseId = (user as any).database_id;
-      
-      if (!databaseId) {
-        console.error('❌ Erreur: user.id et database_id sont undefined', {
-          user: user ? {
-            type: user.type,
-            email: (user as any).email,
-            hasId: !!(user as any).id,
-            hasAuthUserId: !!(user as any).auth_user_id,
-            hasDatabaseId: !!(user as any).database_id
-          } : 'user is null'
-        });
-        return res.status(500).json({
-          success: false,
-          message: 'Erreur d\'authentification: ID utilisateur manquant'
-        });
+    if (!adminDatabaseId) {
+      const authUserId = user.id || user.auth_user_id;
+      if (authUserId) {
+        const { data: adminData, error: adminError } = await supabaseAdmin
+          .from('Admin')
+          .select('id')
+          .eq('auth_user_id', authUserId)
+          .single();
+        
+        if (adminError || !adminData) {
+          return res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la récupération des informations admin'
+          });
+        }
+        adminDatabaseId = adminData.id;
       }
-      
-      // Récupérer l'auth_user_id depuis la table Admin
-      const { data: adminData, error: adminError } = await supabaseAdmin
-        .from('Admin')
-        .select('auth_user_id')
-        .eq('id', databaseId)
-        .single();
-      
-      if (adminError || !adminData || !adminData.auth_user_id) {
-        console.error('❌ Erreur récupération auth_user_id admin:', adminError);
-        return res.status(500).json({
-          success: false,
-          message: 'Erreur lors de la récupération des informations utilisateur'
-        });
-      }
-      
-      userId = adminData.auth_user_id;
     }
     
-    // ✅ CORRECTION: Utiliser la table 'AdminNotification' et mettre à jour status + is_read
-    // Vérifier d'abord si la notification existe
-    console.log(`🔍 Recherche notification ${id} dans AdminNotification`);
-    const { data: existing, error: checkError } = await supabaseClient
-      .from('AdminNotification')
-      .select('id, status, is_read, type, title')
-      .eq('id', id)
-      .maybeSingle();
-    
-    if (checkError) {
-      console.error('❌ Erreur vérification notification:', checkError);
+    if (!adminDatabaseId) {
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la vérification de la notification'
+        message: 'Impossible de récupérer l\'ID admin'
       });
     }
     
-    if (!existing) {
-      // Vérifier aussi dans la table notification au cas où
-      console.log(`⚠️ Notification ${id} non trouvée dans AdminNotification, vérification dans notification...`);
-      const { data: notifInOtherTable, error: otherError } = await supabaseClient
-        .from('notification')
-        .select('id, status, is_read, notification_type, title, user_type, user_id')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (notifInOtherTable) {
-        console.log(`ℹ️ Notification trouvée dans table 'notification' avec user_type: ${notifInOtherTable.user_type}`);
-        
-        // Si c'est une notification admin dans la table notification, la mettre à jour là-bas
-        if (notifInOtherTable.user_type === 'admin') {
-          const { data: updatedNotif, error: updateError } = await supabaseClient
-            .from('notification')
-            .update({ 
-              status: 'read',
-              is_read: true,
-              read_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', id)
-            .eq('user_type', 'admin')
-            .select();
-          
-          if (updateError) {
-            console.error('❌ Erreur mise à jour notification dans table notification:', updateError);
-            return res.status(500).json({
-              success: false,
-              message: 'Erreur lors de la mise à jour de la notification'
-            });
-          }
-          
-          if (updatedNotif && updatedNotif.length > 0) {
-            return res.json({
-              success: true,
-              message: 'Notification marquée comme lue',
-              data: { notification: updatedNotif[0] }
-            });
-          }
-        }
-        
-        return res.status(400).json({
-          success: false,
-          message: 'Cette notification est dans la table notification mais pas pour un admin'
-        });
-      }
-      
-      console.warn(`ℹ️ Notification admin ${id} introuvable dans AdminNotification et notification`);
+    // Vérifier que la notification existe
+    const { data: notification, error: notifError } = await supabaseClient
+      .from('AdminNotification')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (notifError || !notification) {
       return res.status(404).json({
         success: false,
         message: 'Notification introuvable'
       });
     }
     
-    console.log(`✅ Notification trouvée: ${existing.type} - ${existing.title} (status: ${existing.status})`);
-    
-    // Mettre à jour la notification
-    const { data, error } = await supabaseClient
-      .from('AdminNotification')
-      .update({ 
-        status: 'read',
+    // Mettre à jour ou créer le statut individuel dans AdminNotificationStatus
+    const { data: statusData, error: statusError } = await supabaseClient
+      .from('AdminNotificationStatus')
+      .upsert({
+        notification_id: id,
+        admin_id: adminDatabaseId,
         is_read: true,
         read_at: new Date().toISOString(),
+        is_archived: false,
+        archived_at: null,
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'notification_id,admin_id'
       })
-      .eq('id', id)
-      .select();
+      .select()
+      .single();
     
-    if (error) {
-      console.error('❌ Erreur mise à jour notification:', error);
+    if (statusError) {
+      console.error('❌ Erreur mise à jour statut:', statusError);
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la mise à jour de la notification'
+        message: 'Erreur lors de la mise à jour du statut'
       });
     }
-
-    if (!data || data.length === 0) {
-      console.warn(`ℹ️ Notification admin ${id} non mise à jour après update`);
-      return res.status(404).json({
-        success: false,
-        message: 'Notification introuvable ou déjà traitée'
-      });
-    }
+    
+    // Récupérer la notification complète avec statut
+    const { data: fullNotification } = await supabaseClient
+      .from('AdminNotificationWithStatus')
+      .select('*')
+      .eq('id', id)
+      .eq('admin_id', adminDatabaseId)
+      .single();
     
     return res.json({
       success: true,
       message: 'Notification marquée comme lue',
-      data: { notification: data[0] }
+      data: { notification: fullNotification }
     });
     
   } catch (error) {
@@ -6782,124 +6676,152 @@ router.patch('/notifications/:id/unread', async (req, res) => {
       });
     }
     
-    // ✅ CORRECTION: Récupérer l'auth_user_id pour filtrer les notifications
-    let userId = (user as any).id || (user as any).auth_user_id;
-    
-    if (!userId || userId === 'undefined' || userId === undefined) {
-      const databaseId = (user as any).database_id;
-      
-      if (databaseId) {
-        const { data: adminData, error: adminError } = await supabaseAdmin
+    // Récupérer l'admin_id
+    let adminDatabaseId = user.database_id;
+    if (!adminDatabaseId) {
+      const authUserId = user.id || user.auth_user_id;
+      if (authUserId) {
+        const { data: adminData } = await supabaseAdmin
           .from('Admin')
-          .select('auth_user_id')
-          .eq('id', databaseId)
+          .select('id')
+          .eq('auth_user_id', authUserId)
           .single();
-        
-        if (!adminError && adminData?.auth_user_id) {
-          userId = adminData.auth_user_id;
-        }
+        if (adminData) adminDatabaseId = adminData.id;
       }
     }
     
-    // Vérifier que la notification existe dans AdminNotification
-    const { data: existing, error: checkError } = await supabaseClient
-      .from('AdminNotification')
-      .select('id, status')
-      .eq('id', id)
-      .maybeSingle();
-    
-    if (checkError) {
-      console.error('❌ Erreur vérification notification:', checkError);
+    if (!adminDatabaseId) {
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la vérification de la notification'
+        message: 'Impossible de récupérer l\'ID admin'
       });
     }
     
-    if (!existing) {
-      // Vérifier aussi dans la table notification au cas où (notifications d'événement)
-      console.log(`⚠️ Notification ${id} non trouvée dans AdminNotification, vérification dans notification...`);
-      const { data: notifInOtherTable, error: otherError } = await supabaseClient
-        .from('notification')
-        .select('id, status, is_read, notification_type, title, user_type, user_id')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (notifInOtherTable) {
-        console.log(`ℹ️ Notification trouvée dans table 'notification' avec user_type: ${notifInOtherTable.user_type}`);
-        
-        // Si c'est une notification admin dans la table notification, la mettre à jour là-bas
-        if (notifInOtherTable.user_type === 'admin') {
-          const { data: updatedNotif, error: updateError } = await supabaseClient
-            .from('notification')
-            .update({ 
-              status: 'unread',
-              is_read: false,
-              read_at: null,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', id)
-            .eq('user_type', 'admin')
-            .select();
-          
-          if (updateError) {
-            console.error('❌ Erreur mise à jour notification dans table notification:', updateError);
-            return res.status(500).json({
-              success: false,
-              message: 'Erreur lors de la mise à jour de la notification'
-            });
-          }
-          
-          if (updatedNotif && updatedNotif.length > 0) {
-            return res.json({
-              success: true,
-              message: 'Notification marquée comme non lue',
-              data: { notification: updatedNotif[0] }
-            });
-          }
-        }
-        
-        return res.status(400).json({
-          success: false,
-          message: 'Cette notification est dans la table notification mais pas pour un admin'
-        });
-      }
-      
-      return res.status(404).json({
-        success: false,
-        message: 'Notification introuvable'
-      });
-    }
-    
-    // Marquer comme non lu dans AdminNotification
-    const { data, error } = await supabaseClient
-      .from('AdminNotification')
-      .update({ 
-        status: 'unread',
+    // Mettre à jour le statut individuel
+    const { data: statusData, error: statusError } = await supabaseClient
+      .from('AdminNotificationStatus')
+      .upsert({
+        notification_id: id,
+        admin_id: adminDatabaseId,
         is_read: false,
         read_at: null,
+        is_archived: false,
+        archived_at: null,
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'notification_id,admin_id'
       })
-      .eq('id', id)
       .select()
-      .maybeSingle();
+      .single();
     
-    if (error) {
-      console.error('❌ Erreur mise à jour notification:', error);
+    if (statusError) {
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la mise à jour de la notification'
+        message: 'Erreur lors de la mise à jour du statut'
       });
     }
+    
+    const { data: fullNotification } = await supabaseClient
+      .from('AdminNotificationWithStatus')
+      .select('*')
+      .eq('id', id)
+      .eq('admin_id', adminDatabaseId)
+      .single();
     
     return res.json({
       success: true,
       message: 'Notification marquée comme non lue',
-      data: { notification: data }
+      data: { notification: fullNotification }
     });
     
   } catch (error) {
     console.error('❌ Erreur route notification unread:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// PATCH /api/admin/notifications/:id/archive - Archiver notification
+router.patch('/notifications/:id/archive', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = (req as any).user as AuthUser;
+    
+    if (!user || user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+    
+    // Récupérer l'admin_id
+    let adminDatabaseId = user.database_id;
+    if (!adminDatabaseId) {
+      const authUserId = user.id || user.auth_user_id;
+      if (authUserId) {
+        const { data: adminData } = await supabaseAdmin
+          .from('Admin')
+          .select('id')
+          .eq('auth_user_id', authUserId)
+          .single();
+        if (adminData) adminDatabaseId = adminData.id;
+      }
+    }
+    
+    if (!adminDatabaseId) {
+      return res.status(500).json({
+        success: false,
+        message: 'Impossible de récupérer l\'ID admin'
+      });
+    }
+    
+    // Récupérer le statut actuel pour préserver is_read
+    const { data: currentStatus } = await supabaseClient
+      .from('AdminNotificationStatus')
+      .select('is_read, read_at')
+      .eq('notification_id', id)
+      .eq('admin_id', adminDatabaseId)
+      .single();
+    
+    // Archiver en préservant le statut de lecture
+    const { error: statusError } = await supabaseClient
+      .from('AdminNotificationStatus')
+      .upsert({
+        notification_id: id,
+        admin_id: adminDatabaseId,
+        is_read: currentStatus?.is_read || false,
+        read_at: currentStatus?.read_at || null,
+        is_archived: true,
+        archived_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'notification_id,admin_id'
+      });
+    
+    if (statusError) {
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'archivage'
+      });
+    }
+    
+    const { data: fullNotification } = await supabaseClient
+      .from('AdminNotificationWithStatus')
+      .select('*')
+      .eq('id', id)
+      .eq('admin_id', adminDatabaseId)
+      .single();
+    
+    return res.json({
+      success: true,
+      message: 'Notification archivée',
+      data: { notification: fullNotification }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur route notification archive:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
@@ -6920,121 +6842,71 @@ router.patch('/notifications/:id/unarchive', async (req, res) => {
       });
     }
     
-    // Vérifier que la notification existe et est archivée
-    const { data: existing, error: checkError } = await supabaseClient
-      .from('AdminNotification')
-      .select('id, status, read_at, is_read')
-      .eq('id', id)
-      .maybeSingle();
+    // Récupérer l'admin_id
+    let adminDatabaseId = user.database_id;
+    if (!adminDatabaseId) {
+      const authUserId = user.id || user.auth_user_id;
+      if (authUserId) {
+        const { data: adminData } = await supabaseAdmin
+          .from('Admin')
+          .select('id')
+          .eq('auth_user_id', authUserId)
+          .single();
+        if (adminData) adminDatabaseId = adminData.id;
+      }
+    }
     
-    if (checkError) {
-      console.error('❌ Erreur vérification notification:', checkError);
+    if (!adminDatabaseId) {
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la vérification de la notification'
+        message: 'Impossible de récupérer l\'ID admin'
       });
     }
     
-    if (!existing) {
-      // Vérifier aussi dans la table notification au cas où (notifications d'événement)
-      console.log(`⚠️ Notification ${id} non trouvée dans AdminNotification, vérification dans notification...`);
-      const { data: notifInOtherTable, error: otherError } = await supabaseClient
-        .from('notification')
-        .select('id, status, is_read, read_at, notification_type, title, user_type, user_id')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (notifInOtherTable) {
-        console.log(`ℹ️ Notification trouvée dans table 'notification' avec user_type: ${notifInOtherTable.user_type}`);
-        
-        // Si c'est une notification admin dans la table notification, la mettre à jour là-bas
-        if (notifInOtherTable.user_type === 'admin') {
-          if (notifInOtherTable.status !== 'archived') {
-            return res.status(400).json({
-              success: false,
-              message: 'Cette notification n\'est pas archivée'
-            });
-          }
-          
-          const wasRead = notifInOtherTable.is_read || notifInOtherTable.read_at !== null;
-          const newStatus = wasRead ? 'read' : 'unread';
-          
-          const { data: updatedNotif, error: updateError } = await supabaseClient
-            .from('notification')
-            .update({ 
-              status: newStatus,
-              is_read: wasRead,
-              archived_at: null,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', id)
-            .eq('user_type', 'admin')
-            .select();
-          
-          if (updateError) {
-            console.error('❌ Erreur réintégration notification dans table notification:', updateError);
-            return res.status(500).json({
-              success: false,
-              message: 'Erreur lors de la réintégration de la notification'
-            });
-          }
-          
-          if (updatedNotif && updatedNotif.length > 0) {
-            return res.json({
-              success: true,
-              message: `Notification réintégrée (${newStatus})`,
-              data: { notification: updatedNotif[0] }
-            });
-          }
-        }
-        
-        return res.status(400).json({
-          success: false,
-          message: 'Cette notification est dans la table notification mais pas pour un admin'
-        });
-      }
-      
-      return res.status(404).json({
-        success: false,
-        message: 'Notification introuvable'
-      });
-    }
+    // Récupérer le statut actuel
+    const { data: currentStatus } = await supabaseClient
+      .from('AdminNotificationStatus')
+      .select('is_read, read_at, is_archived')
+      .eq('notification_id', id)
+      .eq('admin_id', adminDatabaseId)
+      .single();
     
-    if (existing.status !== 'archived') {
+    if (!currentStatus || !currentStatus.is_archived) {
       return res.status(400).json({
         success: false,
         message: 'Cette notification n\'est pas archivée'
       });
     }
     
-    // Réintégrer la notification : si elle avait été lue avant archivage, la remettre en "read", sinon en "unread"
-    const wasRead = existing.is_read || existing.read_at !== null;
-    const newStatus = wasRead ? 'read' : 'unread';
-    
-    const { data, error } = await supabaseClient
-      .from('AdminNotification')
-      .update({ 
-        status: newStatus,
-        is_read: wasRead,
+    // Désarchiver en préservant le statut de lecture
+    const { error: statusError } = await supabaseClient
+      .from('AdminNotificationStatus')
+      .update({
+        is_archived: false,
         archived_at: null,
         updated_at: new Date().toISOString()
       })
-      .eq('id', id)
-      .select()
-      .maybeSingle();
+      .eq('notification_id', id)
+      .eq('admin_id', adminDatabaseId);
     
-    if (error) {
-      console.error('❌ Erreur réintégration notification:', error);
+    if (statusError) {
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la réintégration de la notification'
+        message: 'Erreur lors de la réintégration'
       });
     }
     
+    const { data: fullNotification } = await supabaseClient
+      .from('AdminNotificationWithStatus')
+      .select('*')
+      .eq('id', id)
+      .eq('admin_id', adminDatabaseId)
+      .single();
+    
     return res.json({
       success: true,
-      message: `Notification réintégrée (${newStatus})`,
-      data: { notification: data }
+      message: 'Notification réintégrée',
+      data: { notification: fullNotification }
     });
     
   } catch (error) {
@@ -7046,121 +6918,81 @@ router.patch('/notifications/:id/unarchive', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/notifications/:id - Archiver notification
+// DELETE /api/admin/notifications/:id - Archiver notification (alias de PATCH archive)
 router.delete('/notifications/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const user = (req as any).user as AuthUser;
     
-    // Vérifier d'abord si la notification existe
-    const { data: existing, error: checkError } = await supabaseClient
-      .from('AdminNotification')
-      .select('id, status')
-      .eq('id', id)
-      .maybeSingle();
+    if (!user || user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
     
-    if (checkError) {
-      console.error('❌ Erreur vérification notification:', checkError);
+    // Récupérer l'admin_id
+    let adminDatabaseId = user.database_id;
+    if (!adminDatabaseId) {
+      const authUserId = user.id || user.auth_user_id;
+      if (authUserId) {
+        const { data: adminData } = await supabaseAdmin
+          .from('Admin')
+          .select('id')
+          .eq('auth_user_id', authUserId)
+          .single();
+        if (adminData) adminDatabaseId = adminData.id;
+      }
+    }
+    
+    if (!adminDatabaseId) {
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la vérification de la notification'
+        message: 'Impossible de récupérer l\'ID admin'
       });
     }
     
-    // Si la notification n'existe pas dans AdminNotification, vérifier dans notification
-    if (!existing) {
-      // Vérifier aussi dans la table notification au cas où (notifications d'événement)
-      console.log(`⚠️ Notification ${id} non trouvée dans AdminNotification, vérification dans notification...`);
-      const { data: notifInOtherTable, error: otherError } = await supabaseClient
-        .from('notification')
-        .select('id, status, notification_type, title, user_type, user_id')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (notifInOtherTable) {
-        console.log(`ℹ️ Notification trouvée dans table 'notification' avec user_type: ${notifInOtherTable.user_type}`);
-        
-        // Si c'est une notification admin dans la table notification, l'archiver là-bas
-        if (notifInOtherTable.user_type === 'admin') {
-          if (notifInOtherTable.status === 'archived') {
-            return res.json({
-              success: true,
-              message: 'Notification déjà archivée',
-              data: { notification: notifInOtherTable }
-            });
-          }
-          
-          const { data: updatedNotif, error: updateError } = await supabaseClient
-            .from('notification')
-            .update({ 
-              status: 'archived',
-              archived_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', id)
-            .eq('user_type', 'admin')
-            .select();
-          
-          if (updateError) {
-            console.error('❌ Erreur archivage notification dans table notification:', updateError);
-            return res.status(500).json({
-              success: false,
-              message: 'Erreur lors de l\'archivage de la notification'
-            });
-          }
-          
-          if (updatedNotif && updatedNotif.length > 0) {
-            return res.json({
-              success: true,
-              message: 'Notification archivée',
-              data: { notification: updatedNotif[0] }
-            });
-          }
-        }
-        
-        return res.status(400).json({
-          success: false,
-          message: 'Cette notification est dans la table notification mais pas pour un admin'
-        });
-      }
-      
-      return res.json({
-        success: true,
-        message: 'Notification introuvable ou déjà supprimée',
-        data: { notification: null }
-      });
-    }
+    // Récupérer le statut actuel pour préserver is_read
+    const { data: currentStatus } = await supabaseClient
+      .from('AdminNotificationStatus')
+      .select('is_read, read_at')
+      .eq('notification_id', id)
+      .eq('admin_id', adminDatabaseId)
+      .single();
     
-    if (existing.status === 'archived') {
-      return res.json({
-        success: true,
-        message: 'Notification déjà archivée',
-        data: { notification: existing }
-      });
-    }
-    
-    // Archiver la notification dans AdminNotification
-    const { data, error } = await supabaseClient
-      .from('AdminNotification')
-      .update({ 
-        status: 'archived',
+    // Archiver en préservant le statut de lecture
+    const { error: statusError } = await supabaseClient
+      .from('AdminNotificationStatus')
+      .upsert({
+        notification_id: id,
+        admin_id: adminDatabaseId,
+        is_read: currentStatus?.is_read || false,
+        read_at: currentStatus?.read_at || null,
+        is_archived: true,
         archived_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .maybeSingle();
+      }, {
+        onConflict: 'notification_id,admin_id'
+      });
     
-    if (error) {
-      console.error('❌ Erreur archivage notification:', error);
+    if (statusError) {
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de l\'archivage de la notification'
+        message: 'Erreur lors de l\'archivage'
       });
     }
+    
+    const { data: fullNotification } = await supabaseClient
+      .from('AdminNotificationWithStatus')
+      .select('*')
+      .eq('id', id)
+      .eq('admin_id', adminDatabaseId)
+      .single();
     
     return res.json({
       success: true,
-      data: { notification: data }
+      message: 'Notification archivée',
+      data: { notification: fullNotification }
     });
     
   } catch (error) {
