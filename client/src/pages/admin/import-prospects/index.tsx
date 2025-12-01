@@ -453,7 +453,128 @@ export default function ImportProspects() {
             </div>
           )}
 
-          {currentStep === 3 && previewData.length > 0 && (
+          {currentStep === 3 && duplicatesData && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Dédoublonnage SIREN</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {duplicatesData.duplicatesCount > 0 
+                      ? `${duplicatesData.duplicatesCount} doublon(s) détecté(s) sur ${duplicatesData.totalRows} lignes`
+                      : 'Aucun doublon SIREN détecté'}
+                  </p>
+                </div>
+              </div>
+
+              {duplicatesData.duplicatesCount > 0 ? (
+                <>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h3 className="font-medium text-yellow-900 mb-1">
+                          {duplicatesData.duplicatesSirensCount} SIREN déjà présent(s) dans la base de données
+                        </h3>
+                        <p className="text-sm text-yellow-700">
+                          Les {duplicatesData.duplicatesCount} ligne(s) correspondante(s) seront exclues de l'import. 
+                          Les données existantes dans la base de données seront conservées.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="max-h-[500px] overflow-y-auto border rounded-lg">
+                    <div className="divide-y">
+                      {duplicatesData.duplicates.map((duplicate: any, idx: number) => (
+                        <div key={idx} className="p-4 hover:bg-gray-50">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="font-semibold text-gray-900">SIREN: {duplicate.siren}</span>
+                                <span className="text-xs text-gray-500">
+                                  ({duplicate.fileRows.length} ligne{duplicate.fileRows.length > 1 ? 's' : ''} dans le fichier)
+                                </span>
+                              </div>
+                              
+                              {duplicate.existingProspect && (
+                                <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                                  <p className="text-xs font-medium text-blue-900 mb-1">Prospect existant dans la BDD :</p>
+                                  <div className="text-xs text-blue-700 space-y-0.5">
+                                    {duplicate.existingProspect.email && (
+                                      <div className="flex items-center gap-1.5">
+                                        <Mail className="h-3 w-3" />
+                                        <span>{duplicate.existingProspect.email}</span>
+                                      </div>
+                                    )}
+                                    {duplicate.existingProspect.company_name && (
+                                      <div className="flex items-center gap-1.5">
+                                        <Building2 className="h-3 w-3" />
+                                        <span>{duplicate.existingProspect.company_name}</span>
+                                      </div>
+                                    )}
+                                    {(duplicate.existingProspect.firstname || duplicate.existingProspect.lastname) && (
+                                      <div className="flex items-center gap-1.5">
+                                        <User className="h-3 w-3" />
+                                        <span>
+                                          {[duplicate.existingProspect.firstname, duplicate.existingProspect.lastname]
+                                            .filter(Boolean)
+                                            .join(' ')}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-gray-900">{duplicatesData.totalRows}</div>
+                        <div className="text-sm text-gray-600">Total lignes</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-yellow-600">{duplicatesData.duplicatesCount}</div>
+                        <div className="text-sm text-gray-600">Doublons (exclus)</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">{duplicatesData.uniqueCount}</div>
+                        <div className="text-sm text-gray-600">À importer</div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <div>
+                      <h3 className="font-medium text-green-900">Aucun doublon détecté</h3>
+                      <p className="text-sm text-green-700 mt-1">
+                        Tous les SIREN du fichier sont uniques. Vous pouvez procéder à l'import.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setCurrentStep(2)}>
+                  Retour
+                </Button>
+                <Button onClick={handlePreview}>
+                  {duplicatesData.duplicatesCount > 0 ? 'Continuer avec dédoublonnage' : 'Prévisualiser'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 4 && previewData.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -554,7 +675,7 @@ export default function ImportProspects() {
               )}
 
               <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button variant="outline" onClick={() => setCurrentStep(2)}>
+                <Button variant="outline" onClick={() => setCurrentStep(3)}>
                   Retour
                 </Button>
                 <Button onClick={handleImport} disabled={isImporting}>
@@ -564,7 +685,7 @@ export default function ImportProspects() {
             </div>
           )}
 
-          {currentStep === 4 && importResult && (
+          {currentStep === 5 && importResult && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Résultats de l'import</h2>
               
