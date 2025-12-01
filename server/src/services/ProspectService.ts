@@ -786,6 +786,146 @@ export class ProspectService {
   }
 
   /**
+   * Met à jour une séquence d'emails
+   */
+  static async updateEmailSequence(
+    sequenceId: string,
+    input: {
+      name: string;
+      description?: string;
+      steps: Array<{
+        step_number: number;
+        delay_days: number;
+        subject: string;
+        body: string;
+      }>;
+    }
+  ): Promise<ApiResponse<{ sequence_id: string }>> {
+    try {
+      // Vérifier que la séquence existe
+      const { data: existingSequence, error: fetchError } = await supabase
+        .from('prospect_email_sequences')
+        .select('id')
+        .eq('id', sequenceId)
+        .single();
+
+      if (fetchError || !existingSequence) {
+        return {
+          success: false,
+          error: `Séquence non trouvée: ${fetchError?.message}`
+        };
+      }
+
+      // Mettre à jour la séquence
+      const { error: updateError } = await supabase
+        .from('prospect_email_sequences')
+        .update({
+          name: input.name,
+          description: input.description || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sequenceId);
+
+      if (updateError) {
+        return {
+          success: false,
+          error: `Erreur mise à jour séquence: ${updateError.message}`
+        };
+      }
+
+      // Supprimer les anciennes étapes
+      const { error: deleteStepsError } = await supabase
+        .from('prospect_email_sequence_steps')
+        .delete()
+        .eq('sequence_id', sequenceId);
+
+      if (deleteStepsError) {
+        return {
+          success: false,
+          error: `Erreur suppression étapes: ${deleteStepsError.message}`
+        };
+      }
+
+      // Créer les nouvelles étapes
+      const stepsData = input.steps.map(step => ({
+        sequence_id: sequenceId,
+        step_number: step.step_number,
+        delay_days: step.delay_days,
+        subject: step.subject,
+        body: step.body,
+        is_active: true
+      }));
+
+      const { error: stepsError } = await supabase
+        .from('prospect_email_sequence_steps')
+        .insert(stepsData);
+
+      if (stepsError) {
+        return {
+          success: false,
+          error: `Erreur création étapes: ${stepsError.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: { sequence_id: sequenceId }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Supprime une séquence d'emails
+   */
+  static async deleteEmailSequence(sequenceId: string): Promise<ApiResponse<void>> {
+    try {
+      // Vérifier que la séquence existe
+      const { data: existingSequence, error: fetchError } = await supabase
+        .from('prospect_email_sequences')
+        .select('id')
+        .eq('id', sequenceId)
+        .single();
+
+      if (fetchError || !existingSequence) {
+        return {
+          success: false,
+          error: `Séquence non trouvée: ${fetchError?.message}`
+        };
+      }
+
+      // Désactiver la séquence (soft delete)
+      const { error: deleteError } = await supabase
+        .from('prospect_email_sequences')
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sequenceId);
+
+      if (deleteError) {
+        return {
+          success: false,
+          error: `Erreur suppression: ${deleteError.message}`
+        };
+      }
+
+      return {
+        success: true
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
    * Annule un email programmé
    */
   static async cancelScheduledEmail(emailId: string, reason?: string): Promise<ApiResponse<void>> {
@@ -868,6 +1008,82 @@ export class ProspectService {
 
       return {
         success: true
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Programme une séquence personnalisée pour un prospect
+   */
+  static async scheduleCustomSequenceForProspect(
+    prospectId: string,
+    email: string,
+    scheduledEmails: Array<{
+      step_number: number;
+      subject: string;
+      body: string;
+      scheduled_for: string;
+      status?: string;
+    }>
+  ): Promise<ApiResponse<{ scheduled_count: number }>> {
+    try {
+      // Vérifier que le prospect existe
+      const { data: prospect, error: prospectError } = await supabase
+        .from('prospects')
+        .select('id, email')
+        .eq('id', prospectId)
+        .single();
+
+      if (prospectError || !prospect) {
+        return {
+          success: false,
+          error: `Prospect non trouvé: ${prospectError?.message}`
+        };
+      }
+
+      // Mettre à jour l'email du prospect si différent
+      if (email !== prospect.email) {
+        const { error: updateError } = await supabase
+          .from('prospects')
+          .update({ email })
+          .eq('id', prospectId);
+
+        if (updateError) {
+          console.error('Erreur mise à jour email:', updateError);
+        }
+      }
+
+      // Préparer les emails programmés
+      const emailsToInsert = scheduledEmails.map(email => ({
+        prospect_id: prospectId,
+        step_number: email.step_number,
+        subject: email.subject,
+        body: email.body,
+        scheduled_for: email.scheduled_for,
+        status: email.status || 'scheduled'
+      }));
+
+      // Insérer tous les emails programmés
+      const { data, error } = await supabase
+        .from('prospect_email_scheduled')
+        .insert(emailsToInsert)
+        .select();
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur programmation séquence: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: { scheduled_count: data?.length || 0 }
       };
     } catch (error: any) {
       return {

@@ -31,7 +31,12 @@ import {
   Circle,
   Save,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  Plus,
+  Trash2,
+  FileText,
+  Mail as MailIcon,
+  Edit2
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { cn } from "@/lib/utils";
@@ -151,15 +156,36 @@ export default function ProspectionAdmin() {
 
   // États pour la programmation de séquences
   const [showSequenceModal, setShowSequenceModal] = useState(false);
-  const [emailSequences, setEmailSequences] = useState<any[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
   const [sequenceConfigs, setSequenceConfigs] = useState<Map<string, {
-    sequenceId: string | null;
+    email: string;
     startDate: string | null;
+    steps: Array<{
+      id: string;
+      stepNumber: number;
+      delayDays: number;
+      subject: string;
+      body: string;
+    }>;
     ready: boolean;
   }>>(new Map());
   const [currentProspectIndex, setCurrentProspectIndex] = useState(0);
   const [schedulingDate, setSchedulingDate] = useState<string>('');
   const [schedulingTime, setSchedulingTime] = useState<string>('');
+
+  // États pour la gestion des séquences
+  const [savedSequences, setSavedSequences] = useState<any[]>([]);
+  const [showSequenceForm, setShowSequenceForm] = useState(false);
+  const [editingSequence, setEditingSequence] = useState<any | null>(null);
+  const [sequenceForm, setSequenceForm] = useState({
+    name: '',
+    description: '',
+    steps: [
+      { stepNumber: 1, delayDays: 0, subject: '', body: '' },
+      { stepNumber: 2, delayDays: 3, subject: '', body: '' },
+      { stepNumber: 3, delayDays: 7, subject: '', body: '' }
+    ]
+  });
   const [loadingSequences, setLoadingSequences] = useState(false);
 
   // Charger les données
@@ -167,6 +193,9 @@ export default function ProspectionAdmin() {
     if (user && activeTab === 'list') {
       fetchProspects();
       fetchStats();
+    }
+    if (user && activeTab === 'sequences') {
+      fetchSavedSequences();
     }
   }, [user, page, sortBy, sortOrder, search, filterSource, filterEnrichment, filterAI, filterEmailing, filterSequences, activeTab]);
 
@@ -324,11 +353,11 @@ export default function ProspectionAdmin() {
   };
 
   // Fonctions pour la programmation de séquences
-  const fetchEmailSequences = async () => {
+  const fetchEmailTemplates = async () => {
     try {
-      setLoadingSequences(true);
       const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
       
+      // Pour l'instant, on récupère les séquences existantes comme templates
       const response = await fetch(`${config.API_URL}/api/prospects/sequences/list`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -339,16 +368,51 @@ export default function ProspectionAdmin() {
       const result = await response.json();
       
       if (result.success && result.data) {
-        setEmailSequences(result.data || []);
-      } else {
-        toast.error(result.error || 'Erreur lors du chargement des séquences');
+        // Extraire les templates depuis les séquences
+        const templates: any[] = [];
+        result.data.forEach((seq: any) => {
+          if (seq.prospect_email_sequence_steps) {
+            seq.prospect_email_sequence_steps.forEach((step: any) => {
+              templates.push({
+                id: `${seq.id}-${step.id}`,
+                name: `${seq.name} - Étape ${step.step_number}`,
+                subject: step.subject,
+                body: step.body
+              });
+            });
+          }
+        });
+        setEmailTemplates(templates);
       }
     } catch (error: any) {
-      console.error('Erreur chargement séquences:', error);
-      toast.error('Erreur lors du chargement des séquences');
-    } finally {
-      setLoadingSequences(false);
+      console.error('Erreur chargement templates:', error);
     }
+  };
+
+  const getDefaultSequence = () => {
+    return [
+      {
+        id: `step-1-${Date.now()}`,
+        stepNumber: 1,
+        delayDays: 0,
+        subject: 'Premier contact',
+        body: 'Bonjour,\n\nNous souhaiterions vous présenter nos services...'
+      },
+      {
+        id: `step-2-${Date.now()}`,
+        stepNumber: 2,
+        delayDays: 3,
+        subject: 'Relance - Premier contact',
+        body: 'Bonjour,\n\nJe me permets de relancer concernant notre précédent échange...'
+      },
+      {
+        id: `step-3-${Date.now()}`,
+        stepNumber: 3,
+        delayDays: 7,
+        subject: 'Dernière relance',
+        body: 'Bonjour,\n\nDernière tentative de contact...'
+      }
+    ];
   };
 
   const handleOpenSequenceModal = async () => {
@@ -357,14 +421,17 @@ export default function ProspectionAdmin() {
       return;
     }
     
-    await fetchEmailSequences();
+    await fetchEmailTemplates();
+    await fetchSavedSequences();
     
-    // Initialiser les configurations pour chaque prospect sélectionné
+    // Initialiser les configurations avec séquence par défaut
     const newConfigs = new Map();
     Array.from(selectedProspectIds).forEach((id) => {
+      const prospect = prospects.find(p => p.id === id);
       newConfigs.set(id, {
-        sequenceId: null,
+        email: prospect?.email || '',
         startDate: null,
+        steps: getDefaultSequence(),
         ready: false
       });
     });
@@ -381,13 +448,89 @@ export default function ProspectionAdmin() {
     return prospects.find(p => p.id === prospectId) || null;
   };
 
+  const updateProspectEmail = (prospectId: string, newEmail: string) => {
+    const updatedConfigs = new Map(sequenceConfigs);
+    const config = updatedConfigs.get(prospectId);
+    if (config) {
+      updatedConfigs.set(prospectId, {
+        ...config,
+        email: newEmail
+      });
+      setSequenceConfigs(updatedConfigs);
+    }
+  };
+
+  const addStepToSequence = (prospectId: string) => {
+    const updatedConfigs = new Map(sequenceConfigs);
+    const config = updatedConfigs.get(prospectId);
+    if (config) {
+      const maxStepNumber = config.steps.length > 0 
+        ? Math.max(...config.steps.map(s => s.stepNumber))
+        : 0;
+      const lastDelay = config.steps.length > 0
+        ? config.steps[config.steps.length - 1].delayDays
+        : 0;
+      
+      config.steps.push({
+        id: `step-${Date.now()}`,
+        stepNumber: maxStepNumber + 1,
+        delayDays: lastDelay + 3,
+        subject: 'Nouvel email',
+        body: 'Corps de l\'email...'
+      });
+      
+      updatedConfigs.set(prospectId, config);
+      setSequenceConfigs(updatedConfigs);
+    }
+  };
+
+  const removeStepFromSequence = (prospectId: string, stepId: string) => {
+    const updatedConfigs = new Map(sequenceConfigs);
+    const config = updatedConfigs.get(prospectId);
+    if (config && config.steps.length > 1) {
+      config.steps = config.steps.filter(s => s.id !== stepId);
+      // Réorganiser les numéros d'étapes
+      config.steps.forEach((step, index) => {
+        step.stepNumber = index + 1;
+      });
+      updatedConfigs.set(prospectId, config);
+      setSequenceConfigs(updatedConfigs);
+    } else {
+      toast.error('Une séquence doit contenir au moins un email');
+    }
+  };
+
+  const updateStep = (prospectId: string, stepId: string, field: string, value: any) => {
+    const updatedConfigs = new Map(sequenceConfigs);
+    const config = updatedConfigs.get(prospectId);
+    if (config) {
+      const stepIndex = config.steps.findIndex(s => s.id === stepId);
+      if (stepIndex !== -1) {
+        (config.steps[stepIndex] as any)[field] = value;
+        updatedConfigs.set(prospectId, config);
+        setSequenceConfigs(updatedConfigs);
+      }
+    }
+  };
+
+  const applyTemplateToStep = (prospectId: string, stepId: string, template: any) => {
+    updateStep(prospectId, stepId, 'subject', template.subject);
+    updateStep(prospectId, stepId, 'body', template.body);
+    toast.success('Template appliqué');
+  };
+
   const saveCurrentProspectSequence = () => {
     const currentProspect = getCurrentProspect();
     if (!currentProspect) return;
 
     const config = sequenceConfigs.get(currentProspect.id);
-    if (!config || !config.sequenceId) {
-      toast.error('Veuillez sélectionner une séquence');
+    if (!config || config.steps.length === 0) {
+      toast.error('Veuillez configurer au moins un email dans la séquence');
+      return;
+    }
+
+    if (!config.email || !config.email.includes('@')) {
+      toast.error('Veuillez saisir un email valide');
       return;
     }
 
@@ -400,22 +543,6 @@ export default function ProspectionAdmin() {
     toast.success('Séquence enregistrée pour ce prospect');
   };
 
-  const applySequenceToAll = (sequenceId: string) => {
-    const updatedConfigs = new Map(sequenceConfigs);
-    const today = new Date().toISOString().split('T')[0];
-    
-    selectedProspectIds.forEach((id) => {
-      updatedConfigs.set(id, {
-        sequenceId,
-        startDate: today,
-        ready: true
-      });
-    });
-    
-    setSequenceConfigs(updatedConfigs);
-    toast.success('Séquence appliquée à tous les prospects');
-  };
-
   const scheduleAllSequences = async (startNow: boolean = false) => {
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
@@ -426,15 +553,15 @@ export default function ProspectionAdmin() {
         return;
       }
 
-      let startDate: string | undefined;
+      let globalStartDate: string | undefined;
       if (!startNow) {
         if (!schedulingDate || !schedulingTime) {
           toast.error('Veuillez sélectionner une date et une heure');
           return;
         }
-        startDate = new Date(`${schedulingDate}T${schedulingTime}`).toISOString();
+        globalStartDate = new Date(`${schedulingDate}T${schedulingTime}`).toISOString();
       } else {
-        startDate = new Date().toISOString();
+        globalStartDate = new Date().toISOString();
       }
 
       setSendingEmails(true);
@@ -443,15 +570,40 @@ export default function ProspectionAdmin() {
 
       for (const [prospectId, seqConfig] of readyConfigs) {
         try {
-          const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/schedule-sequence`, {
+          // Créer une séquence temporaire pour ce prospect
+          const startDate = seqConfig.startDate 
+            ? new Date(seqConfig.startDate).toISOString()
+            : globalStartDate!;
+
+          // Calculer les dates d'envoi
+          const scheduledEmails: any[] = [];
+          let currentDate = new Date(startDate);
+
+          for (const step of seqConfig.steps.sort((a, b) => a.stepNumber - b.stepNumber)) {
+            if (step.stepNumber > 1) {
+              currentDate = new Date(currentDate.getTime() + (step.delayDays * 24 * 60 * 60 * 1000));
+            }
+
+            scheduledEmails.push({
+              prospect_id: prospectId,
+              step_number: step.stepNumber,
+              subject: step.subject,
+              body: step.body,
+              scheduled_for: currentDate.toISOString(),
+              status: 'scheduled'
+            });
+          }
+
+          // Insérer directement dans la table prospect_email_scheduled
+          const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/schedule-custom-sequence`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              sequence_id: seqConfig.sequenceId,
-              start_date: seqConfig.startDate || startDate
+              email: seqConfig.email,
+              scheduled_emails: scheduledEmails
             })
           });
 
@@ -484,6 +636,245 @@ export default function ProspectionAdmin() {
     } finally {
       setSendingEmails(false);
     }
+  };
+
+  // Fonctions pour la gestion des séquences sauvegardées
+  const fetchSavedSequences = async () => {
+    try {
+      setLoadingSequences(true);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const response = await fetch(`${config.API_URL}/api/prospects/sequences/list`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setSavedSequences(result.data || []);
+      } else {
+        toast.error(result.error || 'Erreur lors du chargement des séquences');
+      }
+    } catch (error: any) {
+      console.error('Erreur chargement séquences:', error);
+      toast.error('Erreur lors du chargement des séquences');
+    } finally {
+      setLoadingSequences(false);
+    }
+  };
+
+  const handleCreateSequence = () => {
+    setEditingSequence(null);
+    setSequenceForm({
+      name: '',
+      description: '',
+      steps: [
+        { stepNumber: 1, delayDays: 0, subject: '', body: '' },
+        { stepNumber: 2, delayDays: 3, subject: '', body: '' },
+        { stepNumber: 3, delayDays: 7, subject: '', body: '' }
+      ]
+    });
+    setShowSequenceForm(true);
+  };
+
+  const handleEditSequence = (sequence: any) => {
+    setEditingSequence(sequence);
+    setSequenceForm({
+      name: sequence.name,
+      description: sequence.description || '',
+      steps: (sequence.prospect_email_sequence_steps || [])
+        .sort((a: any, b: any) => a.step_number - b.step_number)
+        .map((step: any) => ({
+          stepNumber: step.step_number,
+          delayDays: step.delay_days,
+          subject: step.subject,
+          body: step.body
+        }))
+    });
+    setShowSequenceForm(true);
+  };
+
+  const handleDeleteSequence = async (sequenceId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette séquence ?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const response = await fetch(`${config.API_URL}/api/prospects/sequences/${sequenceId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Séquence supprimée avec succès');
+        await fetchSavedSequences();
+      } else {
+        toast.error(result.error || 'Erreur lors de la suppression');
+      }
+    } catch (error: any) {
+      console.error('Erreur suppression séquence:', error);
+      toast.error('Erreur lors de la suppression de la séquence');
+    }
+  };
+
+  const addStepToForm = () => {
+    const maxStepNumber = sequenceForm.steps.length > 0 
+      ? Math.max(...sequenceForm.steps.map(s => s.stepNumber))
+      : 0;
+    const lastDelay = sequenceForm.steps.length > 0
+      ? sequenceForm.steps[sequenceForm.steps.length - 1].delayDays
+      : 0;
+    
+    setSequenceForm({
+      ...sequenceForm,
+      steps: [
+        ...sequenceForm.steps,
+        {
+          stepNumber: maxStepNumber + 1,
+          delayDays: lastDelay + 3,
+          subject: '',
+          body: ''
+        }
+      ]
+    });
+  };
+
+  const removeStepFromForm = (stepNumber: number) => {
+    if (sequenceForm.steps.length <= 1) {
+      toast.error('Une séquence doit contenir au moins un email');
+      return;
+    }
+    
+    setSequenceForm({
+      ...sequenceForm,
+      steps: sequenceForm.steps
+        .filter(s => s.stepNumber !== stepNumber)
+        .map((step, index) => ({
+          ...step,
+          stepNumber: index + 1
+        }))
+    });
+  };
+
+  const updateStepInForm = (stepNumber: number, field: string, value: any) => {
+    setSequenceForm({
+      ...sequenceForm,
+      steps: sequenceForm.steps.map(step =>
+        step.stepNumber === stepNumber
+          ? { ...step, [field]: value }
+          : step
+      )
+    });
+  };
+
+  const saveSequence = async () => {
+    if (!sequenceForm.name || sequenceForm.name.trim() === '') {
+      toast.error('Veuillez saisir un nom pour la séquence');
+      return;
+    }
+
+    if (sequenceForm.steps.length === 0) {
+      toast.error('Veuillez ajouter au moins un email à la séquence');
+      return;
+    }
+
+    for (const step of sequenceForm.steps) {
+      if (!step.subject || !step.body) {
+        toast.error('Veuillez remplir le sujet et le corps de tous les emails');
+        return;
+      }
+    }
+
+    try {
+      setLoadingSequences(true);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const payload = {
+        name: sequenceForm.name,
+        description: sequenceForm.description,
+        steps: sequenceForm.steps.map(step => ({
+          step_number: step.stepNumber,
+          delay_days: step.delayDays,
+          subject: step.subject,
+          body: step.body
+        }))
+      };
+
+      let response;
+      if (editingSequence) {
+        response = await fetch(`${config.API_URL}/api/prospects/sequences/${editingSequence.id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        response = await fetch(`${config.API_URL}/api/prospects/sequences`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(editingSequence ? 'Séquence mise à jour avec succès' : 'Séquence créée avec succès');
+        setShowSequenceForm(false);
+        await fetchSavedSequences();
+      } else {
+        toast.error(result.error || 'Erreur lors de la sauvegarde');
+      }
+    } catch (error: any) {
+      console.error('Erreur sauvegarde séquence:', error);
+      toast.error('Erreur lors de la sauvegarde de la séquence');
+    } finally {
+      setLoadingSequences(false);
+    }
+  };
+
+  const applySequenceToProspect = (sequence: any) => {
+    const currentProspect = getCurrentProspect();
+    if (!currentProspect) {
+      toast.error('Aucun prospect sélectionné');
+      return;
+    }
+
+    const steps = (sequence.prospect_email_sequence_steps || [])
+      .sort((a: any, b: any) => a.step_number - b.step_number)
+      .map((step: any) => ({
+        id: `step-${step.id}-${Date.now()}`,
+        stepNumber: step.step_number,
+        delayDays: step.delay_days,
+        subject: step.subject,
+        body: step.body
+      }));
+
+    const updatedConfigs = new Map(sequenceConfigs);
+    updatedConfigs.set(currentProspect.id, {
+      email: currentProspect.email,
+      startDate: null,
+      steps: steps,
+      ready: true
+    });
+    
+    setSequenceConfigs(updatedConfigs);
+    toast.success(`Séquence "${sequence.name}" appliquée au prospect`);
   };
 
   const getStatusBadge = (status: string, type: 'enrichment' | 'ai' | 'emailing') => {
@@ -667,12 +1058,113 @@ export default function ProspectionAdmin() {
               Import Prospects
             </div>
           </button>
+          <button
+            onClick={() => setSearchParams({ tab: 'sequences' })}
+            className={cn(
+              "py-4 px-1 border-b-2 font-medium text-sm transition-colors",
+              activeTab === 'sequences'
+                ? "border-red-600 text-red-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <MailIcon className="h-4 w-4" />
+              Séquences emailing
+            </div>
+          </button>
         </nav>
       </div>
 
       {/* Contenu selon l'onglet */}
       {activeTab === 'import' ? (
         <ImportProspects />
+      ) : activeTab === 'sequences' ? (
+        <div className="space-y-6">
+          {/* En-tête avec bouton créer */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Séquences d'emails</h2>
+              <p className="text-gray-500 mt-1">Gérez vos séquences d'emails réutilisables</p>
+            </div>
+            <Button onClick={handleCreateSequence}>
+              <Plus className="h-4 w-4 mr-2" />
+              Créer une séquence
+            </Button>
+          </div>
+
+          {/* Liste des séquences */}
+          {loadingSequences ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+              <span>Chargement des séquences...</span>
+            </div>
+          ) : savedSequences.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <MailIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 mb-4">Aucune séquence enregistrée</p>
+                <Button onClick={handleCreateSequence}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer votre première séquence
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {savedSequences.map((sequence) => (
+                <Card key={sequence.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{sequence.name}</CardTitle>
+                        {sequence.description && (
+                          <p className="text-sm text-gray-500 mt-1">{sequence.description}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditSequence(sequence)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteSequence(sequence.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-700">
+                        {sequence.prospect_email_sequence_steps?.length || 0} email{sequence.prospect_email_sequence_steps?.length > 1 ? 's' : ''}
+                      </div>
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        {sequence.prospect_email_sequence_steps
+                          ?.sort((a: any, b: any) => a.step_number - b.step_number)
+                          .map((step: any) => (
+                            <div key={step.id} className="text-xs bg-gray-50 p-2 rounded">
+                              <div className="font-medium">Étape {step.step_number}</div>
+                              <div className="text-gray-600 truncate">{step.subject}</div>
+                              <div className="text-gray-500">
+                                Délai: {step.delay_days} jour{step.delay_days > 1 ? 's' : ''}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       ) : (
         <>
 
@@ -1403,283 +1895,500 @@ export default function ProspectionAdmin() {
 
       {/* Modal Programmation de Séquence */}
       <Dialog open={showSequenceModal} onOpenChange={setShowSequenceModal}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Programmer les séquences d'emails</DialogTitle>
           </DialogHeader>
           
-          {loadingSequences ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-              <span>Chargement des séquences...</span>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Actions rapides */}
-              {emailSequences.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Actions rapides</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {emailSequences.map((seq) => (
-                        <Button
-                          key={seq.id}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applySequenceToAll(seq.id)}
-                        >
-                          Appliquer "{seq.name}" à tous
-                        </Button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Navigation et prospect actuel */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">
-                      Prospect {currentProspectIndex + 1} sur {selectedProspectIds.size}
-                    </CardTitle>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentProspectIndex(Math.max(0, currentProspectIndex - 1))}
-                        disabled={currentProspectIndex === 0}
-                      >
-                        <ArrowLeft className="h-4 w-4 mr-1" />
-                        Précédent
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentProspectIndex(Math.min(selectedProspectIds.size - 1, currentProspectIndex + 1))}
-                        disabled={currentProspectIndex >= selectedProspectIds.size - 1}
-                      >
-                        Suivant
-                        <ArrowRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {getCurrentProspect() && (() => {
-                    const prospect = getCurrentProspect()!;
-                    const config = sequenceConfigs.get(prospect.id) || { sequenceId: null, startDate: null, ready: false };
-                    
-                    return (
-                      <div className="space-y-4">
-                        {/* Info prospect */}
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <div className="font-medium">{prospect.email}</div>
-                          {(prospect.firstname || prospect.lastname) && (
-                            <div className="text-sm text-gray-600">
-                              {prospect.firstname} {prospect.lastname}
-                            </div>
-                          )}
-                          {prospect.company_name && (
-                            <div className="text-sm text-gray-600">{prospect.company_name}</div>
-                          )}
-                        </div>
-
-                        {/* Sélection séquence */}
-                        <div>
-                          <Label htmlFor="sequence-select">Séquence d'email *</Label>
-                          <Select
-                            value={config.sequenceId || ''}
-                            onValueChange={(value) => {
-                              const updatedConfigs = new Map(sequenceConfigs);
-                              updatedConfigs.set(prospect.id, {
-                                ...config,
-                                sequenceId: value,
-                                ready: false
-                              });
-                              setSequenceConfigs(updatedConfigs);
-                            }}
-                          >
-                            <SelectTrigger id="sequence-select">
-                              <SelectValue placeholder="Sélectionner une séquence" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {emailSequences.length === 0 ? (
-                                <SelectItem value="none" disabled>Aucune séquence disponible</SelectItem>
-                              ) : (
-                                emailSequences.map((seq) => (
-                                  <SelectItem key={seq.id} value={seq.id}>
-                                    {seq.name} ({seq.prospect_email_sequence_steps?.length || 0} étapes)
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
-                          {config.sequenceId && emailSequences.find(s => s.id === config.sequenceId) && (() => {
-                            const selectedSeq = emailSequences.find(s => s.id === config.sequenceId)!;
-                            return (
-                              <div className="mt-2 text-sm text-gray-600">
-                                <div className="font-medium">Étapes de la séquence :</div>
-                                <div className="mt-1 space-y-1">
-                                  {selectedSeq.prospect_email_sequence_steps
-                                    ?.sort((a: any, b: any) => a.step_number - b.step_number)
-                                    .map((step: any) => (
-                                      <div key={step.id} className="text-xs">
-                                        Étape {step.step_number}: {step.subject} (délai: {step.delay_days} jour{step.delay_days > 1 ? 's' : ''})
-                                      </div>
-                                    ))}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-
-                        {/* Date de démarrage */}
-                        <div>
-                          <Label htmlFor="start-date">Date de démarrage (optionnel)</Label>
-                          <Input
-                            id="start-date"
-                            type="date"
-                            value={config.startDate || ''}
-                            onChange={(e) => {
-                              const updatedConfigs = new Map(sequenceConfigs);
-                              updatedConfigs.set(prospect.id, {
-                                ...config,
-                                startDate: e.target.value || null
-                              });
-                              setSequenceConfigs(updatedConfigs);
-                            }}
-                            min={new Date().toISOString().split('T')[0]}
-                            className="mt-1"
-                          />
-                          <div className="text-xs text-gray-500 mt-1">
-                            Si non renseigné, la date actuelle sera utilisée
-                          </div>
-                        </div>
-
-                        {/* Bouton enregistrer */}
-                        <div className="flex items-center justify-between pt-2 border-t">
-                          <div className="flex items-center gap-2">
-                            {config.ready ? (
-                              <>
-                                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                <span className="text-sm font-medium text-green-600">Prêt</span>
-                              </>
-                            ) : (
-                              <>
-                                <Circle className="h-5 w-5 text-gray-400" />
-                                <span className="text-sm text-gray-500">Non configuré</span>
-                              </>
-                            )}
-                          </div>
-                          <Button
-                            onClick={saveCurrentProspectSequence}
-                            disabled={!config.sequenceId}
-                            size="sm"
-                          >
-                            <Save className="h-4 w-4 mr-2" />
-                            Enregistrer cette séquence
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
-
-              {/* Liste récapitulative */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Récapitulatif ({Array.from(sequenceConfigs.values()).filter(c => c.ready).length} / {selectedProspectIds.size} prêts)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {Array.from(selectedProspectIds).map((id, index) => {
-                      const prospect = prospects.find(p => p.id === id);
-                      const config = sequenceConfigs.get(id);
-                      if (!prospect) return null;
-                      
-                      return (
-                        <div
-                          key={id}
-                          className={cn(
-                            "flex items-center justify-between p-2 rounded border cursor-pointer",
-                            index === currentProspectIndex ? "bg-blue-50 border-blue-300" : "bg-gray-50",
-                            config?.ready ? "border-green-300" : ""
-                          )}
-                          onClick={() => setCurrentProspectIndex(index)}
-                        >
-                          <div className="flex items-center gap-2 flex-1">
-                            {config?.ready ? (
-                              <CheckCircle2 className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <Circle className="h-4 w-4 text-gray-400" />
-                            )}
-                            <span className="text-sm">{prospect.email}</span>
-                            {config?.sequenceId && (
-                              <span className="text-xs text-gray-500">
-                                - {emailSequences.find(s => s.id === config.sequenceId)?.name}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Actions finales */}
-              <div className="flex items-center justify-between pt-4 border-t">
-                <div className="text-sm text-gray-600">
-                  {Array.from(sequenceConfigs.values()).filter(c => c.ready).length} prospect{Array.from(sequenceConfigs.values()).filter(c => c.ready).length > 1 ? 's' : ''} prêt{Array.from(sequenceConfigs.values()).filter(c => c.ready).length > 1 ? 's' : ''}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowSequenceModal(false)}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    onClick={() => scheduleAllSequences(true)}
-                    disabled={Array.from(sequenceConfigs.values()).filter(c => c.ready).length === 0 || sendingEmails}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Envoyer le mailing maintenant
-                  </Button>
-                  <div className="flex gap-2 items-center">
-                    <Input
-                      type="date"
-                      value={schedulingDate}
-                      onChange={(e) => setSchedulingDate(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-40"
-                      placeholder="Date"
-                    />
-                    <Input
-                      type="time"
-                      value={schedulingTime}
-                      onChange={(e) => setSchedulingTime(e.target.value)}
-                      className="w-32"
-                      placeholder="Heure"
-                    />
+          <div className="space-y-6">
+            {/* Navigation et prospect actuel */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">
+                    Prospect {currentProspectIndex + 1} sur {selectedProspectIds.size}
+                  </CardTitle>
+                  <div className="flex gap-2">
                     <Button
-                      onClick={() => scheduleAllSequences(false)}
-                      disabled={Array.from(sequenceConfigs.values()).filter(c => c.ready).length === 0 || sendingEmails || !schedulingDate || !schedulingTime}
-                      className="bg-purple-600 hover:bg-purple-700"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentProspectIndex(Math.max(0, currentProspectIndex - 1))}
+                      disabled={currentProspectIndex === 0}
                     >
-                      <Clock className="h-4 w-4 mr-2" />
-                      Envoyer plus tard
+                      <ArrowLeft className="h-4 w-4 mr-1" />
+                      Précédent
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentProspectIndex(Math.min(selectedProspectIds.size - 1, currentProspectIndex + 1))}
+                      disabled={currentProspectIndex >= selectedProspectIds.size - 1}
+                    >
+                      Suivant
+                      <ArrowRight className="h-4 w-4 ml-1" />
                     </Button>
                   </div>
                 </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {getCurrentProspect() && (() => {
+                  const prospect = getCurrentProspect()!;
+                  const config = sequenceConfigs.get(prospect.id) || {
+                    email: prospect.email,
+                    startDate: null,
+                    steps: getDefaultSequence(),
+                    ready: false
+                  };
+                  
+                  return (
+                    <div className="space-y-4">
+                      {/* Info prospect avec édition email */}
+                      <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                        <div>
+                          <Label htmlFor="prospect-email">Email du prospect *</Label>
+                          <Input
+                            id="prospect-email"
+                            type="email"
+                            value={config.email}
+                            onChange={(e) => updateProspectEmail(prospect.id, e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        {(prospect.firstname || prospect.lastname) && (
+                          <div className="text-sm text-gray-600">
+                            {prospect.firstname} {prospect.lastname}
+                          </div>
+                        )}
+                        {prospect.company_name && (
+                          <div className="text-sm text-gray-600">{prospect.company_name}</div>
+                        )}
+                      </div>
+
+                      {/* Date de démarrage */}
+                      <div>
+                        <Label htmlFor="start-date">Date de démarrage (optionnel)</Label>
+                        <Input
+                          id="start-date"
+                          type="date"
+                          value={config.startDate || ''}
+                          onChange={(e) => {
+                            const updatedConfigs = new Map(sequenceConfigs);
+                            updatedConfigs.set(prospect.id, {
+                              ...config,
+                              startDate: e.target.value || null
+                            });
+                            setSequenceConfigs(updatedConfigs);
+                          }}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="mt-1"
+                        />
+                        <div className="text-xs text-gray-500 mt-1">
+                          Si non renseigné, la date actuelle sera utilisée
+                        </div>
+                      </div>
+
+                      {/* Charger une séquence sauvegardée */}
+                      {savedSequences.length > 0 && (
+                        <div>
+                          <Label>Charger une séquence sauvegardée</Label>
+                          <div className="mt-2 space-y-2">
+                            {savedSequences.map((sequence) => (
+                              <Button
+                                key={sequence.id}
+                                variant="outline"
+                                size="sm"
+                                className="w-full justify-start"
+                                onClick={() => applySequenceToProspect(sequence)}
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                <div className="flex-1 text-left">
+                                  <div className="font-medium">{sequence.name}</div>
+                                  <div className="text-xs text-gray-500">
+                                    {sequence.prospect_email_sequence_steps?.length || 0} email{sequence.prospect_email_sequence_steps?.length > 1 ? 's' : ''}
+                                  </div>
+                                </div>
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Liste des emails de la séquence */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <Label className="text-base font-semibold">Emails de la séquence</Label>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addStepToSequence(prospect.id)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Ajouter un email
+                          </Button>
+                        </div>
+                        <div className="space-y-4">
+                          {config.steps.sort((a, b) => a.stepNumber - b.stepNumber).map((step, index) => (
+                            <Card key={step.id} className="border-2">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline">Étape {step.stepNumber}</Badge>
+                                    {index === 0 ? (
+                                      <span className="text-xs text-gray-500">Envoi initial</span>
+                                    ) : (
+                                      <span className="text-xs text-gray-500">
+                                        Relance après {step.delayDays} jour{step.delayDays > 1 ? 's' : ''}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {config.steps.length > 1 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeStepFromSequence(prospect.id, step.id)}
+                                      className="text-red-600 hover:text-red-700"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {/* Délai */}
+                                {index > 0 && (
+                                  <div>
+                                    <Label>Délai depuis l'email précédent (jours) *</Label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      value={step.delayDays}
+                                      onChange={(e) => updateStep(prospect.id, step.id, 'delayDays', parseInt(e.target.value) || 0)}
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Templates */}
+                                {emailTemplates.length > 0 && (
+                                  <div>
+                                    <Label>Appliquer un template</Label>
+                                    <Select
+                                      onValueChange={(value) => {
+                                        const template = emailTemplates.find(t => t.id === value);
+                                        if (template) {
+                                          applyTemplateToStep(prospect.id, step.id, template);
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="mt-1">
+                                        <SelectValue placeholder="Sélectionner un template" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {emailTemplates.map((template) => (
+                                          <SelectItem key={template.id} value={template.id}>
+                                            <FileText className="h-3 w-3 inline mr-2" />
+                                            {template.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                )}
+
+                                {/* Sujet */}
+                                <div>
+                                  <Label>Sujet de l'email *</Label>
+                                  <Input
+                                    value={step.subject}
+                                    onChange={(e) => updateStep(prospect.id, step.id, 'subject', e.target.value)}
+                                    placeholder="Sujet de l'email"
+                                    className="mt-1"
+                                  />
+                                </div>
+
+                                {/* Corps */}
+                                <div>
+                                  <Label>Corps de l'email *</Label>
+                                  <Textarea
+                                    value={step.body}
+                                    onChange={(e) => updateStep(prospect.id, step.id, 'body', e.target.value)}
+                                    placeholder="Corps de l'email"
+                                    className="mt-1 min-h-[150px]"
+                                  />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Bouton enregistrer */}
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <div className="flex items-center gap-2">
+                          {config.ready ? (
+                            <>
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              <span className="text-sm font-medium text-green-600">Prêt</span>
+                            </>
+                          ) : (
+                            <>
+                              <Circle className="h-5 w-5 text-gray-400" />
+                              <span className="text-sm text-gray-500">Non configuré</span>
+                            </>
+                          )}
+                        </div>
+                        <Button
+                          onClick={saveCurrentProspectSequence}
+                          disabled={config.steps.length === 0}
+                          size="sm"
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          Enregistrer cette séquence
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+
+            {/* Liste récapitulative */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Récapitulatif ({Array.from(sequenceConfigs.values()).filter(c => c.ready).length} / {selectedProspectIds.size} prêts)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {Array.from(selectedProspectIds).map((id, index) => {
+                    const prospect = prospects.find(p => p.id === id);
+                    const config = sequenceConfigs.get(id);
+                    if (!prospect) return null;
+                    
+                    return (
+                      <div
+                        key={id}
+                        className={cn(
+                          "flex items-center justify-between p-2 rounded border cursor-pointer",
+                          index === currentProspectIndex ? "bg-blue-50 border-blue-300" : "bg-gray-50",
+                          config?.ready ? "border-green-300" : ""
+                        )}
+                        onClick={() => setCurrentProspectIndex(index)}
+                      >
+                        <div className="flex items-center gap-2 flex-1">
+                          {config?.ready ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Circle className="h-4 w-4 text-gray-400" />
+                          )}
+                          <span className="text-sm">{config?.email || prospect.email}</span>
+                          {config && (
+                            <span className="text-xs text-gray-500">
+                              - {config.steps.length} email{config.steps.length > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Actions finales */}
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="text-sm text-gray-600">
+                {Array.from(sequenceConfigs.values()).filter(c => c.ready).length} prospect{Array.from(sequenceConfigs.values()).filter(c => c.ready).length > 1 ? 's' : ''} prêt{Array.from(sequenceConfigs.values()).filter(c => c.ready).length > 1 ? 's' : ''}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSequenceModal(false)}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={() => scheduleAllSequences(true)}
+                  disabled={Array.from(sequenceConfigs.values()).filter(c => c.ready).length === 0 || sendingEmails}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Envoyer le mailing maintenant
+                </Button>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="date"
+                    value={schedulingDate}
+                    onChange={(e) => setSchedulingDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-40"
+                    placeholder="jj/mm/aaaa"
+                  />
+                  <Input
+                    type="time"
+                    value={schedulingTime}
+                    onChange={(e) => setSchedulingTime(e.target.value)}
+                    className="w-32"
+                    placeholder="--:--"
+                  />
+                  <Button
+                    onClick={() => scheduleAllSequences(false)}
+                    disabled={Array.from(sequenceConfigs.values()).filter(c => c.ready).length === 0 || sendingEmails || !schedulingDate || !schedulingTime}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Clock className="h-4 w-4 mr-2" />
+                    Envoyer plus tard
+                  </Button>
+                </div>
               </div>
             </div>
-          )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Création/Édition de Séquence */}
+      <Dialog open={showSequenceForm} onOpenChange={setShowSequenceForm}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingSequence ? 'Modifier la séquence' : 'Créer une nouvelle séquence'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Nom et description */}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="sequence-name">Nom de la séquence *</Label>
+                <Input
+                  id="sequence-name"
+                  value={sequenceForm.name}
+                  onChange={(e) => setSequenceForm({ ...sequenceForm, name: e.target.value })}
+                  placeholder="Ex: Séquence de relance standard"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sequence-description">Description</Label>
+                <Textarea
+                  id="sequence-description"
+                  value={sequenceForm.description}
+                  onChange={(e) => setSequenceForm({ ...sequenceForm, description: e.target.value })}
+                  placeholder="Description de la séquence (optionnel)"
+                  className="mt-1"
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            {/* Liste des emails */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-base font-semibold">Emails de la séquence</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addStepToForm}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Ajouter un email
+                </Button>
+              </div>
+              <div className="space-y-4">
+                {sequenceForm.steps.map((step, index) => (
+                  <Card key={step.stepNumber} className="border-2">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">Étape {step.stepNumber}</Badge>
+                          {index === 0 ? (
+                            <span className="text-xs text-gray-500">Envoi initial</span>
+                          ) : (
+                            <span className="text-xs text-gray-500">
+                              Relance après {step.delayDays} jour{step.delayDays > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                        {sequenceForm.steps.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeStepFromForm(step.stepNumber)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {/* Délai */}
+                      {index > 0 && (
+                        <div>
+                          <Label>Délai depuis l'email précédent (jours) *</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={step.delayDays}
+                            onChange={(e) => updateStepInForm(step.stepNumber, 'delayDays', parseInt(e.target.value) || 0)}
+                            className="mt-1"
+                          />
+                        </div>
+                      )}
+
+                      {/* Sujet */}
+                      <div>
+                        <Label>Sujet de l'email *</Label>
+                        <Input
+                          value={step.subject}
+                          onChange={(e) => updateStepInForm(step.stepNumber, 'subject', e.target.value)}
+                          placeholder="Sujet de l'email"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      {/* Corps */}
+                      <div>
+                        <Label>Corps de l'email *</Label>
+                        <Textarea
+                          value={step.body}
+                          onChange={(e) => updateStepInForm(step.stepNumber, 'body', e.target.value)}
+                          placeholder="Corps de l'email"
+                          className="mt-1 min-h-[150px]"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => setShowSequenceForm(false)}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={saveSequence}
+                disabled={loadingSequences}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {loadingSequences ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    {editingSequence ? 'Mettre à jour' : 'Créer la séquence'}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
         </>

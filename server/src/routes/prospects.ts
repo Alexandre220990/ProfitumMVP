@@ -204,6 +204,32 @@ router.post('/sequences', async (req, res) => {
   }
 });
 
+// PUT /api/prospects/sequences/:id - Mettre à jour une séquence
+router.put('/sequences/:id', async (req, res) => {
+  try {
+    const result = await ProspectService.updateEmailSequence(req.params.id, req.body);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/prospects/sequences/:id - Supprimer une séquence
+router.delete('/sequences/:id', async (req, res) => {
+  try {
+    const result = await ProspectService.deleteEmailSequence(req.params.id);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // POST /api/prospects/:id/schedule-sequence - Programmer une séquence pour un prospect
 router.post('/:id/schedule-sequence', async (req, res) => {
   try {
@@ -216,6 +242,34 @@ router.post('/:id/schedule-sequence', async (req, res) => {
       req.params.id,
       sequence_id,
       start_date
+    );
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    return res.status(201).json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/prospects/:id/schedule-custom-sequence - Programmer une séquence personnalisée pour un prospect
+router.post('/:id/schedule-custom-sequence', async (req, res) => {
+  try {
+    const { email, scheduled_emails } = req.body;
+    
+    if (!email || !scheduled_emails || !Array.isArray(scheduled_emails) || scheduled_emails.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'email et scheduled_emails (array) sont requis' 
+      });
+    }
+
+    const result = await ProspectService.scheduleCustomSequenceForProspect(
+      req.params.id,
+      email,
+      scheduled_emails
     );
     
     if (!result.success) {
