@@ -5,19 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { 
   Mail, 
   Phone, 
@@ -27,146 +14,83 @@ import {
   CheckCircle2,
   ArrowLeft,
   X,
-  Users,
-  ChevronDown,
-  ChevronUp
+  Users
 } from "lucide-react";
 import { toast } from "sonner";
 import { config } from "@/config/env";
+import { ParticipantSelectorModal, SelectedParticipant } from "@/components/leads/ParticipantSelectorModal";
 
 export default function AjouterLeadPage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
-  // Charger les utilisateurs disponibles pour la sélection
-  useEffect(() => {
-    const loadUsers = async () => {
-      setLoadingUsers(true);
-      try {
-        const token = localStorage.getItem('token');
-        
-        // Charger experts
-        const expertsRes = await fetch(`${config.API_URL}/api/admin/experts/all`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (expertsRes.ok) {
-          const expertsData = await expertsRes.json();
-          const experts = (expertsData.data?.experts || []).map((expert: any) => ({
-            id: expert.auth_user_id || expert.id,
-            name: expert.first_name && expert.last_name
-              ? `${expert.first_name} ${expert.last_name}`.trim()
-              : expert.name || expert.company_name || expert.email || 'Expert',
-            email: expert.email,
-            type: 'expert'
-          }));
-          setAvailableUsers(prev => ({ ...prev, experts }));
-        }
-        
-        // Charger admins
-        const adminsRes = await fetch(`${config.API_URL}/api/admin/admins/select`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (adminsRes.ok) {
-          const adminsData = await adminsRes.json();
-          setAvailableUsers(prev => ({ ...prev, admins: adminsData.data || [] }));
-        }
-        
-        // Charger clients
-        const clientsRes = await fetch(`${config.API_URL}/api/admin/clients/select`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (clientsRes.ok) {
-          const clientsData = await clientsRes.json();
-          setAvailableUsers(prev => ({ ...prev, clients: clientsData.data || [] }));
-        }
-        
-        // Charger apporteurs
-        const apporteursRes = await fetch(`${config.API_URL}/api/admin/apporteurs/select`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (apporteursRes.ok) {
-          const apporteursData = await apporteursRes.json();
-          setAvailableUsers(prev => ({ ...prev, apporteurs: apporteursData.data || [] }));
-        }
-      } catch (error) {
-        console.error('Erreur chargement utilisateurs:', error);
-      } finally {
-        setLoadingUsers(false);
-      }
-    };
-    
-    loadUsers();
-  }, []);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     subject: "",
     contexte: "",
-    participants: [] as Array<{ user_id: string; user_type: 'admin' | 'expert' | 'client' | 'apporteur' }>
+    participants: [] as SelectedParticipant[]
   });
   
-  const [availableUsers, setAvailableUsers] = useState<{
-    experts: Array<{ id: string; name: string; email: string; type: string }>;
-    admins: Array<{ id: string; name: string; email: string; type: string }>;
-    clients: Array<{ id: string; name: string; email: string; type: string }>;
-    apporteurs: Array<{ id: string; name: string; email: string; type: string }>;
-  }>({
-    experts: [],
-    admins: [],
-    clients: [],
-    apporteurs: []
-  });
-  
-  const [loadingUsers, setLoadingUsers] = useState(false);
   const [showParticipantSelect, setShowParticipantSelect] = useState(false);
-  const [openSections, setOpenSections] = useState<{
-    experts: boolean;
-    admins: boolean;
-    clients: boolean;
-    apporteurs: boolean;
-  }>({
-    experts: true,
-    admins: true,
-    clients: true,
-    apporteurs: true
-  });
+  const [participantsInfo, setParticipantsInfo] = useState<Map<string, { name: string; email: string; type: string }>>(new Map());
 
-  const toggleSection = (section: keyof typeof openSections) => {
-    setOpenSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
-
-  const toggleParticipant = (userId: string, userType: 'admin' | 'expert' | 'client' | 'apporteur') => {
-    setFormData(prev => {
-      const existingIndex = prev.participants.findIndex(
-        p => p.user_id === userId && p.user_type === userType
-      );
-      
-      if (existingIndex >= 0) {
-        // Retirer le participant
-        return {
-          ...prev,
-          participants: prev.participants.filter((_, i) => i !== existingIndex)
-        };
-      } else {
-        // Ajouter le participant
-        return {
-          ...prev,
-          participants: [...prev.participants, { user_id: userId, user_type: userType }]
-        };
+  // Charger les informations des participants sélectionnés pour l'affichage
+  useEffect(() => {
+    const loadParticipantsInfo = async () => {
+      if (formData.participants.length === 0) {
+        setParticipantsInfo(new Map());
+        return;
       }
-    });
-  };
 
-  const isParticipantSelected = (userId: string, userType: 'admin' | 'expert' | 'client' | 'apporteur') => {
-    return formData.participants.some(
-      p => p.user_id === userId && p.user_type === userType
-    );
-  };
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${config.API_URL}/api/unified-messaging/contacts`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const contactsData = result.data || {};
+          
+          // Créer une map pour stocker les infos des participants
+          const infoMap = new Map<string, { name: string; email: string; type: string }>();
+          
+          // Parcourir tous les contacts pour trouver ceux qui sont sélectionnés
+          const groupKeys = ['clients', 'experts', 'apporteurs', 'admins'] as const;
+          groupKeys.forEach((groupKey) => {
+            const contacts = contactsData[groupKey] || [];
+            const type = groupKey.slice(0, -1) as 'client' | 'expert' | 'apporteur' | 'admin'; // Enlève le 's' final
+            
+            if (Array.isArray(contacts)) {
+              contacts.forEach((contact: any) => {
+                formData.participants.forEach(participant => {
+                  if (participant.user_id === contact.id && participant.user_type === type) {
+                    infoMap.set(`${participant.user_id}-${participant.user_type}`, {
+                      name: contact.full_name || contact.name || contact.email,
+                      email: contact.email || '',
+                      type: participant.user_type
+                    });
+                  }
+                });
+              });
+            }
+          });
+          
+          setParticipantsInfo(infoMap);
+        }
+      } catch (error) {
+        console.error('Erreur chargement infos participants:', error);
+      }
+    };
+
+    loadParticipantsInfo();
+  }, [formData.participants]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -410,12 +334,7 @@ export default function AjouterLeadPage() {
                     {formData.participants.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-2">
                         {formData.participants.map((participant, index) => {
-                          const user = [
-                            ...availableUsers.experts,
-                            ...availableUsers.admins,
-                            ...availableUsers.clients,
-                            ...availableUsers.apporteurs
-                          ].find(u => u.id === participant.user_id && u.type === participant.user_type);
+                          const info = participantsInfo.get(`${participant.user_id}-${participant.user_type}`);
                           
                           return (
                             <Badge
@@ -423,7 +342,7 @@ export default function AjouterLeadPage() {
                               variant="secondary"
                               className="flex items-center gap-1 px-2 py-1"
                             >
-                              <span className="text-xs">{user?.name || `${participant.user_type}`}</span>
+                              <span className="text-xs">{info?.name || participant.user_type}</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -455,261 +374,18 @@ export default function AjouterLeadPage() {
                         : "Ajouter des participants"}
                     </Button>
                     
-                    {/* Dialog de sélection des participants */}
-                    <Dialog open={showParticipantSelect} onOpenChange={setShowParticipantSelect}>
-                      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center gap-2">
-                            <Users className="w-5 h-5 text-blue-600" />
-                            Sélectionner les participants
-                          </DialogTitle>
-                          <DialogDescription>
-                            Choisissez les utilisateurs qui recevront ce lead. Les participants sont regroupés par catégorie.
-                          </DialogDescription>
-                        </DialogHeader>
-                        
-                        <div className="flex-1 overflow-y-auto mt-4 space-y-3">
-                          {loadingUsers ? (
-                            <div className="flex items-center justify-center py-12">
-                              <div className="text-center">
-                                <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                                <p className="text-sm text-slate-500">Chargement des utilisateurs...</p>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              {/* Experts */}
-                              <Collapsible open={openSections.experts} onOpenChange={() => toggleSection('experts')}>
-                                <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium text-sm text-slate-900">Experts</span>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {availableUsers.experts.length}
-                                    </Badge>
-                                    {availableUsers.experts.filter(e => isParticipantSelected(e.id, 'expert')).length > 0 && (
-                                      <Badge className="bg-blue-600 text-white text-xs">
-                                        {availableUsers.experts.filter(e => isParticipantSelected(e.id, 'expert')).length} sélectionné(s)
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {openSections.experts ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="mt-2">
-                                  <div className="max-h-60 overflow-y-auto space-y-1 p-2 border rounded-lg bg-slate-50">
-                                    {availableUsers.experts.length === 0 ? (
-                                      <p className="text-sm text-slate-500 text-center py-4">Aucun expert disponible</p>
-                                    ) : (
-                                      availableUsers.experts.map(expert => {
-                                        const isSelected = isParticipantSelected(expert.id, 'expert');
-                                        return (
-                                          <label
-                                            key={expert.id}
-                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                                              isSelected 
-                                                ? 'bg-blue-50 border border-blue-200' 
-                                                : 'bg-white border border-slate-200 hover:bg-slate-50'
-                                            }`}
-                                          >
-                                            <Checkbox
-                                              checked={isSelected}
-                                              onCheckedChange={() => toggleParticipant(expert.id, 'expert')}
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                              <p className="font-medium text-sm text-slate-900 truncate">{expert.name}</p>
-                                              {expert.email && (
-                                                <p className="text-xs text-slate-500 truncate">{expert.email}</p>
-                                              )}
-                                            </div>
-                                          </label>
-                                        );
-                                      })
-                                    )}
-                                  </div>
-                                </CollapsibleContent>
-                              </Collapsible>
-
-                              {/* Admins */}
-                              <Collapsible open={openSections.admins} onOpenChange={() => toggleSection('admins')}>
-                                <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium text-sm text-slate-900">Admins</span>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {availableUsers.admins.length}
-                                    </Badge>
-                                    {availableUsers.admins.filter(a => isParticipantSelected(a.id, 'admin')).length > 0 && (
-                                      <Badge className="bg-blue-600 text-white text-xs">
-                                        {availableUsers.admins.filter(a => isParticipantSelected(a.id, 'admin')).length} sélectionné(s)
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {openSections.admins ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="mt-2">
-                                  <div className="max-h-60 overflow-y-auto space-y-1 p-2 border rounded-lg bg-slate-50">
-                                    {availableUsers.admins.length === 0 ? (
-                                      <p className="text-sm text-slate-500 text-center py-4">Aucun admin disponible</p>
-                                    ) : (
-                                      availableUsers.admins.map(admin => {
-                                        const isSelected = isParticipantSelected(admin.id, 'admin');
-                                        return (
-                                          <label
-                                            key={admin.id}
-                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                                              isSelected 
-                                                ? 'bg-blue-50 border border-blue-200' 
-                                                : 'bg-white border border-slate-200 hover:bg-slate-50'
-                                            }`}
-                                          >
-                                            <Checkbox
-                                              checked={isSelected}
-                                              onCheckedChange={() => toggleParticipant(admin.id, 'admin')}
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                              <p className="font-medium text-sm text-slate-900 truncate">{admin.name}</p>
-                                              {admin.email && (
-                                                <p className="text-xs text-slate-500 truncate">{admin.email}</p>
-                                              )}
-                                            </div>
-                                          </label>
-                                        );
-                                      })
-                                    )}
-                                  </div>
-                                </CollapsibleContent>
-                              </Collapsible>
-
-                              {/* Clients */}
-                              <Collapsible open={openSections.clients} onOpenChange={() => toggleSection('clients')}>
-                                <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium text-sm text-slate-900">Clients</span>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {availableUsers.clients.length}
-                                    </Badge>
-                                    {availableUsers.clients.filter(c => isParticipantSelected(c.id, 'client')).length > 0 && (
-                                      <Badge className="bg-blue-600 text-white text-xs">
-                                        {availableUsers.clients.filter(c => isParticipantSelected(c.id, 'client')).length} sélectionné(s)
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {openSections.clients ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="mt-2">
-                                  <div className="max-h-60 overflow-y-auto space-y-1 p-2 border rounded-lg bg-slate-50">
-                                    {availableUsers.clients.length === 0 ? (
-                                      <p className="text-sm text-slate-500 text-center py-4">Aucun client disponible</p>
-                                    ) : (
-                                      availableUsers.clients.map(client => {
-                                        const isSelected = isParticipantSelected(client.id, 'client');
-                                        return (
-                                          <label
-                                            key={client.id}
-                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                                              isSelected 
-                                                ? 'bg-blue-50 border border-blue-200' 
-                                                : 'bg-white border border-slate-200 hover:bg-slate-50'
-                                            }`}
-                                          >
-                                            <Checkbox
-                                              checked={isSelected}
-                                              onCheckedChange={() => toggleParticipant(client.id, 'client')}
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                              <p className="font-medium text-sm text-slate-900 truncate">{client.name}</p>
-                                              {client.email && (
-                                                <p className="text-xs text-slate-500 truncate">{client.email}</p>
-                                              )}
-                                            </div>
-                                          </label>
-                                        );
-                                      })
-                                    )}
-                                  </div>
-                                </CollapsibleContent>
-                              </Collapsible>
-
-                              {/* Apporteurs */}
-                              <Collapsible open={openSections.apporteurs} onOpenChange={() => toggleSection('apporteurs')}>
-                                <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium text-sm text-slate-900">Apporteurs</span>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {availableUsers.apporteurs.length}
-                                    </Badge>
-                                    {availableUsers.apporteurs.filter(a => isParticipantSelected(a.id, 'apporteur')).length > 0 && (
-                                      <Badge className="bg-blue-600 text-white text-xs">
-                                        {availableUsers.apporteurs.filter(a => isParticipantSelected(a.id, 'apporteur')).length} sélectionné(s)
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {openSections.apporteurs ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="mt-2">
-                                  <div className="max-h-60 overflow-y-auto space-y-1 p-2 border rounded-lg bg-slate-50">
-                                    {availableUsers.apporteurs.length === 0 ? (
-                                      <p className="text-sm text-slate-500 text-center py-4">Aucun apporteur disponible</p>
-                                    ) : (
-                                      availableUsers.apporteurs.map(apporteur => {
-                                        const isSelected = isParticipantSelected(apporteur.id, 'apporteur');
-                                        return (
-                                          <label
-                                            key={apporteur.id}
-                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                                              isSelected 
-                                                ? 'bg-blue-50 border border-blue-200' 
-                                                : 'bg-white border border-slate-200 hover:bg-slate-50'
-                                            }`}
-                                          >
-                                            <Checkbox
-                                              checked={isSelected}
-                                              onCheckedChange={() => toggleParticipant(apporteur.id, 'apporteur')}
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                              <p className="font-medium text-sm text-slate-900 truncate">{apporteur.name}</p>
-                                              {apporteur.email && (
-                                                <p className="text-xs text-slate-500 truncate">{apporteur.email}</p>
-                                              )}
-                                            </div>
-                                          </label>
-                                        );
-                                      })
-                                    )}
-                                  </div>
-                                </CollapsibleContent>
-                              </Collapsible>
-
-                              {availableUsers.experts.length === 0 && 
-                               availableUsers.admins.length === 0 && 
-                               availableUsers.clients.length === 0 && 
-                               availableUsers.apporteurs.length === 0 && (
-                                <div className="text-center py-12 text-slate-500">
-                                  <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                  <p className="text-sm">Aucun utilisateur disponible</p>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        
-                        <div className="flex justify-between items-center pt-4 mt-4 border-t">
-                          <div className="text-sm text-slate-600">
-                            {formData.participants.length > 0 ? (
-                              <span className="font-medium text-slate-900">{formData.participants.length}</span>
-                            ) : (
-                              <span>Aucun</span>
-                            )}{' '}
-                            participant{formData.participants.length > 1 ? 's' : ''} sélectionné{formData.participants.length > 1 ? 's' : ''}
-                          </div>
-                          <Button 
-                            type="button" 
-                            onClick={() => setShowParticipantSelect(false)}
-                            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-                          >
-                            Valider
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    {/* Modal de sélection des participants */}
+                    <ParticipantSelectorModal
+                      isOpen={showParticipantSelect}
+                      onClose={() => setShowParticipantSelect(false)}
+                      selectedParticipants={formData.participants}
+                      onSelectParticipants={(participants) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          participants
+                        }));
+                      }}
+                    />
                   </div>
 
                   {/* Bouton d'envoi */}
