@@ -245,6 +245,15 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   // FONCTIONS UTILITAIRES
   // ========================================
 
+  // Fonction pour arrondir une date à l'incrément de 15 minutes le plus proche
+  const snapTo15Minutes = (date: Date): Date => {
+    const minutes = date.getMinutes();
+    const snappedMinutes = Math.round(minutes / 15) * 15;
+    const snappedDate = new Date(date);
+    snappedDate.setMinutes(snappedMinutes, 0, 0);
+    return snappedDate;
+  };
+
   function getViewStartDate(currentView: CalendarView): Date {
     switch (currentView.type) {
       case 'day':
@@ -587,12 +596,23 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
           </div>
           
           {/* Grille du mois avec lundi en premier */}
-          <div className="grid grid-cols-7 gap-1">
-            {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
-              <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
-                {day}
-              </div>
-            ))}
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+            {/* En-têtes des jours - masquer sur très petit écran */}
+            <div className="hidden sm:grid sm:grid-cols-7 col-span-7 gap-1 sm:gap-2">
+              {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
+                <div key={day} className="p-2 text-center text-xs sm:text-sm font-medium text-gray-500">
+                  {day}
+                </div>
+              ))}
+            </div>
+            {/* En-têtes visibles sur mobile */}
+            <div className="grid sm:hidden grid-cols-7 col-span-7 gap-1">
+              {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(day => (
+                <div key={day} className="p-1 text-center text-xs font-medium text-gray-500">
+                  {day}
+                </div>
+              ))}
+            </div>
             
             {Array.from({ length: daysToShow }, (_, i) => {
               const date = addDays(firstMondayOfMonth, i);
@@ -605,31 +625,27 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                 <div
                   key={i}
                   className={cn(
-                    "p-2 min-h-[80px] border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors",
+                    "p-1 sm:p-2 min-h-[60px] sm:min-h-[80px] border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors text-xs sm:text-sm",
                     !isCurrentMonth && "bg-gray-50 text-gray-400",
                     isToday && "bg-blue-50 border-blue-300 font-bold",
                     isSelected && "bg-blue-100 border-blue-400"
                   )}
                   onClick={() => {
-                    // Ouvrir le formulaire avec la date préremplie à 09:00
-                    const dateWithTime = new Date(date);
-                    dateWithTime.setHours(9, 0, 0, 0);
-                    setSelectedDate(dateWithTime);
-                    setSelectedEvent(null);
-                    setShowEventDialog(true);
+                    // Afficher les RDV dans la barre latérale (comportement précédent)
+                    setSelectedDate(date);
                   }}
                 >
                   <div className={cn(
-                    "text-sm font-medium",
+                    "text-xs sm:text-sm font-medium",
                     isToday && "text-blue-600",
                     isSelected && "text-blue-700"
                   )}>
                     {format(date, 'd')}
                   </div>
                   {dayEvents.length > 0 && (
-                    <div className="mt-1">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mx-auto"></div>
-                      <div className="text-xs text-gray-500 mt-1">{dayEvents.length} événement(s)</div>
+                    <div className="mt-0.5 sm:mt-1">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mx-auto"></div>
+                      <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">{dayEvents.length}</div>
                     </div>
                   )}
                 </div>
@@ -642,15 +658,22 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
         <div className="lg:col-span-1">
           <div className="sticky top-4">
             {selectedDate ? (
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+              <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm">
                 <div className="mb-4">
-                  <h3 className="font-semibold text-gray-900 text-lg mb-3">
+                  <h3 className="font-semibold text-gray-900 text-base sm:text-lg mb-3">
                     {format(selectedDate, 'EEEE dd MMMM yyyy', { locale: fr })}
                   </h3>
                   <Button
                     size="sm"
-                    onClick={() => setShowEventDialog(true)}
-                    className="flex items-center gap-2"
+                    onClick={() => {
+                      // Ouvrir le formulaire avec la date préremplie à 09:00
+                      const dateWithTime = new Date(selectedDate);
+                      dateWithTime.setHours(9, 0, 0, 0);
+                      setSelectedDate(dateWithTime);
+                      setSelectedEvent(null);
+                      setShowEventDialog(true);
+                    }}
+                    className="flex items-center gap-2 w-full"
                   >
                     <Plus className="w-4 h-4" />
                     Nouvel événement
@@ -715,9 +738,9 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     const weekEnd = endOfWeek(view.date, { weekStartsOn: 1 });
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     
-    // Grille horaire de 7h à 20h
+    // Grille horaire de 7h à 20h - plus compacte
     const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7h à 20h
-    const hourHeight = 60; // pixels par heure
+    const hourHeight = 45; // pixels par heure (réduit de 60px pour plus de compacité)
     
     // Fonction pour obtenir la position et hauteur d'un événement
     const getEventStyle = (event: CalendarEvent) => {
@@ -781,9 +804,11 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
           </div>
         </div>
         
-        <div className="flex border border-gray-300 rounded-lg overflow-hidden bg-white">
-          {/* Colonne des heures */}
-          <div className="w-16 flex-shrink-0 border-r border-gray-300">
+        {/* Scroll horizontal sur mobile */}
+        <div className="overflow-x-auto -mx-2 sm:mx-0">
+          <div className="flex border border-gray-300 rounded-lg overflow-hidden bg-white min-w-[800px] sm:min-w-0">
+            {/* Colonne des heures */}
+            <div className="w-12 sm:w-16 flex-shrink-0 border-r border-gray-300">
             <div className="h-12 border-b border-gray-300"></div>
             {hours.map((hour) => (
               <div 
@@ -791,12 +816,12 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                 className="relative border-b border-gray-200"
                 style={{ height: `${hourHeight}px` }}
               >
-                <span className="absolute -top-2 right-2 text-xs text-gray-500 bg-white px-1">
+                <span className="absolute -top-2 right-1 sm:right-2 text-[10px] sm:text-xs text-gray-500 bg-white px-0.5 sm:px-1">
                   {hour}:00
                 </span>
               </div>
             ))}
-          </div>
+            </div>
           
           {/* Colonnes des jours */}
           {weekDays.map((day) => {
@@ -807,20 +832,20 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
               <div 
                 key={day.toISOString()} 
                 className={cn(
-                  "flex-1 border-r border-gray-300 last:border-r-0",
+                  "flex-1 min-w-[100px] sm:min-w-0 border-r border-gray-300 last:border-r-0",
                   isToday && "bg-blue-50/30"
                 )}
               >
                 {/* En-tête du jour */}
                 <div className={cn(
-                  "h-12 border-b border-gray-300 flex flex-col items-center justify-center",
+                  "h-12 border-b border-gray-300 flex flex-col items-center justify-center px-1 sm:px-2",
                   isToday && "bg-blue-100 border-blue-300"
                 )}>
-                  <div className="text-xs font-medium text-gray-600">
+                  <div className="text-[10px] sm:text-xs font-medium text-gray-600">
                     {format(day, 'EEE', { locale: fr })}
                   </div>
                   <div className={cn(
-                    "text-lg font-bold",
+                    "text-sm sm:text-lg font-bold",
                     isToday ? "text-blue-600" : "text-gray-900"
                   )}>
                     {format(day, 'd')}
@@ -843,8 +868,11 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                         const clickedDate = new Date(day);
                         clickedDate.setHours(hour, minutes, 0, 0);
                         
+                        // Snap à 15 minutes
+                        const snappedDate = snapTo15Minutes(clickedDate);
+                        
                         // Ouvrir le formulaire avec la date/heure préremplies
-                        setSelectedDate(clickedDate);
+                        setSelectedDate(snappedDate);
                         setSelectedEvent(null);
                         setShowEventDialog(true);
                       }}
@@ -868,6 +896,9 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                           const newStartDate = new Date(day);
                           newStartDate.setHours(hour, minutes, 0, 0);
                           
+                          // Snap à 15 minutes pour un positionnement précis
+                          const snappedStartDate = snapTo15Minutes(newStartDate);
+                          
                           // Trouver l'événement à mettre à jour
                           const eventToUpdate = filteredEvents.find(ev => ev.id === dragData.eventId);
                           if (!eventToUpdate) return;
@@ -878,12 +909,12 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                           const duration = originalEndDate.getTime() - originalStartDate.getTime();
                           
                           // Calculer la nouvelle date de fin en préservant la durée exacte
-                          const newEndDate = new Date(newStartDate.getTime() + duration);
+                          const newEndDate = new Date(snappedStartDate.getTime() + duration);
                           
                           // Préparer les données de mise à jour en utilisant la fonction de nettoyage
                           const updateData = cleanEventDataForAPI({
                             ...eventToUpdate,
-                            start_date: newStartDate.toISOString(),
+                            start_date: snappedStartDate.toISOString(),
                             end_date: newEndDate.toISOString()
                           });
                           
@@ -900,6 +931,15 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                         }
                       }}
                     >
+                      {/* Lignes de repère pour le snap à 15 minutes */}
+                      <div className="absolute inset-0 pointer-events-none">
+                        {/* Ligne à 15mn */}
+                        <div className="absolute left-0 right-0 border-t border-gray-100" style={{ top: '33.33%' }}></div>
+                        {/* Ligne à 30mn */}
+                        <div className="absolute left-0 right-0 border-t border-gray-200" style={{ top: '50%' }}></div>
+                        {/* Ligne à 45mn */}
+                        <div className="absolute left-0 right-0 border-t border-gray-100" style={{ top: '66.67%' }}></div>
+                      </div>
                       {/* Indicateur visuel au survol */}
                       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-blue-100/30 pointer-events-none transition-opacity" />
                     </div>
@@ -950,6 +990,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
               </div>
             );
           })}
+          </div>
         </div>
       </div>
     );
@@ -1598,6 +1639,28 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
     return format(date, "yyyy-MM-dd'T'HH:mm");
   };
   
+  // Fonction pour convertir datetime-local en ISO en préservant le fuseau horaire local
+  const convertLocalDateTimeToISO = (localDateTime: string): string => {
+    // datetime-local retourne "YYYY-MM-DDTHH:mm" sans fuseau horaire
+    // On doit l'interpréter comme étant dans le fuseau horaire local
+    const date = new Date(localDateTime);
+    // Obtenir l'offset du fuseau horaire en minutes
+    const offset = -date.getTimezoneOffset();
+    const offsetHours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
+    const offsetMinutes = String(Math.abs(offset) % 60).padStart(2, '0');
+    const offsetSign = offset >= 0 ? '+' : '-';
+    
+    // Formater la date avec l'offset
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${offsetHours}:${offsetMinutes}`;
+  };
+  
   // Fonction pour obtenir l'heure de fin par défaut (30 minutes après)
   const getDefaultEndTime = (startDate: Date) => {
     return addMinutes(startDate, 30);
@@ -1938,11 +2001,17 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
       return;
     }
 
+    // Convertir les dates datetime-local en ISO en préservant le fuseau horaire
+    const startDateISO = convertLocalDateTimeToISO(formData.start_date);
+    const endDateISO = formData.end_date 
+      ? convertLocalDateTimeToISO(formData.end_date)
+      : convertLocalDateTimeToISO(formatDateTimeLocal(getDefaultEndTime(new Date(formData.start_date))));
+
     const eventData = {
       title: formData.title.trim(),
       description: formData.description?.trim() || undefined,
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString(),
+      start_date: startDateISO,
+      end_date: endDateISO,
       type: 'appointment', // Type par défaut requis par le serveur
       priority: formData.priority || 'medium',
       location: formData.location?.trim() || null,
