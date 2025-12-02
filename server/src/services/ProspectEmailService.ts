@@ -171,6 +171,7 @@ export class ProspectEmailService {
 
   /**
    * Envoyer des emails en bulk à plusieurs prospects
+   * Protection anti-blacklistage : délais aléatoires, rate limiting
    */
   static async sendBulkProspectEmails(input: SendBulkProspectEmailsInput): Promise<{
     success: boolean;
@@ -178,43 +179,70 @@ export class ProspectEmailService {
     failed: number;
     errors: Array<{ prospect_id: string; error: string }>;
   }> {
+    const { 
+      getRandomEmailDelay, 
+      isBusinessHours,
+      canSendEmail 
+    } = await import('../utils/email-sending-utils');
+
+    // Vérifier les heures de travail
+    if (!isBusinessHours(new Date())) {
+      throw new Error('Les emails ne peuvent être envoyés que pendant les heures de travail (9h-18h, lundi-vendredi)');
+    }
+
+    // Récupérer les emails envoyés dans la dernière heure pour rate limiting
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data: recentEmails } = await supabase
+      .from('prospects_emails')
+      .select('sent_at')
+      .gte('sent_at', oneHourAgo)
+      .not('sent_at', 'is', null);
+
+    const emailsSentInLastHour = recentEmails?.length || 0;
+    const MAX_EMAILS_PER_HOUR = 12;
+
     const results = {
       sent: 0,
       failed: 0,
       errors: [] as Array<{ prospect_id: string; error: string }>
     };
 
-    // Envoyer les emails en parallèle (avec limite pour éviter surcharge)
-    const batchSize = 5; // 5 emails à la fois
-    for (let i = 0; i < input.prospect_ids.length; i += batchSize) {
-      const batch = input.prospect_ids.slice(i, i + batchSize);
-      
-      const batchResults = await Promise.all(
-        batch.map(async (prospectId) => {
-          const result = await this.sendProspectEmail({
-            prospect_id: prospectId,
-            subject: input.subject,
-            body: input.body,
-            step: input.step
-          });
+    // Envoyer les emails séquentiellement avec délais aléatoires (pas en parallèle pour éviter blacklistage)
+    for (const prospectId of input.prospect_ids) {
+      // Vérifier le rate limiting
+      if (!canSendEmail(emailsSentInLastHour + results.sent, MAX_EMAILS_PER_HOUR)) {
+        console.log(`⏸️  Rate limit atteint (${emailsSentInLastHour + results.sent}/${MAX_EMAILS_PER_HOUR} emails/heure). Arrêt de l'envoi bulk.`);
+        results.errors.push({
+          prospect_id: prospectId,
+          error: `Rate limit atteint. ${input.prospect_ids.length - results.sent - results.failed} email(s) non envoyé(s).`
+        });
+        break;
+      }
 
-          if (result.success) {
-            results.sent++;
-          } else {
-            results.failed++;
-            results.errors.push({
-              prospect_id: prospectId,
-              error: result.error || 'Erreur inconnue'
-            });
-          }
+      const result = await this.sendProspectEmail({
+        prospect_id: prospectId,
+        subject: input.subject,
+        body: input.body,
+        step: input.step
+      });
 
-          return result;
-        })
-      );
+      if (result.success) {
+        results.sent++;
+      } else {
+        results.failed++;
+        results.errors.push({
+          prospect_id: prospectId,
+          error: result.error || 'Erreur inconnue'
+        });
+      }
 
-      // Petite pause entre les batches pour éviter surcharge SMTP
-      if (i + batchSize < input.prospect_ids.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Délai aléatoire entre chaque envoi (30-120 secondes) pour comportement humain
+      // Sauf pour le dernier email
+      if (prospectId !== input.prospect_ids[input.prospect_ids.length - 1]) {
+        const delay = getRandomEmailDelay();
+        const delaySeconds = Math.round(delay / 1000);
+        console.log(`⏳ Pause aléatoire: ${delaySeconds}s avant le prochain envoi...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
@@ -226,6 +254,7 @@ export class ProspectEmailService {
 
   /**
    * Envoyer les emails programmés qui sont dus
+   * Protection anti-blacklistage : délais aléatoires, heures de travail, rate limiting
    */
   static async sendScheduledEmailsDue(): Promise<{
     sent: number;
@@ -233,6 +262,13 @@ export class ProspectEmailService {
     errors: Array<{ email_id: string; error: string }>;
   }> {
     try {
+      const { 
+        getRandomEmailDelay, 
+        isBusinessHours, 
+        adjustToBusinessHours,
+        canSendEmail 
+      } = await import('../utils/email-sending-utils');
+
       // Récupérer les emails programmés à envoyer
       const { data: scheduledEmails, error } = await supabase
         .from('prospect_emails_to_send_today')
@@ -243,14 +279,65 @@ export class ProspectEmailService {
         return { sent: 0, failed: 0, errors: [] };
       }
 
+      // Récupérer les emails envoyés dans la dernière heure pour rate limiting
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { data: recentEmails } = await supabase
+        .from('prospects_emails')
+        .select('sent_at')
+        .gte('sent_at', oneHourAgo)
+        .not('sent_at', 'is', null);
+
+      const emailsSentInLastHour = recentEmails?.length || 0;
+      const MAX_EMAILS_PER_HOUR = 12; // Limite pour éviter blacklistage
+
       const results = {
         sent: 0,
         failed: 0,
         errors: [] as Array<{ email_id: string; error: string }>
       };
 
-      // Envoyer chaque email
-      for (const scheduledEmail of scheduledEmails) {
+      // Filtrer les emails qui sont dans les heures de travail
+      const now = new Date();
+      const emailsToSend = scheduledEmails.filter(email => {
+        const scheduledDate = new Date(email.scheduled_for);
+        
+        // Si l'email est programmé pour maintenant ou dans le passé
+        if (scheduledDate <= now) {
+          // Vérifier si on est dans les heures de travail
+          if (!isBusinessHours(now)) {
+            // Ajuster à la prochaine heure de travail
+            const adjustedDate = adjustToBusinessHours(now);
+            // Mettre à jour la date programmée pour le prochain créneau
+            supabase
+              .from('prospect_email_scheduled')
+              .update({ scheduled_for: adjustedDate.toISOString() })
+              .eq('id', email.id)
+              .then(() => {
+                console.log(`📅 Email ${email.id} reporté aux heures de travail: ${adjustedDate.toISOString()}`);
+              });
+            return false; // Ne pas envoyer maintenant
+          }
+          return true; // Dans les heures de travail, on peut envoyer
+        }
+        return false; // Pas encore l'heure
+      });
+
+      // Envoyer chaque email avec rate limiting et délais aléatoires
+      for (const scheduledEmail of emailsToSend) {
+        // Vérifier le rate limiting
+        if (!canSendEmail(emailsSentInLastHour + results.sent, MAX_EMAILS_PER_HOUR)) {
+          console.log(`⏸️  Rate limit atteint (${emailsSentInLastHour + results.sent}/${MAX_EMAILS_PER_HOUR} emails/heure). Report des emails restants.`);
+          // Reporter les emails restants au prochain créneau disponible
+          const nextAvailableTime = adjustToBusinessHours(
+            new Date(Date.now() + 60 * 60 * 1000) // Dans 1 heure
+          );
+          await supabase
+            .from('prospect_email_scheduled')
+            .update({ scheduled_for: nextAvailableTime.toISOString() })
+            .eq('id', scheduledEmail.id);
+          continue;
+        }
+
         const result = await this.sendProspectEmail({
           prospect_id: scheduledEmail.prospect_id,
           subject: scheduledEmail.subject,
@@ -261,6 +348,7 @@ export class ProspectEmailService {
 
         if (result.success) {
           results.sent++;
+          console.log(`✅ Email envoyé (${results.sent}/${MAX_EMAILS_PER_HOUR} cette heure)`);
         } else {
           results.failed++;
           results.errors.push({
@@ -269,8 +357,14 @@ export class ProspectEmailService {
           });
         }
 
-        // Petite pause entre chaque envoi
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Délai aléatoire entre chaque envoi (30-120 secondes) pour comportement humain
+        // Sauf pour le dernier email
+        if (scheduledEmail !== emailsToSend[emailsToSend.length - 1]) {
+          const delay = getRandomEmailDelay();
+          const delaySeconds = Math.round(delay / 1000);
+          console.log(`⏳ Pause aléatoire: ${delaySeconds}s avant le prochain envoi...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
 
       return results;

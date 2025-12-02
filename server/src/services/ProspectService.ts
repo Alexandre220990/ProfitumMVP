@@ -706,7 +706,9 @@ export class ProspectService {
       // Trier les étapes par step_number
       const sortedSteps = steps.sort((a: any, b: any) => a.step_number - b.step_number);
 
-      // Calculer les dates d'envoi
+      // Calculer les dates d'envoi avec randomisation pour éviter blacklistage
+      const { addRandomizationToScheduledDate } = await import('../utils/email-sending-utils');
+      
       const start = startDate ? new Date(startDate) : new Date();
       const scheduledEmails = [];
       let currentDate = new Date(start);
@@ -717,13 +719,16 @@ export class ProspectService {
           currentDate = new Date(currentDate.getTime() + (step.delay_days * 24 * 60 * 60 * 1000));
         }
 
+        // Ajouter randomisation (0-2h) et ajuster aux heures de travail
+        const randomizedDate = addRandomizationToScheduledDate(currentDate, 2);
+
         scheduledEmails.push({
           prospect_id: prospectId,
           sequence_id: sequenceId,
           step_number: step.step_number,
           subject: step.subject,
           body: step.body,
-          scheduled_for: currentDate.toISOString(),
+          scheduled_for: randomizedDate.toISOString(),
           status: 'scheduled'
         });
       }
@@ -1177,15 +1182,23 @@ export class ProspectService {
         }
       }
 
-      // Préparer les emails programmés
-      const emailsToInsert = scheduledEmails.map(email => ({
-        prospect_id: prospectId,
-        step_number: email.step_number,
-        subject: email.subject,
-        body: email.body,
-        scheduled_for: email.scheduled_for,
-        status: email.status || 'scheduled'
-      }));
+      // Préparer les emails programmés avec randomisation pour éviter blacklistage
+      const { addRandomizationToScheduledDate } = await import('../utils/email-sending-utils');
+      
+      const emailsToInsert = scheduledEmails.map(email => {
+        // Ajouter randomisation (0-2h) et ajuster aux heures de travail
+        const baseDate = new Date(email.scheduled_for);
+        const randomizedDate = addRandomizationToScheduledDate(baseDate, 2);
+        
+        return {
+          prospect_id: prospectId,
+          step_number: email.step_number,
+          subject: email.subject,
+          body: email.body,
+          scheduled_for: randomizedDate.toISOString(),
+          status: email.status || 'scheduled'
+        };
+      });
 
       // Insérer tous les emails programmés
       const { data, error } = await supabase
