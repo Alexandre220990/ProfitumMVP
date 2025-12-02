@@ -136,6 +136,11 @@ export default function ProspectionAdmin() {
   const [filterAI, setFilterAI] = useState<string>('all');
   const [filterEmailing, setFilterEmailing] = useState<string>('all');
   
+  // États pour les listes d'import
+  const [importBatches, setImportBatches] = useState<any[]>([]);
+  const [expandedBatchIds, setExpandedBatchIds] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list'); // 'list' ou 'grouped'
+  
   // Sélection
   const [selectedProspectIds, setSelectedProspectIds] = useState<Set<string>>(new Set());
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
@@ -146,6 +151,8 @@ export default function ProspectionAdmin() {
   const [emailBody, setEmailBody] = useState('');
   const [sendingEmails, setSendingEmails] = useState(false);
   const [checkingGmail, setCheckingGmail] = useState(false);
+  const [generatingBulkEmail, setGeneratingBulkEmail] = useState(false);
+  const [aiContextBulkEmail, setAiContextBulkEmail] = useState('');
   
   // Pagination
   const [page, setPage] = useState(1);
@@ -230,6 +237,7 @@ export default function ProspectionAdmin() {
     if (user && activeTab === 'list') {
       fetchProspects();
       fetchStats();
+      fetchImportBatches();
     }
     if (user && activeTab === 'sequences') {
       fetchSavedSequences();
@@ -293,6 +301,27 @@ export default function ProspectionAdmin() {
       toast.error('Erreur lors du chargement des prospects');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchImportBatches = async () => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const response = await fetch(`${config.API_URL}/api/prospects/import-batches`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setImportBatches(result.data);
+      }
+    } catch (error: any) {
+      console.error('Erreur chargement batches:', error);
     }
   };
 
@@ -1040,6 +1069,70 @@ export default function ProspectionAdmin() {
     }
   };
 
+  // Fonction pour générer un email simple par IA
+  const generateBulkEmailAI = async () => {
+    if (!aiContextBulkEmail.trim()) {
+      toast.error('Veuillez fournir des instructions pour la génération');
+      return;
+    }
+
+    try {
+      setGeneratingBulkEmail(true);
+
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+
+      // Préparer les informations des prospects sélectionnés
+      const selectedIds = Array.from(selectedProspectIds);
+      const prospectsInfo = selectedIds.map(id => {
+        const prospect = prospects.find(p => p.id === id);
+        return {
+          id: prospect?.id || id,
+          company_name: prospect?.company_name,
+          siren: prospect?.siren,
+          firstname: prospect?.firstname,
+          lastname: prospect?.lastname,
+          email: prospect?.email,
+          naf_code: prospect?.naf_code,
+          naf_label: prospect?.naf_label
+        };
+      });
+
+      // Appeler l'API de génération d'email simple
+      const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-email`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prospects: prospectsInfo,
+          context: aiContextBulkEmail.trim()
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        toast.error(result.error || 'Erreur lors de la génération par IA');
+        return;
+      }
+
+      // Utiliser le premier résultat comme modèle (personnalisé pour le premier prospect)
+      if (result.data && result.data.subject && result.data.body) {
+        setEmailSubject(result.data.subject);
+        setEmailBody(result.data.body);
+        toast.success('✨ Email généré par IA avec succès !');
+      } else {
+        toast.error('Aucun contenu généré');
+      }
+    } catch (error: any) {
+      console.error('Erreur génération email IA:', error);
+      toast.error('Erreur lors de la génération par IA');
+    } finally {
+      setGeneratingBulkEmail(false);
+    }
+  };
+
   const loadTemplateSequence = (sequence: any) => {
     const steps = (sequence.prospect_email_sequence_steps || [])
       .sort((a: any, b: any) => a.step_number - b.step_number)
@@ -1081,6 +1174,38 @@ export default function ProspectionAdmin() {
     });
     setSequenceConfigs(updatedConfigs);
     toast.success('Séquence enregistrée pour ce prospect');
+  };
+
+  const saveCurrentSequenceForAll = () => {
+    const currentProspect = getCurrentProspect();
+    if (!currentProspect) return;
+
+    const currentConfig = sequenceConfigs.get(currentProspect.id);
+    if (!currentConfig || currentConfig.steps.length === 0) {
+      toast.error('Veuillez configurer au moins un email dans la séquence actuelle');
+      return;
+    }
+
+    const updatedConfigs = new Map(sequenceConfigs);
+    let count = 0;
+
+    Array.from(selectedProspectIds).forEach((prospectId) => {
+      const prospect = prospects.find(p => p.id === prospectId);
+      if (!prospect || !prospect.email || !prospect.email.includes('@')) return;
+
+      updatedConfigs.set(prospectId, {
+        email: prospect.email,
+        steps: currentConfig.steps.map(step => ({
+          ...step,
+          id: `${prospectId}-${step.stepNumber}`
+        })),
+        ready: true
+      });
+      count++;
+    });
+
+    setSequenceConfigs(updatedConfigs);
+    toast.success(`Séquence appliquée et enregistrée pour ${count} prospect${count > 1 ? 's' : ''}`);
   };
 
   const scheduleAllSequences = async (startNow: boolean = false) => {
@@ -2442,6 +2567,40 @@ export default function ProspectionAdmin() {
         </div>
       )}
 
+      {/* Sélecteur de mode d'affichage */}
+      <Card className="bg-gradient-to-r from-blue-50 to-purple-50">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-900">Mode d'affichage</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {viewMode === 'list' ? 'Vue liste complète' : 'Vue groupée par import'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className={viewMode === 'list' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+              >
+                <List className="h-4 w-4 mr-2" />
+                Liste complète
+              </Button>
+              <Button
+                variant={viewMode === 'grouped' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('grouped')}
+                className={viewMode === 'grouped' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Par liste d'import
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Filtres */}
       <Card>
         <CardHeader>
@@ -2554,30 +2713,153 @@ export default function ProspectionAdmin() {
                   <span className="sm:hidden">Email</span>
                   <span className="ml-1">({selectedProspectIds.size})</span>
                 </Button>
+                <Button
+                  onClick={async () => {
+                    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${selectedProspectIds.size} prospect${selectedProspectIds.size > 1 ? 's' : ''} ?\n\nCette action est irréversible.`)) {
+                      try {
+                        const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                        
+                        const response = await fetch(`${config.API_URL}/api/prospects/bulk-delete`, {
+                          method: 'DELETE',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({
+                            prospect_ids: Array.from(selectedProspectIds)
+                          })
+                        });
+
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                          toast.success(`${result.deleted} prospect${result.deleted > 1 ? 's supprimés' : ' supprimé'} avec succès`);
+                          setSelectedProspectIds(new Set());
+                          await fetchProspects();
+                        } else {
+                          toast.error(result.error || 'Erreur lors de la suppression');
+                        }
+                      } catch (error: any) {
+                        console.error('Erreur suppression prospects:', error);
+                        toast.error('Erreur lors de la suppression des prospects');
+                      }
+                    }
+                  }}
+                  variant="destructive"
+                  className="w-full sm:w-auto text-sm"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Supprimer la sélection</span>
+                  <span className="sm:hidden">Supprimer</span>
+                  <span className="ml-1">({selectedProspectIds.size})</span>
+                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Tableau */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">Liste des Prospects ({total})</CardTitle>
-              <p className="text-sm text-gray-500 mt-1">Les prospects qui n'ont reçu aucun mail</p>
+      {/* Vue Groupée par Import */}
+      {viewMode === 'grouped' ? (
+        <div className="space-y-4">
+          {importBatches.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-gray-500">
+                Aucune liste d'import trouvée
+              </CardContent>
+            </Card>
+          ) : (
+            importBatches.map((batch) => (
+              <Card key={batch.id || 'manual'} className="overflow-hidden">
+                <button
+                  onClick={() => {
+                    const newExpanded = new Set(expandedBatchIds);
+                    if (expandedBatchIds.has(batch.id || 'manual')) {
+                      newExpanded.delete(batch.id || 'manual');
+                    } else {
+                      newExpanded.add(batch.id || 'manual');
+                    }
+                    setExpandedBatchIds(newExpanded);
+                  }}
+                  className="w-full"
+                >
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        {expandedBatchIds.has(batch.id || 'manual') ? (
+                          <ChevronDown className="h-5 w-5 text-gray-600" />
+                        ) : (
+                          <ChevronUp className="h-5 w-5 text-gray-600" />
+                        )}
+                        <div className="text-left">
+                          <CardTitle className="text-lg font-semibold">
+                            {batch.file_name}
+                          </CardTitle>
+                          {batch.created_at && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              Ajoutée le {new Date(batch.created_at).toLocaleDateString('fr-FR', {
+                                day: '2-digit',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <Badge variant="outline" className="bg-white px-4 py-2">
+                          {batch.prospects_count} prospect{batch.prospects_count > 1 ? 's' : ''}
+                        </Badge>
+                        {batch.status && (
+                          <Badge 
+                            className={
+                              batch.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              batch.status === 'failed' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }
+                          >
+                            {batch.status === 'completed' ? 'Terminé' :
+                             batch.status === 'failed' ? 'Échoué' :
+                             'En cours'}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                </button>
+                {expandedBatchIds.has(batch.id || 'manual') && (
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-gray-500 mb-4">
+                      Chargement des prospects de cette liste...
+                    </p>
+                    {/* TODO: Charger et afficher les prospects de ce batch */}
+                  </CardContent>
+                )}
+              </Card>
+            ))
+          )}
+        </div>
+      ) : (
+        // Vue Liste Normale
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Liste des Prospects ({total})</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Les prospects qui n'ont reçu aucun mail</p>
+              </div>
+              <Button
+                onClick={() => setShowCreateProspectModal(true)}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200 font-medium px-6 py-2.5 rounded-lg"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter un prospect
+              </Button>
             </div>
-            <Button
-              onClick={() => setShowCreateProspectModal(true)}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200 font-medium px-6 py-2.5 rounded-lg"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter un prospect
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
+          </CardHeader>
+          <CardContent>
           {/* Vue Mobile - Cartes empilables (< md) */}
           <div className="md:hidden space-y-3">
             {prospects.length === 0 ? (
@@ -2913,6 +3195,7 @@ export default function ProspectionAdmin() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Modal Détails */}
       <Dialog open={showDetails} onOpenChange={handleCloseDetails}>
@@ -3171,11 +3454,60 @@ export default function ProspectionAdmin() {
 
       {/* Modal Envoi Email */}
       <Dialog open={showSendEmailModal} onOpenChange={setShowSendEmailModal}>
-        <DialogContent className="w-[95vw] max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Envoyer un email à {selectedProspectIds.size} prospect{selectedProspectIds.size > 1 ? 's' : ''}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Section Génération IA */}
+            <div className="bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 p-4 rounded-lg space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                <h3 className="font-semibold text-purple-900">Génération automatique par IA</h3>
+              </div>
+              <p className="text-sm text-purple-700">
+                Fournissez des instructions et l'IA générera automatiquement un email personnalisé.
+              </p>
+              <div>
+                <Label htmlFor="ai-context-bulk">Instructions pour l'IA</Label>
+                <Textarea
+                  id="ai-context-bulk"
+                  value={aiContextBulkEmail}
+                  onChange={(e) => setAiContextBulkEmail(e.target.value)}
+                  placeholder="Ex: Présentez notre offre de financement professionnel, mettez en avant les taux compétitifs et la rapidité du process..."
+                  className="mt-1 min-h-[100px] bg-white"
+                />
+              </div>
+              <Button
+                onClick={generateBulkEmailAI}
+                disabled={generatingBulkEmail || !aiContextBulkEmail.trim()}
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg"
+              >
+                {generatingBulkEmail ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Génération en cours...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Générer avec l'IA
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Séparateur */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">ou personnalisez manuellement</span>
+              </div>
+            </div>
+
+            {/* Champs d'email */}
             <div>
               <Label htmlFor="email-subject">Sujet *</Label>
               <Input
@@ -3193,10 +3525,12 @@ export default function ProspectionAdmin() {
                 value={emailBody}
                 onChange={(e) => setEmailBody(e.target.value)}
                 placeholder="Corps de l'email (HTML supporté)"
-                className="mt-1 min-h-[200px]"
+                className="mt-1 min-h-[250px]"
               />
             </div>
-            <div className="flex items-center justify-between pt-4">
+
+            {/* Footer avec actions */}
+            <div className="flex items-center justify-between pt-4 border-t">
               <div className="text-sm text-gray-500">
                 L'email sera envoyé à {selectedProspectIds.size} prospect{selectedProspectIds.size > 1 ? 's' : ''}
               </div>
@@ -3207,6 +3541,7 @@ export default function ProspectionAdmin() {
                     setShowSendEmailModal(false);
                     setEmailSubject('');
                     setEmailBody('');
+                    setAiContextBulkEmail('');
                   }}
                 >
                   Annuler
@@ -3245,6 +3580,7 @@ export default function ProspectionAdmin() {
                         setShowSendEmailModal(false);
                         setEmailSubject('');
                         setEmailBody('');
+                        setAiContextBulkEmail('');
                         setSelectedProspectIds(new Set());
                         await fetchProspects();
                       } else {
@@ -3547,13 +3883,50 @@ export default function ProspectionAdmin() {
                             </>
                           )}
                         </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={saveCurrentProspectSequence}
+                            disabled={config.steps.length === 0}
+                            size="sm"
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            Enregistrer cette séquence
+                          </Button>
+                          <Button
+                            onClick={saveCurrentSequenceForAll}
+                            disabled={config.steps.length === 0}
+                            size="sm"
+                            variant="outline"
+                            className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            Enregistrer pour tous
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {/* Navigation en bas */}
+                      <div className="flex items-center justify-center gap-2 pt-4 border-t mt-4">
                         <Button
-                          onClick={saveCurrentProspectSequence}
-                          disabled={config.steps.length === 0}
+                          variant="outline"
                           size="sm"
+                          onClick={() => setCurrentProspectIndex(Math.max(0, currentProspectIndex - 1))}
+                          disabled={currentProspectIndex === 0}
                         >
-                          <Save className="h-4 w-4 mr-2" />
-                          Enregistrer cette séquence
+                          <ArrowLeft className="h-4 w-4 mr-1" />
+                          Précédent
+                        </Button>
+                        <span className="text-sm text-gray-600 px-4">
+                          Prospect {currentProspectIndex + 1} sur {selectedProspectIds.size}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentProspectIndex(Math.min(selectedProspectIds.size - 1, currentProspectIndex + 1))}
+                          disabled={currentProspectIndex >= selectedProspectIds.size - 1}
+                        >
+                          Suivant
+                          <ArrowRight className="h-4 w-4 ml-1" />
                         </Button>
                       </div>
                     </div>

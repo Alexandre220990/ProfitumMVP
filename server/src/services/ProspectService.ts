@@ -45,6 +45,7 @@ export class ProspectService {
         ai_status: 'pending' as AIStatus,
         emailing_status: 'pending' as EmailingStatus,
         score_priority: 0,
+        import_batch_id: input.import_batch_id || null,
         metadata: {
           ...(input.metadata || {}),
           skip_enrichment: input.skip_enrichment || false
@@ -542,6 +543,7 @@ export class ProspectService {
         ai_status: 'pending' as AIStatus,
         emailing_status: 'pending' as EmailingStatus,
         score_priority: 0,
+        import_batch_id: input.import_batch_id || null,
         metadata: input.metadata || {}
       }));
 
@@ -1885,6 +1887,126 @@ export class ProspectService {
       return {
         success: false,
         error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Supprimer plusieurs prospects en une seule requête
+   */
+  static async bulkDeleteProspects(prospectIds: string[]): Promise<ApiResponse<{ deleted: number }>> {
+    try {
+      if (!prospectIds || prospectIds.length === 0) {
+        return {
+          success: false,
+          error: 'Aucun prospect à supprimer'
+        };
+      }
+
+      // Supprimer d'abord les emails programmés associés
+      await supabase
+        .from('prospects_emails_scheduled')
+        .delete()
+        .in('prospect_id', prospectIds);
+
+      // Supprimer les emails envoyés
+      await supabase
+        .from('prospects_emails')
+        .delete()
+        .in('prospect_id', prospectIds);
+
+      // Supprimer les prospects
+      const { error, count } = await supabase
+        .from('prospects')
+        .delete()
+        .in('id', prospectIds);
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur suppression prospects: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          deleted: count || prospectIds.length
+        }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue lors de la suppression'
+      };
+    }
+  }
+
+  /**
+   * Récupérer les listes d'import avec leurs statistiques
+   */
+  static async getImportBatchesWithStats(): Promise<ApiResponse<any[]>> {
+    try {
+      // Récupérer les imports de type 'prospect'
+      const { data: imports, error: importsError } = await supabase
+        .from('import_history')
+        .select('*')
+        .eq('entity_type', 'prospect')
+        .order('created_at', { ascending: false });
+
+      if (importsError) {
+        return {
+          success: false,
+          error: `Erreur récupération imports: ${importsError.message}`
+        };
+      }
+
+      // Pour chaque import, compter le nombre de prospects
+      const batches = await Promise.all((imports || []).map(async (importItem) => {
+        const { count, error: countError } = await supabase
+          .from('prospects')
+          .select('*', { count: 'exact', head: true })
+          .eq('import_batch_id', importItem.id);
+
+        return {
+          id: importItem.id,
+          file_name: importItem.file_name,
+          created_at: importItem.created_at,
+          status: importItem.status,
+          total_rows: importItem.total_rows,
+          success_count: importItem.success_count,
+          error_count: importItem.error_count,
+          prospects_count: count || 0
+        };
+      }));
+
+      // Ajouter une entrée pour les prospects sans import
+      const { count: noImportCount } = await supabase
+        .from('prospects')
+        .select('*', { count: 'exact', head: true })
+        .is('import_batch_id', null);
+
+      if (noImportCount && noImportCount > 0) {
+        batches.push({
+          id: null,
+          file_name: 'Prospects ajoutés manuellement',
+          created_at: null,
+          status: null,
+          total_rows: null,
+          success_count: null,
+          error_count: null,
+          prospects_count: noImportCount
+        });
+      }
+
+      return {
+        success: true,
+        data: batches
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue lors de la récupération des imports'
       };
     }
   }

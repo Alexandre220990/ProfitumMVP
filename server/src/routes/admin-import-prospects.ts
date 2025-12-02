@@ -470,13 +470,17 @@ router.post('/execute', upload.single('file'), asyncHandler(async (req: Request,
       console.error('Erreur création historique:', historyError);
     }
 
-    // Créer les prospects par batch
+    // Créer les prospects par batch en ajoutant l'import_batch_id
     let successCount = 0;
     let errorCount = errors.length;
     const batchSize = 50;
+    const importBatchId = historyEntry?.id;
 
     for (let i = 0; i < prospects.length; i += batchSize) {
-      const batch = prospects.slice(i, i + batchSize);
+      const batch = prospects.slice(i, i + batchSize).map(p => ({
+        ...p,
+        import_batch_id: importBatchId
+      }));
       const result = await ProspectService.createBulkProspects(batch);
 
       if (result.success) {

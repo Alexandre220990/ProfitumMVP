@@ -1299,5 +1299,127 @@ IMPORTANT :
   }
 });
 
+// POST /api/prospects/generate-ai-email - Générer un email simple par IA
+router.post('/generate-ai-email', async (req, res) => {
+  try {
+    const { prospects, context } = req.body;
+
+    if (!prospects || prospects.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Au moins un prospect est requis'
+      });
+    }
+
+    if (!context) {
+      return res.status(400).json({
+        success: false,
+        error: 'Le contexte est requis pour la génération'
+      });
+    }
+
+    if (!openai) {
+      return res.status(500).json({
+        success: false,
+        error: 'Service IA non configuré'
+      });
+    }
+
+    // Utiliser le premier prospect comme base pour la personnalisation
+    const prospect = prospects[0];
+
+    const systemPrompt = `Tu es un expert en prospection B2B et rédaction d'emails de prospection commerciale.
+Ton objectif est de créer un email de prospection professionnel, personnalisé et efficace.
+
+L'email doit :
+- Être court et percutant (150-200 mots maximum)
+- Avoir un objet accrocheur qui incite à l'ouverture
+- Être personnalisé selon l'entreprise ciblée
+- Créer de la valeur dès les premières lignes
+- Avoir un call-to-action clair
+- Utiliser un ton professionnel mais accessible
+- Éviter le jargon commercial agressif`;
+
+    const userPrompt = `Génère un email de prospection pour :
+
+**Entreprise**: ${prospect.company_name || 'Non renseigné'}
+**Secteur d'activité**: ${prospect.naf_label || 'Non renseigné'}
+**Contact**: ${prospect.firstname || ''} ${prospect.lastname || ''}
+**Poste**: ${prospect.job_title || 'Non renseigné'}
+
+**Instructions spécifiques**:
+${context}
+
+Réponds UNIQUEMENT au format JSON suivant (sans texte avant ou après) :
+{
+  "subject": "L'objet de l'email",
+  "body": "Le corps de l'email en HTML (avec <p>, <br>, <strong>, etc.)"
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('Pas de réponse de l\'IA');
+    }
+
+    // Parser le JSON
+    const result = JSON.parse(content);
+
+    return res.json({
+      success: true,
+      data: {
+        subject: result.subject,
+        body: result.body
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Erreur génération email IA:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur lors de la génération par IA'
+    });
+  }
+});
+
+// DELETE /api/prospects/bulk-delete - Supprimer plusieurs prospects
+router.delete('/bulk-delete', async (req, res) => {
+  try {
+    const { prospect_ids } = req.body;
+    
+    if (!prospect_ids || !Array.isArray(prospect_ids) || prospect_ids.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'prospect_ids (array) est requis' 
+      });
+    }
+
+    const result = await ProspectService.bulkDeleteProspects(prospect_ids);
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/prospects/import-batches - Récupérer les listes d'import avec statistiques
+router.get('/import-batches', async (req, res) => {
+  try {
+    const result = await ProspectService.getImportBatchesWithStats();
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
 

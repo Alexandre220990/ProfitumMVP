@@ -49,6 +49,9 @@ export interface Prospect {
   
   // Métadonnées supplémentaires
   metadata: Record<string, any> | null;
+  
+  // Lien vers l'import d'origine
+  import_batch_id: string | null;
 }
 
 export interface ProspectEmail {
@@ -85,6 +88,7 @@ export interface CreateProspectInput {
   siren?: string;
   metadata?: Record<string, any>;
   skip_enrichment?: boolean; // Si true, ne pas déclencher l'enrichissement automatique
+  import_batch_id?: string; // Référence vers l'import d'origine
 }
 
 export interface UpdateProspectInput {
