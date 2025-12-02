@@ -1142,6 +1142,74 @@ export class ProspectService {
   }
 
   /**
+   * Met à jour le commentaire d'un email programmé
+   */
+  static async updateScheduledEmailComment(
+    emailId: string,
+    comment: string | null
+  ): Promise<ApiResponse<void>> {
+    try {
+      const { error: updateError } = await supabase
+        .from('prospect_email_scheduled')
+        .update({
+          comment: comment,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', emailId);
+
+      if (updateError) {
+        return {
+          success: false,
+          error: `Erreur mise à jour commentaire: ${updateError.message}`
+        };
+      }
+
+      return {
+        success: true
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Met à jour le commentaire d'un email envoyé
+   */
+  static async updateProspectEmailComment(
+    emailId: string,
+    comment: string | null
+  ): Promise<ApiResponse<void>> {
+    try {
+      const { error: updateError } = await supabase
+        .from('prospects_emails')
+        .update({
+          comment: comment,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', emailId);
+
+      if (updateError) {
+        return {
+          success: false,
+          error: `Erreur mise à jour commentaire: ${updateError.message}`
+        };
+      }
+
+      return {
+        success: true
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
    * Programme une séquence personnalisée pour un prospect
    */
   static async scheduleCustomSequenceForProspect(

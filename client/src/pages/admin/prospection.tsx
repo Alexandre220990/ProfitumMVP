@@ -122,7 +122,6 @@ export default function ProspectionAdmin() {
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [stats, setStats] = useState<ProspectStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [prospectEmails, setProspectEmails] = useState<ProspectEmail[]>([]);
   const [scheduledEmails, setScheduledEmails] = useState<any[]>([]);
   const [showDetails, setShowDetails] = useState(false);
@@ -533,15 +532,8 @@ export default function ProspectionAdmin() {
   };
 
   const handleProspectClick = async (prospect: Prospect) => {
-    // Rediriger vers la synthèse de la séquence
-    if (activeTab === 'scheduled-sequences' || activeTab === 'completed-sequences') {
-      navigate(`/admin/prospection/sequence/${prospect.id}`);
-    } else {
-      setSelectedProspect(prospect);
-      setShowDetails(true);
-      await fetchProspectEmails(prospect.id);
-      await fetchScheduledEmails(prospect.id);
-    }
+    // Toujours rediriger vers la synthèse de la séquence
+    navigate(`/admin/prospection/sequence/${prospect.id}`);
   };
 
   // Fonctions pour la programmation de séquences

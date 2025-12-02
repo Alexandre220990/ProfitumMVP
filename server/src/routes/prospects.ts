@@ -536,6 +536,38 @@ router.put('/scheduled-emails/:emailId/delay', async (req, res) => {
   }
 });
 
+// PUT /api/prospects/scheduled-emails/:emailId/comment - Ajouter/modifier un commentaire sur un email programmé
+router.put('/scheduled-emails/:emailId/comment', async (req, res) => {
+  try {
+    const { comment } = req.body;
+    const result = await ProspectService.updateScheduledEmailComment(req.params.emailId, comment);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/prospects/emails/:emailId/comment - Ajouter/modifier un commentaire sur un email envoyé
+router.put('/emails/:emailId/comment', async (req, res) => {
+  try {
+    const { comment } = req.body;
+    const result = await ProspectService.updateProspectEmailComment(req.params.emailId, comment);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // PUT /api/prospects/scheduled-emails/:emailId - Modifier le sujet et/ou la date d'envoi d'un email programmé
 router.put('/scheduled-emails/:emailId', async (req, res) => {
   try {
