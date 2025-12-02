@@ -309,43 +309,46 @@ const MonitoringPage = () => {
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50">
             {/* Header */}
             <div className="bg-white shadow-sm border-b">
-                <div className="container mx-auto px-6 py-4">
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center space-x-4">
-                            <div className="flex space-x-2">
+                <div className="w-full mx-auto px-4 sm:px-6 py-4">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4">
+                            <div className="flex gap-2">
                                 <div className="w-6 h-4 bg-blue-600 rounded"></div>
                                 <div className="w-6 h-4 bg-white border border-gray-300 rounded"></div>
                                 <div className="w-6 h-4 bg-red-600 rounded"></div>
                             </div>
-                            <h1 className="text-2xl font-bold text-gray-900">Monitoring & Observabilité</h1>
+                            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Monitoring & Observabilité</h1>
                         </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2">
-                                <span className="text-sm text-gray-600">Dernière mise à jour: </span>
-                                <span className="text-sm font-medium">{lastUpdate.toLocaleTimeString()}</span>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
+                            <div className="flex items-center gap-2 text-sm">
+                                <span className="text-gray-600 hidden sm:inline">Dernière mise à jour: </span>
+                                <span className="font-medium">{lastUpdate.toLocaleTimeString()}</span>
                             </div>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={fetchMonitoringData}
-                                className="flex items-center space-x-2"
-                            >
-                                <RefreshCw className="w-4 h-4" />
-                                Actualiser
-                            </Button>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => navigate('/admin/dashboard-optimized')}
-                            >
-                                ← Retour au Dashboard
-                            </Button>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={fetchMonitoringData}
+                                    className="flex items-center gap-2 flex-1 sm:flex-initial"
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Actualiser</span>
+                                </Button>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => navigate('/admin/dashboard-optimized')}
+                                    className="flex-1 sm:flex-initial"
+                                >
+                                    ← Retour
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="container mx-auto p-6">
+            <div className="w-full mx-auto px-4 sm:px-6 py-4 sm:py-6">
                 {/* Statut Global */}
                 <Card className="mb-6 bg-white shadow-lg">
                     <CardHeader>
@@ -483,31 +486,31 @@ const MonitoringPage = () => {
                 </div>
 
                 {/* Onglets de Monitoring */}
-                <Tabs defaultValue="overview" className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-6">
-                        <TabsTrigger value="overview" className="flex items-center space-x-2">
+                <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
+                    <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                        <TabsTrigger value="overview" className="flex items-center gap-2">
                             <Eye className="w-4 h-4" />
-                            <span>Vue d'ensemble</span>
+                            <span className="text-xs sm:text-sm">Vue d'ensemble</span>
                         </TabsTrigger>
-                        <TabsTrigger value="alerts" className="flex items-center space-x-2">
+                        <TabsTrigger value="alerts" className="flex items-center gap-2">
                             <AlertTriangle className="w-4 h-4" />
-                            <span>Alertes</span>
+                            <span className="text-xs sm:text-sm">Alertes</span>
                         </TabsTrigger>
-                        <TabsTrigger value="security" className="flex items-center space-x-2">
+                        <TabsTrigger value="security" className="flex items-center gap-2">
                             <Shield className="w-4 h-4" />
-                            <span>Sécurité</span>
+                            <span className="text-xs sm:text-sm">Sécurité</span>
                         </TabsTrigger>
-                        <TabsTrigger value="performance" className="flex items-center space-x-2">
+                        <TabsTrigger value="performance" className="flex items-center gap-2">
                             <Zap className="w-4 h-4" />
-                            <span>Performance</span>
+                            <span className="text-xs sm:text-sm">Performance</span>
                         </TabsTrigger>
-                        <TabsTrigger value="health" className="flex items-center space-x-2">
+                        <TabsTrigger value="health" className="flex items-center gap-2">
                             <CheckCircle className="w-4 h-4" />
-                            <span>Santé</span>
+                            <span className="text-xs sm:text-sm">Santé</span>
                         </TabsTrigger>
-                        <TabsTrigger value="logs" className="flex items-center space-x-2">
+                        <TabsTrigger value="logs" className="flex items-center gap-2">
                             <FileText className="w-4 h-4" />
-                            <span>Logs</span>
+                            <span className="text-xs sm:text-sm">Logs</span>
                         </TabsTrigger>
                     </TabsList>
 
@@ -851,17 +854,17 @@ const MonitoringPage = () => {
                     <TabsContent value="logs" className="space-y-6">
                         <Card className="bg-white shadow-lg">
                             <CardHeader>
-                                <div className="flex justify-between items-center">
-                                    <CardTitle className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                    <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                                         <FileText className="w-5 h-5 text-blue-500" />
                                         <span>Logs d'Audit Récents</span>
                                     </CardTitle>
-                                    <div className="flex items-center space-x-2">
-                                        <Button variant="outline" size="sm" onClick={fetchMonitoringData}>
+                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                        <Button variant="outline" size="sm" onClick={fetchMonitoringData} className="flex-1 sm:flex-initial">
                                             <RefreshCw className="w-4 h-4 mr-2" />
                                             Actualiser
                                         </Button>
-                                        <Button variant="outline" size="sm">
+                                        <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
                                             <Download className="w-4 h-4 mr-2" />
                                             Exporter
                                         </Button>
@@ -870,19 +873,19 @@ const MonitoringPage = () => {
                             </CardHeader>
                             <CardContent>
                                 {/* Filtres */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                    <div className="relative">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                                    <div className="relative sm:col-span-2 lg:col-span-1">
                                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                                         <input
                                             type="text"
                                             placeholder="Rechercher dans les logs..."
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                                             value={logFilter.search}
                                             onChange={(e) => setLogFilter(prev => ({ ...prev, search: e.target.value }))}
                                         />
                                     </div>
                                     <select
-                                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                                         value={logFilter.level}
                                         onChange={(e) => setLogFilter(prev => ({ ...prev, level: e.target.value }))}
                                     >
@@ -893,7 +896,7 @@ const MonitoringPage = () => {
                                         <option value="critical">Critical</option>
                                     </select>
                                     <select
-                                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                                         value={logFilter.category}
                                         onChange={(e) => setLogFilter(prev => ({ ...prev, category: e.target.value }))}
                                     >
@@ -906,7 +909,7 @@ const MonitoringPage = () => {
                                         <option value="system">Système</option>
                                     </select>
                                     <select
-                                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                                         value={logFilter.dateRange}
                                         onChange={(e) => setLogFilter(prev => ({ ...prev, dateRange: e.target.value }))}
                                     >
@@ -919,42 +922,42 @@ const MonitoringPage = () => {
 
                                 {/* Onglets des types de logs */}
                                 <div className="space-y-4">
-                                    <div className="flex space-x-2 border-b">
+                                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:space-x-2 border-b">
                                         <button
-                                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                                            className={`px-4 py-2 text-sm font-medium border-b-2 sm:border-b-2 transition-colors ${
                                                 activeLogTab === 'system' 
-                                                    ? 'border-blue-500 text-blue-600' 
-                                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                                            }`}
+                                                    ? 'border-blue-500 text-blue-600 bg-blue-50 sm:bg-transparent' 
+                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                            } rounded-lg sm:rounded-none`}
                                             onClick={() => setActiveLogTab('system')}
                                         >
-                                            <div className="flex items-center space-x-2">
+                                            <div className="flex items-center gap-2">
                                                 <FileText className="w-4 h-4" />
                                                 <span>Logs Système</span>
                                             </div>
                                         </button>
                                         <button
-                                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                                            className={`px-4 py-2 text-sm font-medium border-b-2 sm:border-b-2 transition-colors ${
                                                 activeLogTab === 'iso' 
-                                                    ? 'border-blue-500 text-blue-600' 
-                                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                                            }`}
+                                                    ? 'border-blue-500 text-blue-600 bg-blue-50 sm:bg-transparent' 
+                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                            } rounded-lg sm:rounded-none`}
                                             onClick={() => setActiveLogTab('iso')}
                                         >
-                                            <div className="flex items-center space-x-2">
+                                            <div className="flex items-center gap-2">
                                                 <Code className="w-4 h-4" />
                                                 <span>Rapports ISO</span>
                                             </div>
                                         </button>
                                         <button
-                                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                                            className={`px-4 py-2 text-sm font-medium border-b-2 sm:border-b-2 transition-colors ${
                                                 activeLogTab === 'terminal' 
-                                                    ? 'border-blue-500 text-blue-600' 
-                                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                                            }`}
+                                                    ? 'border-blue-500 text-blue-600 bg-blue-50 sm:bg-transparent' 
+                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                            } rounded-lg sm:rounded-none`}
                                             onClick={() => setActiveLogTab('terminal')}
                                         >
-                                            <div className="flex items-center space-x-2">
+                                            <div className="flex items-center gap-2">
                                                 <Terminal className="w-4 h-4" />
                                                 <span>Terminal</span>
                                             </div>
@@ -973,46 +976,47 @@ const MonitoringPage = () => {
                                                 ) : (
                                                     <div className="space-y-3">
                                                         {monitoringData?.audit_logs?.system_logs?.slice(0, 20).map((log) => (
-                                                            <div key={log.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                                                                <div className="flex items-start justify-between">
-                                                                    <div className="flex items-start space-x-3 flex-1">
-                                                                        <div className={`p-1 rounded-full ${getLogLevelColor(log.level)}`}>
+                                                            <div key={log.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                                                                <div className="flex flex-col gap-3">
+                                                                    <div className="flex items-start gap-3">
+                                                                        <div className={`p-1 rounded-full ${getLogLevelColor(log.level)} shrink-0`}>
                                                                             {getLogLevelIcon(log.level)}
                                                                         </div>
                                                                         <div className="flex-1 min-w-0">
-                                                                            <div className="flex items-center space-x-2 mb-1">
-                                                                                <span className="font-medium text-gray-900">{log.message}</span>
-                                                                                <Badge variant="outline" className="text-xs">
+                                                                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                                <span className="font-medium text-gray-900 text-sm break-words">{log.message}</span>
+                                                                                <Badge variant="outline" className="text-xs shrink-0">
                                                                                     {log.category}
                                                                                 </Badge>
                                                                                 {log.success !== undefined && (
-                                                                                    <Badge className={log.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                                                                    <Badge className={`${log.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} shrink-0`}>
                                                                                         {log.success ? 'Succès' : 'Échec'}
                                                                                     </Badge>
                                                                                 )}
                                                                             </div>
-                                                                            <div className="flex items-center space-x-4 text-xs text-gray-500">
-                                                                                <span className="flex items-center space-x-1">
-                                                                                    <Calendar className="w-3 h-3" />
-                                                                                    <span>{formatTimestamp(log.timestamp)}</span>
+                                                                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs text-gray-500">
+                                                                                <span className="flex items-center gap-1">
+                                                                                    <Calendar className="w-3 h-3 shrink-0" />
+                                                                                    <span className="break-all">{formatTimestamp(log.timestamp)}</span>
                                                                                 </span>
                                                                                 {log.user_email && (
-                                                                                    <span className="flex items-center space-x-1">
-                                                                                        <User className="w-3 h-3" />
-                                                                                        <span>{log.user_email}</span>
+                                                                                    <span className="flex items-center gap-1">
+                                                                                        <User className="w-3 h-3 shrink-0" />
+                                                                                        <span className="break-all">{log.user_email}</span>
                                                                                     </span>
                                                                                 )}
                                                                                 {log.ip_address && (
-                                                                                    <span>IP: {log.ip_address}</span>
+                                                                                    <span className="break-all">IP: {log.ip_address}</span>
                                                                                 )}
                                                                             </div>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex items-center space-x-2">
+                                                                    <div className="flex items-center gap-2 justify-end">
                                                                         <Button
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             onClick={() => toggleLogExpansion(log.id)}
+                                                                            className="h-8"
                                                                         >
                                                                             {expandedLogs.has(log.id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                                                         </Button>
@@ -1020,6 +1024,7 @@ const MonitoringPage = () => {
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             onClick={() => copyToClipboard(JSON.stringify(log, null, 2))}
+                                                                            className="h-8"
                                                                         >
                                                                             <Copy className="w-4 h-4" />
                                                                         </Button>
@@ -1053,42 +1058,41 @@ const MonitoringPage = () => {
                                                 ) : (
                                                     <div className="space-y-3">
                                                         {monitoringData?.audit_logs?.iso_reports?.slice(0, 20).map((report) => (
-                                                            <div key={report.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                                                                <div className="flex items-start justify-between">
-                                                                    <div className="flex items-start space-x-3 flex-1">
-                                                                        <div className={`p-1 rounded-full ${getStatusColor(report.status)}`}>
+                                                            <div key={report.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                                                                <div className="flex flex-col gap-3">
+                                                                    <div className="flex items-start gap-3">
+                                                                        <div className={`p-1 rounded-full ${getStatusColor(report.status)} shrink-0`}>
                                                                             {report.status === 'success' ? <CheckCircle className="w-4 h-4" /> : 
                                                                              report.status === 'running' ? <Activity className="w-4 h-4" /> :
                                                                              <AlertTriangle className="w-4 h-4" />}
                                                                         </div>
                                                                         <div className="flex-1 min-w-0">
-                                                                            <div className="flex items-center space-x-2 mb-1">
-                                                                                <span className="font-medium text-gray-900">{report.script_name}</span>
-                                                                                <Badge className={getStatusColor(report.status)}>
+                                                                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                                <span className="font-medium text-gray-900 text-sm break-all">{report.script_name}</span>
+                                                                                <Badge className={`${getStatusColor(report.status)} shrink-0`}>
                                                                                     {report.status}
                                                                                 </Badge>
-                                                                                <span className="text-sm text-gray-500">
+                                                                                <span className="text-sm text-gray-500 shrink-0">
                                                                                     {formatDuration(report.duration_ms)}
                                                                                 </span>
                                                                                 {report.exit_code !== undefined && (
-                                                                                    <span className="text-sm text-gray-500">
+                                                                                    <span className="text-sm text-gray-500 shrink-0">
                                                                                         Exit: {report.exit_code}
                                                                                     </span>
                                                                                 )}
                                                                             </div>
-                                                                            <div className="flex items-center space-x-4 text-xs text-gray-500">
-                                                                                <span className="flex items-center space-x-1">
-                                                                                    <Calendar className="w-3 h-3" />
-                                                                                    <span>{formatTimestamp(report.timestamp)}</span>
-                                                                                </span>
+                                                                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                                                                                <Calendar className="w-3 h-3 shrink-0" />
+                                                                                <span className="break-all">{formatTimestamp(report.timestamp)}</span>
                                                                             </div>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex items-center space-x-2">
+                                                                    <div className="flex items-center gap-2 justify-end">
                                                                         <Button
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             onClick={() => toggleLogExpansion(report.id)}
+                                                                            className="h-8"
                                                                         >
                                                                             {expandedLogs.has(report.id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                                                         </Button>
@@ -1096,6 +1100,7 @@ const MonitoringPage = () => {
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             onClick={() => copyToClipboard(report.output)}
+                                                                            className="h-8"
                                                                         >
                                                                             <Copy className="w-4 h-4" />
                                                                         </Button>
@@ -1140,42 +1145,43 @@ const MonitoringPage = () => {
                                                 ) : (
                                                     <div className="space-y-3">
                                                         {monitoringData?.audit_logs?.terminal_logs?.slice(0, 20).map((log) => (
-                                                            <div key={log.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                                                                <div className="flex items-start justify-between">
-                                                                    <div className="flex items-start space-x-3 flex-1">
-                                                                        <div className={`p-1 rounded-full ${log.exit_code === 0 ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100'}`}>
+                                                            <div key={log.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                                                                <div className="flex flex-col gap-3">
+                                                                    <div className="flex items-start gap-3">
+                                                                        <div className={`p-1 rounded-full ${log.exit_code === 0 ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100'} shrink-0`}>
                                                                             <Terminal className="w-4 h-4" />
                                                                         </div>
                                                                         <div className="flex-1 min-w-0">
-                                                                            <div className="flex items-center space-x-2 mb-1">
-                                                                                <span className="font-medium text-gray-900 font-mono text-sm">
+                                                                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                                <span className="font-medium text-gray-900 font-mono text-xs sm:text-sm break-all">
                                                                                     $ {log.command}
                                                                                 </span>
-                                                                                <Badge className={log.exit_code === 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                                                                <Badge className={`${log.exit_code === 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} shrink-0`}>
                                                                                     Exit: {log.exit_code}
                                                                                 </Badge>
-                                                                                <span className="text-sm text-gray-500">
+                                                                                <span className="text-xs sm:text-sm text-gray-500 shrink-0">
                                                                                     {formatDuration(log.duration_ms)}
                                                                                 </span>
                                                                             </div>
-                                                                            <div className="flex items-center space-x-4 text-xs text-gray-500">
-                                                                                <span className="flex items-center space-x-1">
-                                                                                    <Calendar className="w-3 h-3" />
-                                                                                    <span>{formatTimestamp(log.timestamp)}</span>
+                                                                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs text-gray-500">
+                                                                                <span className="flex items-center gap-1">
+                                                                                    <Calendar className="w-3 h-3 shrink-0" />
+                                                                                    <span className="break-all">{formatTimestamp(log.timestamp)}</span>
                                                                                 </span>
-                                                                                <span className="flex items-center space-x-1">
-                                                                                    <User className="w-3 h-3" />
-                                                                                    <span>{log.user}</span>
+                                                                                <span className="flex items-center gap-1">
+                                                                                    <User className="w-3 h-3 shrink-0" />
+                                                                                    <span className="break-all">{log.user}</span>
                                                                                 </span>
-                                                                                <span className="font-mono">{log.working_directory}</span>
+                                                                                <span className="font-mono break-all">{log.working_directory}</span>
                                                                             </div>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex items-center space-x-2">
+                                                                    <div className="flex items-center gap-2 justify-end">
                                                                         <Button
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             onClick={() => toggleLogExpansion(log.id)}
+                                                                            className="h-8"
                                                                         >
                                                                             {expandedLogs.has(log.id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                                                         </Button>
@@ -1183,6 +1189,7 @@ const MonitoringPage = () => {
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             onClick={() => copyToClipboard(log.output)}
+                                                                            className="h-8"
                                                                         >
                                                                             <Copy className="w-4 h-4" />
                                                                         </Button>
