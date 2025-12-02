@@ -140,6 +140,8 @@ export default function ProspectionAdmin() {
   const [importBatches, setImportBatches] = useState<any[]>([]);
   const [expandedBatchIds, setExpandedBatchIds] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list'); // 'list' ou 'grouped'
+  const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
+  const [editingBatchName, setEditingBatchName] = useState<string>('');
   
   // Sélection
   const [selectedProspectIds, setSelectedProspectIds] = useState<Set<string>>(new Set());
@@ -322,6 +324,35 @@ export default function ProspectionAdmin() {
       }
     } catch (error: any) {
       console.error('Erreur chargement batches:', error);
+    }
+  };
+
+  const updateImportBatchName = async (batchId: string, newName: string) => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const response = await fetch(`${config.API_URL}/api/prospects/import-batches/${batchId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ file_name: newName })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Nom de la liste modifié avec succès');
+        fetchImportBatches(); // Recharger les listes
+        setEditingBatchId(null);
+        setEditingBatchName('');
+      } else {
+        toast.error(result.error || 'Erreur lors de la modification du nom');
+      }
+    } catch (error: any) {
+      console.error('Erreur modification nom:', error);
+      toast.error('Erreur lors de la modification du nom');
     }
   };
 
@@ -2785,16 +2816,69 @@ export default function ProspectionAdmin() {
                 >
                   <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 transition-colors">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 flex-1">
                         {expandedBatchIds.has(batch.id || 'manual') ? (
-                          <ChevronDown className="h-5 w-5 text-gray-600" />
+                          <ChevronDown className="h-5 w-5 text-gray-600 flex-shrink-0" />
                         ) : (
-                          <ChevronUp className="h-5 w-5 text-gray-600" />
+                          <ChevronUp className="h-5 w-5 text-gray-600 flex-shrink-0" />
                         )}
-                        <div className="text-left">
-                          <CardTitle className="text-lg font-semibold">
-                            {batch.file_name}
-                          </CardTitle>
+                        <div className="text-left flex-1">
+                          {editingBatchId === batch.id ? (
+                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                              <Input
+                                value={editingBatchName}
+                                onChange={(e) => setEditingBatchName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    updateImportBatchName(batch.id, editingBatchName);
+                                  } else if (e.key === 'Escape') {
+                                    setEditingBatchId(null);
+                                    setEditingBatchName('');
+                                  }
+                                }}
+                                className="text-lg font-semibold"
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => updateImportBatchName(batch.id, editingBatchName)}
+                                className="bg-green-600 hover:bg-green-700 text-white px-3"
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingBatchId(null);
+                                  setEditingBatchName('');
+                                }}
+                                className="px-3"
+                              >
+                                Annuler
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-lg font-semibold">
+                                {batch.file_name}
+                              </CardTitle>
+                              {batch.id && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingBatchId(batch.id);
+                                    setEditingBatchName(batch.file_name);
+                                  }}
+                                  className="h-8 w-8 p-0 hover:bg-blue-200"
+                                >
+                                  <Edit2 className="h-4 w-4 text-blue-600" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                           {batch.created_at && (
                             <p className="text-sm text-gray-600 mt-1">
                               Ajoutée le {new Date(batch.created_at).toLocaleDateString('fr-FR', {

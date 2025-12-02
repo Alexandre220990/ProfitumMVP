@@ -2010,4 +2010,44 @@ export class ProspectService {
       };
     }
   }
+
+  /**
+   * Mettre à jour le nom d'une liste d'import
+   */
+  static async updateImportBatchName(batchId: string, newName: string): Promise<ApiResponse<any>> {
+    try {
+      const { data, error } = await supabase
+        .from('import_history')
+        .update({ file_name: newName })
+        .eq('id', batchId)
+        .eq('entity_type', 'prospect')
+        .select()
+        .single();
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur mise à jour du nom: ${error.message}`
+        };
+      }
+
+      if (!data) {
+        return {
+          success: false,
+          error: 'Liste d\'import non trouvée'
+        };
+      }
+
+      return {
+        success: true,
+        data,
+        message: 'Nom de la liste mis à jour avec succès'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue lors de la mise à jour du nom'
+      };
+    }
+  }
 }

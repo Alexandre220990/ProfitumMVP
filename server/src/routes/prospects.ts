@@ -1421,5 +1421,25 @@ router.get('/import-batches', async (req, res) => {
   }
 });
 
+// PATCH /api/prospects/import-batches/:id - Mettre à jour le nom d'une liste d'import
+router.patch('/import-batches/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { file_name } = req.body;
+
+    if (!file_name || file_name.trim() === '') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Le nom de la liste ne peut pas être vide' 
+      });
+    }
+
+    const result = await ProspectService.updateImportBatchName(id, file_name.trim());
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
 
