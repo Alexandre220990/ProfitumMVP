@@ -62,6 +62,49 @@ export class GmailService {
   }
 
   /**
+   * Extraire le contenu (HTML et text) d'un email Gmail
+   */
+  private static extractEmailBody(payload: any): { html: string | null; text: string | null; snippet: string } {
+    let html: string | null = null;
+    let text: string | null = null;
+    const snippet = payload.snippet || '';
+
+    // Fonction récursive pour parcourir les parts
+    const extractParts = (part: any) => {
+      if (part.mimeType === 'text/html' && part.body?.data) {
+        html = Buffer.from(part.body.data, 'base64').toString('utf-8');
+      } else if (part.mimeType === 'text/plain' && part.body?.data) {
+        text = Buffer.from(part.body.data, 'base64').toString('utf-8');
+      }
+
+      // Si le message a des parts multiples (multipart)
+      if (part.parts) {
+        for (const subPart of part.parts) {
+          extractParts(subPart);
+        }
+      }
+    };
+
+    // Si le body est directement dans payload.body
+    if (payload.body?.data) {
+      if (payload.mimeType === 'text/html') {
+        html = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+      } else if (payload.mimeType === 'text/plain') {
+        text = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+      }
+    }
+
+    // Sinon, parcourir les parts
+    if (payload.parts) {
+      for (const part of payload.parts) {
+        extractParts(part);
+      }
+    }
+
+    return { html, text, snippet };
+  }
+
+  /**
    * Vérifier si un email correspond à un prospect (même email ou même domaine)
    */
   private static async checkProspectEmailMatch(
@@ -175,19 +218,23 @@ export class GmailService {
       // Traiter chaque email
       for (const message of messages.messages) {
         try {
-          // Récupérer les détails de l'email
+          // Récupérer les détails COMPLETS de l'email (avec body)
           const { data: messageData } = await gmail.users.messages.get({
             userId: 'me',
             id: message.id!,
-            format: 'metadata',
-            metadataHeaders: ['From', 'To', 'Subject', 'In-Reply-To', 'References']
+            format: 'full' // ✅ Changé de 'metadata' à 'full' pour avoir le contenu
           });
 
           const headers = messageData.payload?.headers || [];
           const fromHeader = headers.find((h: any) => h.name === 'From');
           const toHeader = headers.find((h: any) => h.name === 'To');
+          const subjectHeader = headers.find((h: any) => h.name === 'Subject');
           const inReplyTo = headers.find((h: any) => h.name === 'In-Reply-To');
           const references = headers.find((h: any) => h.name === 'References');
+          const messageIdHeader = headers.find((h: any) => h.name === 'Message-ID');
+
+          // ✅ Extraire le contenu du body (HTML et/ou text)
+          const emailBody = this.extractEmailBody(messageData.payload);
 
           // Vérifier si c'est une réponse (a un In-Reply-To ou References)
           if (!inReplyTo && !references) {
@@ -213,36 +260,93 @@ export class GmailService {
             : toHeader.value.split(' ')[0];
 
           // Chercher le prospect correspondant
-          const match = await this.checkProspectEmailMatch(fromEmail, toEmail || '');
+          let match = await this.checkProspectEmailMatch(fromEmail, toEmail || '');
+
+          // ✅ Si aucun prospect trouvé, créer automatiquement un nouveau prospect
+          if (!match) {
+            console.log(`📝 Création automatique d'un prospect pour ${fromEmail}`);
+            const newProspect = await this.createProspectFromEmail(
+              fromEmail,
+              fromHeader.value,
+              emailBody.text || emailBody.html || ''
+            );
+            
+            if (newProspect) {
+              match = {
+                prospectId: newProspect.id,
+                emailId: 'auto-created' // Pas d'email envoyé précédemment
+              };
+            }
+          }
 
           if (match) {
-            // Mettre à jour le statut replied
-            const { error: updateError } = await supabase
-              .from('prospects_emails')
-              .update({
-                replied: true,
-                replied_at: new Date(messageData.internalDate 
-                  ? parseInt(messageData.internalDate) 
-                  : Date.now()).toISOString(),
-                metadata: {
-                  gmail_message_id: message.id,
-                  reply_from: fromEmail,
-                  reply_subject: headers.find((h: any) => h.name === 'Subject')?.value || ''
-                }
-              })
-              .eq('id', match.emailId);
+            const receivedAt = new Date(messageData.internalDate 
+              ? parseInt(messageData.internalDate) 
+              : Date.now()).toISOString();
 
-            if (updateError) {
-              results.errors.push(`Erreur mise à jour email ${match.emailId}: ${updateError.message}`);
+            // ✅ Stocker l'email reçu dans prospect_email_received
+            const { data: emailReceived, error: insertError } = await supabase
+              .from('prospect_email_received')
+              .insert({
+                prospect_id: match.prospectId,
+                gmail_message_id: message.id,
+                gmail_thread_id: messageData.threadId,
+                from_email: fromEmail,
+                from_name: fromHeader.value,
+                to_email: toEmail,
+                subject: subjectHeader?.value || '',
+                body_html: emailBody.html,
+                body_text: emailBody.text,
+                snippet: emailBody.snippet,
+                in_reply_to: inReplyTo?.value || null,
+                references: references?.value ? references.value.split(' ') : [],
+                headers: headers,
+                labels: messageData.labelIds || [],
+                received_at: receivedAt,
+                is_read: false,
+                is_replied: false
+              })
+              .select()
+              .single();
+
+            if (insertError) {
+              results.errors.push(`Erreur stockage email reçu: ${insertError.message}`);
+              console.error('❌ Erreur stockage email:', insertError);
             } else {
+              console.log(`✅ Email reçu stocké: ${emailReceived.id}`);
+
+              // Mettre à jour le statut replied dans prospects_emails (si c'est une vraie réponse à notre email)
+              if (match.emailId !== 'auto-created') {
+                await supabase
+                  .from('prospects_emails')
+                  .update({
+                    replied: true,
+                    replied_at: receivedAt,
+                    metadata: {
+                      gmail_message_id: message.id,
+                      reply_from: fromEmail,
+                      reply_subject: subjectHeader?.value || '',
+                      email_received_id: emailReceived.id
+                    }
+                  })
+                  .eq('id', match.emailId);
+              }
+
               results.updated++;
-              console.log(`✅ Réponse détectée pour prospect ${match.prospectId}, email ${match.emailId}`);
+              console.log(`✅ Réponse détectée pour prospect ${match.prospectId}`);
               
               // ✅ Arrêter automatiquement la séquence pour ce prospect
-              await this.stopProspectSequence(match.prospectId, fromEmail);
+              if (match.emailId !== 'auto-created') {
+                await this.stopProspectSequence(match.prospectId, fromEmail);
+              }
               
-              // ✅ Créer une notification admin
-              await this.createAdminNotificationForReply(match.prospectId, fromEmail, message.id || 'unknown');
+              // ✅ Créer une notification admin avec lien vers page de synthèse
+              await this.createAdminNotificationForReply(
+                match.prospectId, 
+                emailReceived.id,
+                fromEmail, 
+                match.emailId === 'auto-created'
+              );
             }
           }
 
@@ -280,6 +384,72 @@ export class GmailService {
     } catch (error: any) {
       console.error('Erreur marquage email comme lu:', error);
       return false;
+    }
+  }
+
+  /**
+   * Créer automatiquement un prospect depuis un email reçu
+   */
+  private static async createProspectFromEmail(
+    email: string,
+    fromHeaderFull: string,
+    emailContent: string
+  ): Promise<{ id: string; email: string } | null> {
+    try {
+      // Extraire le nom depuis le header "From: John Doe <john@example.com>"
+      const nameMatch = fromHeaderFull.match(/^([^<]+)</);
+      let firstname: string | null = null;
+      let lastname: string | null = null;
+
+      if (nameMatch && nameMatch[1]) {
+        const fullName = nameMatch[1].trim().replace(/['"]/g, '');
+        const nameParts = fullName.split(' ');
+        if (nameParts.length >= 2) {
+          firstname = nameParts[0];
+          lastname = nameParts.slice(1).join(' ');
+        } else {
+          firstname = fullName;
+        }
+      }
+
+      // Extraire le domaine pour le nom d'entreprise
+      const domain = this.extractEmailDomain(email);
+      const companyName = domain ? domain.split('.')[0] : null;
+
+      // Créer le prospect
+      const { data: newProspect, error: createError } = await supabase
+        .from('prospects')
+        .insert({
+          email: email.toLowerCase(),
+          source: 'email_reply',
+          email_validity: 'valid', // On suppose que l'email est valide puisqu'on a reçu un email
+          firstname,
+          lastname,
+          company_name: companyName,
+          enrichment_status: 'pending',
+          ai_status: 'pending',
+          emailing_status: 'replied', // Directement en "replied" puisque c'est une réponse
+          score_priority: 5, // Priorité élevée pour les réponses entrantes
+          metadata: {
+            created_from: 'gmail_reply',
+            original_from_header: fromHeaderFull,
+            auto_created: true,
+            created_at: new Date().toISOString()
+          }
+        })
+        .select('id, email')
+        .single();
+
+      if (createError) {
+        console.error(`❌ Erreur création prospect automatique pour ${email}:`, createError);
+        return null;
+      }
+
+      console.log(`✅ Prospect créé automatiquement: ${newProspect.id} (${email})`);
+      return newProspect;
+    } catch (error: any) {
+      console.error(`❌ Erreur createProspectFromEmail:`, error);
+      return null;
     }
   }
 
@@ -340,8 +510,9 @@ export class GmailService {
    */
   private static async createAdminNotificationForReply(
     prospectId: string,
+    emailReceivedId: string,
     replyFrom: string,
-    gmailMessageId: string
+    isNewProspect: boolean = false
   ): Promise<void> {
     try {
       // Récupérer les infos du prospect
@@ -360,33 +531,44 @@ export class GmailService {
         ? `${prospect.firstname} ${prospect.lastname}`
         : prospect.company_name || prospect.email;
 
-      // Créer la notification admin
+      // Message différent si c'est un nouveau prospect créé automatiquement
+      const title = isNewProspect
+        ? `🆕 Nouveau contact: ${prospectName}`
+        : `📧 Réponse reçue de ${prospectName}`;
+
+      const message = isNewProspect
+        ? `Un nouvel email a été reçu de ${prospectName} (${prospect.email}). Un prospect a été créé automatiquement. Consultez l'email et répondez directement.`
+        : `Le prospect ${prospectName} (${prospect.email}) a répondu à votre email de prospection. Consultez sa réponse et répondez directement.`;
+
+      // ✅ Créer la notification admin avec lien vers page de synthèse
       const { error: notifError } = await supabase
         .from('AdminNotification')
         .insert({
-          type: 'prospect_reply',
-          title: `📧 Réponse reçue de ${prospectName}`,
-          message: `Le prospect ${prospectName} (${prospect.email}) a répondu à votre email de prospection.`,
-          priority: 'high',
+          type: isNewProspect ? 'prospect_new_email' : 'prospect_reply',
+          title,
+          message,
+          priority: isNewProspect ? 'urgent' : 'high',
           status: 'unread',
           is_read: false,
           metadata: {
             prospect_id: prospectId,
+            email_received_id: emailReceivedId,
             prospect_email: prospect.email,
             prospect_name: prospectName,
             reply_from: replyFrom,
-            gmail_message_id: gmailMessageId,
+            is_new_prospect: isNewProspect,
             replied_at: new Date().toISOString()
           },
-          action_url: `/admin/prospection?prospect_id=${prospectId}`,
-          action_label: 'Voir le prospect',
+          // ✅ Pointer vers la page de synthèse de l'email
+          action_url: `/admin/prospection/email-reply/${prospectId}/${emailReceivedId}`,
+          action_label: 'Voir l\'email et répondre',
           created_at: new Date().toISOString()
         });
 
       if (notifError) {
         console.error(`❌ Erreur création notification admin pour prospect ${prospectId}:`, notifError);
       } else {
-        console.log(`✅ Notification admin créée pour réponse de ${prospectName}`);
+        console.log(`✅ Notification admin créée pour ${isNewProspect ? 'nouveau prospect' : 'réponse'}: ${prospectName}`);
       }
     } catch (error: any) {
       console.error(`❌ Erreur createAdminNotificationForReply pour ${prospectId}:`, error);

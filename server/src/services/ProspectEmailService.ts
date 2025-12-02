@@ -17,6 +17,11 @@ export interface SendProspectEmailInput {
   body: string;
   step?: number;
   scheduled_email_id?: string; // Si c'est un email programmé
+  thread_info?: {
+    in_reply_to?: string; // Message-ID de l'email auquel on répond
+    references?: string[]; // Liste des Message-IDs du thread
+    thread_id?: string; // Thread ID Gmail
+  };
 }
 
 export interface SendBulkProspectEmailsInput {
@@ -79,22 +84,44 @@ export class ProspectEmailService {
       }
 
       // Envoyer l'email via SMTP
+      let info: any;
       try {
         const transporter = this.initializeTransporter();
         const textVersion = input.body.replace(/<[^>]*>/g, '');
 
-        const info = await transporter.sendMail({
+        // ✅ Construire les headers pour threads Gmail (conversations groupées)
+        const mailOptions: any = {
           from: process.env.SMTP_FROM || process.env.SMTP_USER || 'Profitum <profitum.app@gmail.com>',
           to: prospect.email,
           subject: input.subject,
           html: input.body,
           text: textVersion
-        });
+        };
+
+        // ✅ Ajouter les headers pour threading si fournis
+        if (input.thread_info) {
+          const headers: any = {};
+          
+          if (input.thread_info.in_reply_to) {
+            headers['In-Reply-To'] = input.thread_info.in_reply_to;
+          }
+          
+          if (input.thread_info.references && input.thread_info.references.length > 0) {
+            headers['References'] = input.thread_info.references.join(' ');
+          }
+
+          if (Object.keys(headers).length > 0) {
+            mailOptions.headers = headers;
+          }
+        }
+
+        info = await transporter.sendMail(mailOptions);
 
         console.log('✅ Email prospect envoyé:', {
           to: prospect.email,
           subject: input.subject,
-          messageId: info.messageId
+          messageId: info.messageId,
+          threadInfo: input.thread_info ? 'Conversation groupée' : 'Nouveau thread'
         });
       } catch (emailError: any) {
         console.error('❌ Erreur envoi email:', emailError);
@@ -119,7 +146,9 @@ export class ProspectEmailService {
           email_provider: 'manual',
           metadata: {
             sent_via: 'app_direct',
-            scheduled_email_id: input.scheduled_email_id
+            scheduled_email_id: input.scheduled_email_id,
+            message_id: info.messageId, // ✅ Stocker le message-id pour threading
+            thread_info: input.thread_info || null
           }
         })
         .select()

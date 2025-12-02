@@ -1599,4 +1599,225 @@ export class ProspectService {
       };
     }
   }
+
+  // ===== GESTION EMAILS REÇUS =====
+
+  /**
+   * Récupère tous les emails reçus d'un prospect
+   */
+  static async getReceivedEmails(prospectId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospect_email_received')
+        .select('*')
+        .eq('prospect_id', prospectId)
+        .order('received_at', { ascending: false });
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération emails reçus: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data: data || []
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Récupère un email reçu spécifique
+   */
+  static async getReceivedEmail(prospectId: string, emailId: string): Promise<ApiResponse<any>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospect_email_received')
+        .select('*')
+        .eq('id', emailId)
+        .eq('prospect_id', prospectId)
+        .single();
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur récupération email: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Marque un email reçu comme lu
+   */
+  static async markReceivedEmailAsRead(prospectId: string, emailId: string): Promise<ApiResponse<any>> {
+    try {
+      const { data, error } = await supabase
+        .from('prospect_email_received')
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', emailId)
+        .eq('prospect_id', prospectId)
+        .select()
+        .single();
+
+      if (error) {
+        return {
+          success: false,
+          error: `Erreur marquage lecture: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        data
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
+   * Envoyer une réponse à un email reçu (avec relances programmées)
+   * Inclut le support des threads Gmail pour conversations groupées
+   */
+  static async sendReplyWithFollowUps(
+    prospectId: string,
+    emailReceivedId: string,
+    steps: Array<{
+      step_number: number;
+      delay_days: number;
+      subject: string;
+      body: string;
+    }>
+  ): Promise<ApiResponse<{ sent: number; scheduled: number }>> {
+    try {
+      // Récupérer l'email reçu pour avoir le thread-id et message-id
+      const { data: emailReceived, error: emailError } = await supabase
+        .from('prospect_email_received')
+        .select('*')
+        .eq('id', emailReceivedId)
+        .eq('prospect_id', prospectId)
+        .single();
+
+      if (emailError || !emailReceived) {
+        return {
+          success: false,
+          error: 'Email reçu introuvable'
+        };
+      }
+
+      let sentCount = 0;
+      let scheduledCount = 0;
+      let lastMessageId: string | null = null;
+
+      // Trier les steps par order
+      const sortedSteps = [...steps].sort((a, b) => a.step_number - b.step_number);
+
+      for (const step of sortedSteps) {
+        if (step.delay_days === 0 || step.step_number === 1) {
+          // Email immédiat (réponse)
+          const { ProspectEmailService } = await import('./ProspectEmailService');
+          
+          const result = await ProspectEmailService.sendProspectEmail({
+            prospect_id: prospectId,
+            subject: step.subject,
+            body: step.body,
+            step: step.step_number,
+            // ✅ Thread Gmail pour conversation groupée
+            thread_info: {
+              in_reply_to: emailReceived.gmail_message_id,
+              references: emailReceived.references || [],
+              thread_id: emailReceived.gmail_thread_id
+            }
+          });
+
+          if (result.success && result.email_id) {
+            sentCount++;
+            // Récupérer le message-id pour le chaînage
+            const { data: sentEmail } = await supabase
+              .from('prospects_emails')
+              .select('metadata')
+              .eq('id', result.email_id)
+              .single();
+            
+            if (sentEmail?.metadata?.message_id) {
+              lastMessageId = sentEmail.metadata.message_id;
+            }
+          }
+        } else {
+          // Email programmé (relance)
+          const scheduledDate = new Date();
+          scheduledDate.setDate(scheduledDate.getDate() + step.delay_days);
+
+          const { error: scheduleError } = await supabase
+            .from('prospect_email_scheduled')
+            .insert({
+              prospect_id: prospectId,
+              step_number: step.step_number,
+              subject: step.subject,
+              body: step.body,
+              scheduled_for: scheduledDate.toISOString(),
+              status: 'pending',
+              metadata: {
+                email_received_id: emailReceivedId,
+                thread_id: emailReceived.gmail_thread_id,
+                in_reply_to: lastMessageId || emailReceived.gmail_message_id,
+                is_follow_up: true
+              }
+            });
+
+          if (!scheduleError) {
+            scheduledCount++;
+          }
+        }
+      }
+
+      // Marquer l'email reçu comme répondu
+      await supabase
+        .from('prospect_email_received')
+        .update({
+          is_replied: true,
+          replied_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', emailReceivedId);
+
+      return {
+        success: true,
+        data: {
+          sent: sentCount,
+          scheduled: scheduledCount
+        }
+      };
+    } catch (error: any) {
+      console.error('Erreur sendReplyWithFollowUps:', error);
+      return {
+        success: false,
+        error: error.message || 'Erreur inconnue'
+      };
+    }
+  }
 }

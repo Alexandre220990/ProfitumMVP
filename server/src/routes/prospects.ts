@@ -221,6 +221,149 @@ router.get('/:id/emails', async (req, res) => {
   }
 });
 
+// ===== ROUTES EMAILS REÇUS =====
+
+// GET /api/prospects/:id/emails-received - Récupérer tous les emails reçus d'un prospect
+router.get('/:id/emails-received', async (req, res) => {
+  try {
+    const result = await ProspectService.getReceivedEmails(req.params.id);
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/prospects/:id/emails-received/:emailId - Récupérer un email reçu spécifique
+router.get('/:id/emails-received/:emailId', async (req, res) => {
+  try {
+    const result = await ProspectService.getReceivedEmail(req.params.id, req.params.emailId);
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/prospects/:id/emails-received/:emailId/mark-read - Marquer un email reçu comme lu
+router.post('/:id/emails-received/:emailId/mark-read', async (req, res) => {
+  try {
+    const result = await ProspectService.markReceivedEmailAsRead(req.params.id, req.params.emailId);
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/prospects/generate-email-reply - Générer une réponse avec IA
+router.post('/generate-email-reply', async (req, res) => {
+  try {
+    if (!openai) {
+      return res.status(500).json({
+        success: false,
+        error: 'OpenAI non configuré'
+      });
+    }
+
+    const {
+      prospect_name,
+      prospect_email,
+      sent_emails_history,
+      received_email,
+      num_steps,
+      steps
+    } = req.body;
+
+    // Construire le prompt pour l'IA
+    const historyText = sent_emails_history
+      .map((e: any, i: number) => `Email ${i + 1} envoyé:\nSujet: ${e.subject}\nCorps: ${e.body}\n`)
+      .join('\n');
+
+    const systemPrompt = `Tu es un expert en réponse commerciale pour Profitum, plateforme de courtage en financement professionnel.
+
+🎯 CONTEXTE
+Tu réponds à ${prospect_name} (${prospect_email}) qui a répondu à notre prospection.
+
+📧 HISTORIQUE DE LA CONVERSATION
+${historyText}
+
+📩 RÉPONSE REÇUE DU PROSPECT
+${received_email}
+
+✅ CONSIGNES
+1. Répondre de manière professionnelle et personnalisée
+2. Tenir compte du contexte de la conversation
+3. Adapter le ton à la réponse du prospect
+4. Proposer une action concrète (rendez-vous, appel, etc.)
+5. Rester concis (150-200 mots max par email)
+6. Signature: "Alexandre, Co-fondateur Profitum"
+
+${num_steps > 1 ? `\n📋 SÉQUENCE DEMANDÉE\n${num_steps} emails avec relances progressives si besoin\n` : ''}`;
+
+    const userPrompt = `Génère ${num_steps} email(s) de réponse au format JSON:
+{
+  "steps": [
+    {
+      "step_number": 1,
+      "subject": "...",
+      "body": "... (HTML)"
+    }
+  ]
+}
+
+${steps.map((s: any) => `Email ${s.step_number}: ${s.subject} (délai: ${s.delay_days} jours)`).join('\n')}`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7
+    });
+
+    const generated = JSON.parse(completion.choices[0].message.content || '{}');
+
+    return res.json({
+      success: true,
+      data: generated
+    });
+  } catch (error: any) {
+    console.error('Erreur génération IA réponse:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur génération IA'
+    });
+  }
+});
+
+// POST /api/prospects/:id/send-reply/:emailReceivedId - Envoyer une réponse (et relances)
+router.post('/:id/send-reply/:emailReceivedId', async (req, res) => {
+  try {
+    const { steps } = req.body;
+    
+    if (!steps || !Array.isArray(steps) || steps.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Aucun email à envoyer'
+      });
+    }
+
+    const result = await ProspectService.sendReplyWithFollowUps(
+      req.params.id,
+      req.params.emailReceivedId,
+      steps
+    );
+
+    return res.json(result);
+  } catch (error: any) {
+    console.error('Erreur envoi réponse:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur envoi réponse'
+    });
+  }
+});
+
 // POST /api/prospects/:id/emails - Créer un email pour un prospect
 router.post('/:id/emails', async (req, res) => {
   try {
