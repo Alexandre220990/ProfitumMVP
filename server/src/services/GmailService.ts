@@ -22,6 +22,14 @@ export class GmailService {
   private static oauth2Client: any = null;
 
   /**
+   * Obtenir la redirect URI pour OAuth2
+   */
+  private static getRedirectUri(): string {
+    return process.env.GMAIL_OAUTH_REDIRECT_URI || 
+           `${process.env.SERVER_URL || 'http://localhost:3001'}/api/gmail/auth-callback`;
+  }
+
+  /**
    * Initialiser le client OAuth2 Gmail
    */
   private static initializeOAuth2Client(): any {
@@ -40,7 +48,7 @@ export class GmailService {
       this.oauth2Client = new google.auth.OAuth2(
         config.clientId,
         config.clientSecret,
-        'urn:ietf:wg:oauth:2.0:oob'
+        this.getRedirectUri()
       );
 
       this.oauth2Client.setCredentials({
@@ -49,6 +57,117 @@ export class GmailService {
     }
 
     return this.oauth2Client;
+  }
+
+  /**
+   * Générer l'URL d'autorisation OAuth2 pour obtenir un nouveau refresh token
+   */
+  static generateAuthUrl(): string {
+    const config: GmailConfig = {
+      clientId: process.env.GMAIL_CLIENT_ID || '',
+      clientSecret: process.env.GMAIL_CLIENT_SECRET || '',
+      refreshToken: '',
+      userEmail: ''
+    };
+
+    if (!config.clientId || !config.clientSecret) {
+      throw new Error('GMAIL_CLIENT_ID et GMAIL_CLIENT_SECRET sont requis');
+    }
+
+    const oauth2Client = new google.auth.OAuth2(
+      config.clientId,
+      config.clientSecret,
+      this.getRedirectUri()
+    );
+
+    const scopes = [
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.modify',
+      'https://www.googleapis.com/auth/gmail.send'
+    ];
+
+    return oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      prompt: 'consent', // Force l'affichage de l'écran de consentement pour obtenir un refresh token
+      scope: scopes
+    });
+  }
+
+  /**
+   * Échanger le code d'autorisation contre un refresh token
+   */
+  static async exchangeCodeForTokens(code: string): Promise<{
+    access_token: string;
+    refresh_token: string;
+    expiry_date: number;
+  }> {
+    const config: GmailConfig = {
+      clientId: process.env.GMAIL_CLIENT_ID || '',
+      clientSecret: process.env.GMAIL_CLIENT_SECRET || '',
+      refreshToken: '',
+      userEmail: ''
+    };
+
+    if (!config.clientId || !config.clientSecret) {
+      throw new Error('GMAIL_CLIENT_ID et GMAIL_CLIENT_SECRET sont requis');
+    }
+
+    const oauth2Client = new google.auth.OAuth2(
+      config.clientId,
+      config.clientSecret,
+      this.getRedirectUri()
+    );
+
+    const { tokens } = await oauth2Client.getToken(code);
+
+    if (!tokens.refresh_token) {
+      throw new Error('Aucun refresh_token reçu. Assurez-vous d\'utiliser access_type=offline et prompt=consent');
+    }
+
+    return {
+      access_token: tokens.access_token!,
+      refresh_token: tokens.refresh_token!,
+      expiry_date: tokens.expiry_date!
+    };
+  }
+
+  /**
+   * Tester la connexion Gmail avec le token actuel
+   */
+  static async testConnection(): Promise<{
+    success: boolean;
+    email?: string;
+    error?: string;
+  }> {
+    try {
+      const auth = this.initializeOAuth2Client();
+      const gmail = google.gmail({ version: 'v1', auth });
+
+      // Tenter de récupérer le profil pour vérifier la connexion
+      const { data: profile } = await gmail.users.getProfile({
+        userId: 'me'
+      });
+
+      return {
+        success: true,
+        email: profile.emailAddress || undefined
+      };
+    } catch (error: any) {
+      console.error('Erreur test connexion Gmail:', error);
+      
+      // Vérifier si c'est une erreur invalid_grant
+      if (error.code === 400 || error.message?.includes('invalid_grant')) {
+        return {
+          success: false,
+          error: 'invalid_grant - Le refresh token n\'est plus valide. Réauthorisation requise.'
+        };
+      }
+
+      return {
+        success: false,
+        error: error.message || 'Erreur de connexion inconnue'
+      };
+    }
   }
 
   /**
