@@ -837,5 +837,292 @@ IMPORTANT :
   }
 });
 
+// POST /api/prospects/generate-ai-sequence-batch - Générer des séquences d'emails pour plusieurs prospects
+router.post('/generate-ai-sequence-batch', async (req, res) => {
+  try {
+    const { prospects, steps, context } = req.body;
+
+    if (!prospects || !Array.isArray(prospects) || prospects.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Liste de prospects requise'
+      });
+    }
+
+    if (!steps || !Array.isArray(steps) || steps.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Étapes de séquence requises'
+      });
+    }
+
+    if (!openai) {
+      return res.status(500).json({
+        success: false,
+        error: 'Configuration OpenAI manquante. Veuillez configurer OPENAI_API_KEY.'
+      });
+    }
+
+    // Générer les séquences pour chaque prospect
+    const results = [];
+    
+    for (const prospectInfo of prospects) {
+      try {
+        // Construire le prompt pour ChatGPT
+        const companyName = prospectInfo.company_name || 'l\'entreprise';
+        const decisionMaker = prospectInfo.firstname && prospectInfo.lastname
+          ? `${prospectInfo.firstname} ${prospectInfo.lastname}`
+          : prospectInfo.firstname || prospectInfo.lastname || 'le décisionnaire';
+        const siren = prospectInfo.siren || '';
+        const nafCode = prospectInfo.naf_code || '';
+        const nafLabel = prospectInfo.naf_label || '';
+        
+        // Construire les informations secteur
+        let secteurInfo = '';
+        if (siren) {
+          secteurInfo += `SIREN: ${siren}`;
+        }
+        if (nafCode) {
+          secteurInfo += secteurInfo ? ` | Code NAF: ${nafCode}` : `Code NAF: ${nafCode}`;
+        }
+        if (nafLabel) {
+          secteurInfo += secteurInfo ? ` | Activité: ${nafLabel}` : `Activité: ${nafLabel}`;
+        }
+        if (!secteurInfo) {
+          secteurInfo = 'non renseigné';
+        }
+
+        const numSteps = steps.length;
+        const stepsInfo = steps.map((step: any, index: number) => {
+          let stepType = '';
+          if (index === 0) {
+            stepType = 'Email 1 — Prise de contact (objectif : point téléphonique)';
+          } else if (index === numSteps - 1) {
+            stepType = `Email ${index + 1} — Dernière tentative courtoise`;
+          } else {
+            stepType = `Email ${index + 1} — Relance`;
+          }
+          
+          return `Étape ${step.stepNumber}: ${stepType} (délai: ${step.delayDays} jour${step.delayDays > 1 ? 's' : ''} après l'étape précédente)`;
+        }).join('\n');
+
+        // Déterminer la structure des emails selon le nombre d'étapes
+        let emailStructureGuide = '';
+        if (numSteps === 1) {
+          emailStructureGuide = `Email 1 — Prise de contact (110–130 mots max)
+- Icebreaker personnalisé obligatoire
+- Rappel ultra court de ce que fait Profitum
+- Angle bénéfice adapté au secteur
+- Proposition d'un point téléphonique`;
+        } else if (numSteps === 2) {
+          emailStructureGuide = `Email 1 — Prise de contact (110–130 mots max)
+- Icebreaker personnalisé obligatoire
+- Rappel ultra court de ce que fait Profitum
+- Angle bénéfice adapté au secteur
+- Proposition d'un point téléphonique
+
+Email 2 — Dernière tentative courtoise (50–70 mots)
+- Ton élégant, respectueux
+- Phrase de clôture : "je clos ma boucle si vous n'êtes pas concerné(e)"`;
+        } else if (numSteps === 3) {
+          emailStructureGuide = `Email 1 — Prise de contact (110–130 mots max)
+- Icebreaker personnalisé obligatoire
+- Rappel ultra court de ce que fait Profitum
+- Angle bénéfice adapté au secteur
+- Proposition d'un point téléphonique
+
+Email 2 — Relance douce (80–100 mots)
+- Rappel sans pression
+- Bénéfice concret lié au secteur (via code NAF/libellé ou SIREN)
+
+Email 3 — Dernière tentative courtoise (50–70 mots)
+- Ton élégant, respectueux
+- Interroger sur la réception de nos précédents emails.
+- Repréciser les avantages en fonction du profil de l'entreprise`;
+        } else {
+          emailStructureGuide = `Email 1 — Prise de contact (110–130 mots max)
+- Icebreaker personnalisé obligatoire
+- Rappel ultra court de ce que fait Profitum
+- Angle bénéfice adapté au secteur
+- Proposition d'un point téléphonique
+
+Email 2 — Relance douce (80–100 mots)
+- Rappel sans pression
+- Bénéfice concret lié au secteur (via code NAF/libellé ou SIREN)
+
+Emails suivants — Relances progressives
+- Augmenter progressivement l'urgence et la personnalisation
+- Varier les angles d'approche et les bénéfices mis en avant
+
+Email ${numSteps} — Dernière tentative courtoise (50–70 mots)
+- Ton élégant, respectueux
+- Interroger sur la réception de nos précédents emails.
+- Repréciser les avantages en fonction du profil de l'entreprise`;
+        }
+
+        // Construire le prompt système
+        const systemPrompt = `Tu es un expert en prospection commerciale B2B pour Profitum, une plateforme de courtage en financement professionnel. Ton rôle est de créer des séquences d'emails personnalisées, professionnelles et performantes.
+
+🎯 CONTEXTE PROFITUM
+Profitum met en relation les entreprises avec les meilleures solutions de financement (crédit pro, leasing, affacturage, etc.) et les meilleurs partenaires bancaires. Nous optimisons les conditions et accélérons les démarches.
+
+📋 INFORMATIONS DU PROSPECT
+- Entreprise: ${companyName}
+- Décisionnaire: ${decisionMaker}
+- Secteur d'activité: ${secteurInfo}
+
+🔢 SÉQUENCE DEMANDÉE
+${stepsInfo}
+
+📐 STRUCTURE DES EMAILS
+${emailStructureGuide}
+
+✅ RÈGLES OBLIGATOIRES
+1. Personnalisation : Adapter chaque email au profil de l'entreprise (secteur NAF, SIREN, taille)
+2. Ton professionnel mais chaleureux : Français business mais jamais rigide
+3. Bénéfices concrets : Focus sur les gains réels pour l'entreprise (taux, rapidité, simplicité)
+4. Icebreaker pertinent : Email 1 doit contenir une accroche personnalisée liée au secteur
+5. Objets courts et efficaces : 5-7 mots max, engageants, pas de spam
+6. Corps concis : Respecter strictement les limites de mots indiquées
+7. Call-to-action clair : Toujours proposer une action simple (point téléphonique)
+8. Pas de spam : Éviter les mots comme "gratuit", "offre exceptionnelle", etc.
+9. Signature cohérente : Utiliser "Alexandre" ou "Alex" comme prénom, "Co-fondateur Profitum"
+
+⚠️ INTERDICTIONS
+- Jamais de "Bonjour Monsieur/Madame" générique (toujours utiliser le prénom/nom si disponible)
+- Pas de discours commercial trop agressif ou vendeur
+- Éviter les formules bateau ("j'espère que vous allez bien")
+- Pas de liste à puces dans les emails (intégrer naturellement dans le texte)
+- Ne pas mentionner explicitement qu'on connaît le SIREN ou code NAF (l'utiliser subtilement)`;
+
+        // Construire le prompt utilisateur avec contexte prioritaire
+        const userContextPrompt = context?.trim() 
+          ? `📝 INSTRUCTIONS PRIORITAIRES DE L'UTILISATEUR :
+${context.trim()}
+
+⚡ IMPORTANT : Ces instructions sont la BASE de ta génération. Respecte-les en priorité et utilise le prompt système pour optimiser et enrichir selon les bonnes pratiques de prospection B2B.`
+          : `📝 GÉNÉRATION STANDARD :
+Génère une séquence d'emails professionnelle et efficace en respectant toutes les règles ci-dessus, adaptée spécifiquement au profil de ${companyName} dans le secteur ${secteurInfo}.`;
+
+        const userPrompt = `${userContextPrompt}
+
+📝 FORMAT DE RÉPONSE REQUIS :
+
+Retourne un JSON avec cette structure exacte, en générant EXACTEMENT ${numSteps} email${numSteps > 1 ? 's' : ''} :
+{
+  "steps": [
+    {
+      "stepNumber": 1,
+      "subject": "Sujet de l'email",
+      "body": "Corps de l'email (peut contenir des sauts de ligne avec \\n)"
+    }${numSteps > 1 ? ',\n    {\n      "stepNumber": 2,\n      "subject": "...",\n      "body": "..."\n    }' : ''}${numSteps > 2 ? ',\n    ...' : ''}
+  ]
+}
+
+IMPORTANT : 
+- Génère EXACTEMENT ${numSteps} email${numSteps > 1 ? 's' : ''} correspondant aux ${numSteps} étape${numSteps > 1 ? 's' : ''} de la séquence
+- Ne modifie PAS les délais entre emails (delayDays) - ils sont déjà définis
+- Respecte les instructions utilisateur fournies dans le contexte (si disponibles)
+- Utilise les suggestions du prompt système pour optimiser et compléter intelligemment
+- Retourne UNIQUEMENT le JSON, sans texte avant ou après
+- Le corps des emails doit être en français, professionnel et adapté au contexte`;
+
+        // Appeler ChatGPT
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          temperature: 0.6,
+          response_format: { type: 'json_object' }
+        });
+
+        const responseContent = completion.choices[0]?.message?.content;
+        if (!responseContent) {
+          results.push({
+            prospect_id: prospectInfo.id,
+            success: false,
+            error: 'Erreur lors de la génération par IA'
+          });
+          continue;
+        }
+
+        // Parser la réponse JSON
+        let generatedSteps;
+        try {
+          generatedSteps = JSON.parse(responseContent);
+        } catch (parseError) {
+          // Essayer d'extraire le JSON si la réponse contient du texte supplémentaire
+          const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            generatedSteps = JSON.parse(jsonMatch[0]);
+          } else {
+            results.push({
+              prospect_id: prospectInfo.id,
+              success: false,
+              error: 'Format de réponse invalide'
+            });
+            continue;
+          }
+        }
+
+        // Vérifier que la structure est correcte
+        if (!generatedSteps.steps || !Array.isArray(generatedSteps.steps)) {
+          results.push({
+            prospect_id: prospectInfo.id,
+            success: false,
+            error: 'Format de réponse IA invalide'
+          });
+          continue;
+        }
+
+        // Mapper les résultats avec les délais originaux
+        const result = generatedSteps.steps.map((generatedStep: any, index: number) => {
+          const originalStep = steps.find((s: any) => s.stepNumber === generatedStep.stepNumber);
+          return {
+            stepNumber: generatedStep.stepNumber,
+            delayDays: originalStep?.delayDays || steps[index]?.delayDays || 0,
+            subject: generatedStep.subject || '',
+            body: generatedStep.body?.replace(/\\n/g, '\n') || ''
+          };
+        });
+
+        results.push({
+          prospect_id: prospectInfo.id,
+          success: true,
+          data: { steps: result }
+        });
+
+      } catch (error: any) {
+        console.error(`Erreur génération IA pour prospect ${prospectInfo.id}:`, error);
+        results.push({
+          prospect_id: prospectInfo.id,
+          success: false,
+          error: error.message || 'Erreur lors de la génération'
+        });
+      }
+    }
+
+    return res.json({
+      success: true,
+      results
+    });
+
+  } catch (error: any) {
+    console.error('Erreur génération IA batch:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur lors de la génération par IA'
+    });
+  }
+});
+
 export default router;
 

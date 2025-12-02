@@ -218,6 +218,12 @@ export default function ProspectionAdmin() {
   const [aiContextGeneric, setAiContextGeneric] = useState('');
   const [generatingAIGeneric, setGeneratingAIGeneric] = useState(false);
 
+  // États pour la génération IA en batch (pour toute la sélection)
+  const [showAIContextModalBatch, setShowAIContextModalBatch] = useState(false);
+  const [aiContextBatch, setAiContextBatch] = useState('');
+  const [generatingAIBatch, setGeneratingAIBatch] = useState(false);
+  const [batchGenerationProgress, setBatchGenerationProgress] = useState({ current: 0, total: 0 });
+
   // Charger les données
   useEffect(() => {
     if (user && activeTab === 'list') {
@@ -882,6 +888,148 @@ export default function ProspectionAdmin() {
       toast.error('Erreur lors de la génération par IA');
     } finally {
       setGeneratingAIGeneric(false);
+    }
+  };
+
+  // Fonctions pour la génération IA en batch (pour toute la sélection)
+  const openAIContextModalBatch = () => {
+    const selectedIds = Array.from(selectedProspectIds);
+    if (selectedIds.length === 0) {
+      toast.error('Aucun prospect sélectionné');
+      return;
+    }
+
+    // Vérifier que tous les prospects ont au moins un email dans leur séquence
+    const prospectsWithoutSteps = selectedIds.filter(id => {
+      const config = sequenceConfigs.get(id);
+      return !config || config.steps.length === 0;
+    });
+
+    if (prospectsWithoutSteps.length > 0) {
+      toast.error('Tous les prospects doivent avoir au moins un email dans leur séquence avant de générer');
+      return;
+    }
+
+    // Réinitialiser le contexte et ouvrir le modal
+    setAiContextBatch('');
+    setShowAIContextModalBatch(true);
+  };
+
+  const generateAISequenceBatch = async () => {
+    const selectedIds = Array.from(selectedProspectIds);
+    if (selectedIds.length === 0) {
+      toast.error('Aucun prospect sélectionné');
+      return;
+    }
+
+    try {
+      setGeneratingAIBatch(true);
+      setShowAIContextModalBatch(false);
+      setBatchGenerationProgress({ current: 0, total: selectedIds.length });
+
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+
+      // Préparer les informations de tous les prospects
+      const prospectsInfo = selectedIds.map(id => {
+        const prospect = prospects.find(p => p.id === id);
+        const seqConfig = sequenceConfigs.get(id);
+        
+        return {
+          id: prospect?.id || id,
+          company_name: prospect?.company_name,
+          siren: prospect?.siren,
+          firstname: prospect?.firstname,
+          lastname: prospect?.lastname,
+          email: seqConfig?.email || prospect?.email,
+          naf_code: prospect?.naf_code,
+          naf_label: prospect?.naf_label
+        };
+      });
+
+      // Obtenir les étapes de la première configuration (on suppose qu'elles sont toutes identiques en structure)
+      const firstConfig = sequenceConfigs.get(selectedIds[0]);
+      if (!firstConfig) {
+        toast.error('Configuration de séquence introuvable');
+        return;
+      }
+
+      const steps = firstConfig.steps.map(step => ({
+        stepNumber: step.stepNumber,
+        delayDays: step.delayDays
+      }));
+
+      // Appeler l'API batch
+      const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-sequence-batch`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prospects: prospectsInfo,
+          steps,
+          context: aiContextBatch.trim() || undefined
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        toast.error(result.error || 'Erreur lors de la génération par IA');
+        return;
+      }
+
+      // Mettre à jour toutes les configurations avec les résultats
+      const updatedConfigs = new Map(sequenceConfigs);
+      let successCount = 0;
+      let errorCount = 0;
+
+      result.results.forEach((prospectResult: any) => {
+        if (prospectResult.success) {
+          const seqConfig = updatedConfigs.get(prospectResult.prospect_id);
+          if (seqConfig) {
+            const updatedSteps = [...seqConfig.steps];
+            
+            prospectResult.data.steps.forEach((generatedStep: any) => {
+              const stepIndex = updatedSteps.findIndex(
+                s => s.stepNumber === generatedStep.stepNumber
+              );
+              if (stepIndex !== -1) {
+                updatedSteps[stepIndex].subject = generatedStep.subject;
+                updatedSteps[stepIndex].body = generatedStep.body;
+              }
+            });
+
+            updatedConfigs.set(prospectResult.prospect_id, {
+              ...seqConfig,
+              steps: updatedSteps
+            });
+            successCount++;
+          }
+        } else {
+          errorCount++;
+          console.error(`Erreur pour prospect ${prospectResult.prospect_id}:`, prospectResult.error);
+        }
+      });
+
+      setSequenceConfigs(updatedConfigs);
+
+      if (errorCount === 0) {
+        toast.success(`✅ Séquences générées avec succès pour ${successCount} prospect${successCount > 1 ? 's' : ''} !`);
+      } else if (successCount > 0) {
+        toast.warning(`⚠️ ${successCount} séquence${successCount > 1 ? 's' : ''} générée${successCount > 1 ? 's' : ''}, ${errorCount} erreur${errorCount > 1 ? 's' : ''}`);
+      } else {
+        toast.error(`❌ Échec de la génération pour tous les prospects`);
+      }
+
+      setAiContextBatch(''); // Réinitialiser le contexte après génération
+      setBatchGenerationProgress({ current: 0, total: 0 });
+    } catch (error: any) {
+      console.error('Erreur génération IA batch:', error);
+      toast.error('Erreur lors de la génération par IA');
+      setBatchGenerationProgress({ current: 0, total: 0 });
+    } finally {
+      setGeneratingAIBatch(false);
     }
   };
 
@@ -2808,6 +2956,34 @@ export default function ProspectionAdmin() {
           </DialogHeader>
           
           <div className="space-y-6">
+            {/* Bouton génération batch en haut */}
+            <div className="flex items-center justify-between bg-purple-50 border-2 border-purple-300 p-4 rounded-lg">
+              <div>
+                <h3 className="font-semibold text-purple-900">Génération automatique par IA</h3>
+                <p className="text-sm text-purple-700 mt-1">
+                  Générez automatiquement toutes les séquences pour les {selectedProspectIds.size} prospects sélectionnés
+                </p>
+              </div>
+              <Button
+                onClick={openAIContextModalBatch}
+                disabled={generatingAIBatch}
+                className="bg-purple-600 hover:bg-purple-700 shadow-lg"
+                size="lg"
+              >
+                {generatingAIBatch ? (
+                  <>
+                    <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                    Génération {batchGenerationProgress.current}/{batchGenerationProgress.total}...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5 mr-2" />
+                    Générer par IA pour toute la sélection
+                  </>
+                )}
+              </Button>
+            </div>
+
             {/* Navigation et prospect actuel */}
             <Card>
               <CardHeader>
@@ -3281,6 +3457,92 @@ export default function ProspectionAdmin() {
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
                     Générer la séquence
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Contexte pour Génération IA en Batch (toute la sélection) */}
+      <Dialog open={showAIContextModalBatch} onOpenChange={setShowAIContextModalBatch}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Générer par IA pour toute la sélection</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-blue-50 border-2 border-blue-300 p-4 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Sparkles className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-blue-900 mb-1">
+                    Génération automatique pour {selectedProspectIds.size} prospects
+                  </h4>
+                  <p className="text-sm text-blue-700">
+                    Entrez un contexte global qui sera appliqué à tous les prospects sélectionnés. 
+                    L'IA personnalisera automatiquement chaque séquence en fonction des informations 
+                    spécifiques de chaque entreprise (secteur, NAF, SIREN, etc.).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="ai-context-batch">
+                Contexte du mailing pour l'ensemble (optionnel)
+              </Label>
+              <Textarea
+                id="ai-context-batch"
+                value={aiContextBatch}
+                onChange={(e) => setAiContextBatch(e.target.value)}
+                placeholder="Décris ce que tu souhaites pour ces séquences d'emails : le style, le ton, les angles d'approche, les bénéfices à mettre en avant, le type de relance, etc.
+
+Exemple : 'Ton professionnel mais chaleureux, mettre l'accent sur la rapidité de traitement et l'optimisation des conditions de financement, première relance douce, dernière relance courtoise.'
+
+Ces instructions seront la base de génération. L'IA les adaptera automatiquement à chaque prospect en fonction de son profil spécifique."
+                className="mt-2 min-h-[180px]"
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                Ces instructions sont prioritaires. Le prompt système servira à optimiser et personnaliser automatiquement chaque séquence selon le profil de l'entreprise.
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Clock className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-amber-700">
+                  <strong>Temps de génération estimé :</strong> ~{Math.ceil(selectedProspectIds.size * 5 / 60)} minute{Math.ceil(selectedProspectIds.size * 5 / 60) > 1 ? 's' : ''} 
+                  ({selectedProspectIds.size} prospects × ~5 secondes/prospect)
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAIContextModalBatch(false);
+                  setAiContextBatch('');
+                }}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={generateAISequenceBatch}
+                disabled={generatingAIBatch}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {generatingAIBatch ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Génération en cours...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Générer pour tous ({selectedProspectIds.size})
                   </>
                 )}
               </Button>
