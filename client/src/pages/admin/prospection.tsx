@@ -234,6 +234,13 @@ export default function ProspectionAdmin() {
     }
   }, [user, page, sortBy, sortOrder, search, filterSource, filterEnrichment, filterAI, filterEmailing, activeTab]);
 
+  // Fermer le popup de création de séquence si on change d'onglet
+  useEffect(() => {
+    if (activeTab !== 'sequences' && showSequenceForm) {
+      setShowSequenceForm(false);
+    }
+  }, [activeTab]);
+
   const fetchProspects = async () => {
     try {
       setLoading(true);
@@ -1038,6 +1045,12 @@ export default function ProspectionAdmin() {
   };
 
   const handleCreateSequence = async () => {
+    // S'assurer qu'on est dans l'onglet "sequences"
+    if (activeTab !== 'sequences') {
+      setSearchParams({ tab: 'sequences' });
+      // Attendre un peu pour que l'onglet change avant d'ouvrir le popup
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
     setEditingSequence(null);
     setSequenceForm({
       name: '',
@@ -3224,12 +3237,11 @@ export default function ProspectionAdmin() {
 
       {/* Modal Création/Édition de Séquence */}
       <Dialog 
-        open={showSequenceForm} 
+        open={showSequenceForm && activeTab === 'sequences'} 
         onOpenChange={(open) => {
           setShowSequenceForm(open);
-          // S'assurer qu'on reste sur le bon tab quand on ferme le modal
+          // Si on ferme le modal, s'assurer qu'on reste sur l'onglet sequences
           if (!open && activeTab === 'sequences') {
-            // Garder le tab sequences actif
             setSearchParams({ tab: 'sequences' });
           }
         }}
