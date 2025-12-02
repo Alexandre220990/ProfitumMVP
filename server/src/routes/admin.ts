@@ -6477,7 +6477,16 @@ router.get('/notifications', async (req, res) => {
       status: notif.user_status || 'unread', // Utiliser user_status au lieu de global_status
     }));
     
+    // Log des types de notifications pour déboguer
+    const typeStats = normalizedNotifications.reduce((acc: any, n: any) => {
+      const type = n.notification_type || 'undefined';
+      const status = n.status || 'undefined';
+      const key = `${type}|${status}`;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
     console.log(`✅ ${normalizedNotifications.length} notifications récupérées pour admin ${adminDatabaseId}`);
+    console.log('📊 Types de notifications:', typeStats);
     
     return res.json({
       success: true,
