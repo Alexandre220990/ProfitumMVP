@@ -655,21 +655,22 @@ Email 3 — Dernière tentative courtoise (50–70 mots)
 Email 2 — Relance douce (80–100 mots)
 - Rappel sans pression
 - Bénéfice concret lié au secteur (via code NAF/libellé ou SIREN)
-- Suggestion : "si vous préférez, vous pouvez juste m'envoyer X document(s)"
+- Proposition d'un point téléphonique court
 
 Email 3 — Relance orientée résultat (70–90 mots)
 - Nouveau bénéfice différent, toujours sectorisé
 - Mention discrète : "vos homologues y gagnent souvent…"
-- Proposition claire : RDV 10 min ou documents`;
+- Proposition claire : point téléphonique de 10 min`;
       if (numSteps > 3) {
-        emailStructureGuide += `\n\nEmail 4 à ${numSteps} — Relances intermédiaires (70–90 mots chacune)
+        emailStructureGuide += `\n\nEmail 4 à ${numSteps - 1} — Relances intermédiaires (70–90 mots chacune)
 - Varier les bénéfices et angles sectorisés
-- Toujours proposer RDV ou documents
+- Toujours proposer un point téléphonique
 - Rester professionnel et non intrusif`;
       }
       emailStructureGuide += `\n\nEmail ${numSteps} — Dernière tentative courtoise (50–70 mots)
 - Ton élégant, respectueux
-- Phrase de clôture : "je clos ma boucle si vous n'êtes pas concerné(e)"`;
+- Interroger sur la réception de nos précédents emails
+- Repréciser les avantages en fonction du profil de l'entreprise`;
     }
 
     // Construire le prompt système - version optimisée et moins restrictive
