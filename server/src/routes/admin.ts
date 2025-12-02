@@ -2427,6 +2427,66 @@ router.put('/profile/password', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/admin/reports/daily-activity - Envoyer le rapport d'activité quotidien (envoi manuel)
+router.post('/reports/morning', asyncHandler(async (req, res) => {
+  try {
+    const authUser = (req as any).user as AuthUser;
+    
+    if (!authUser || authUser.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+
+    // Récupérer les informations complètes de l'admin
+    const { data: admin, error: adminError } = await supabaseClient
+      .from('Admin')
+      .select('id, email, name, auth_user_id')
+      .eq('id', authUser.database_id || authUser.id)
+      .single();
+
+    if (adminError || !admin) {
+      return res.status(404).json({
+        success: false,
+        message: 'Admin non trouvé'
+      });
+    }
+
+    console.log(`🌅 Envoi manuel du rapport matinal pour ${admin.email}`);
+
+    // Importer le service dynamiquement pour éviter les dépendances circulaires
+    const { MorningReportService } = await import('../services/morning-report-service');
+    
+    // Envoyer le rapport matinal
+    const success = await MorningReportService.sendMorningReport(
+      admin.email,
+      admin.name || admin.email,
+      admin.auth_user_id || undefined,
+      'admin'
+    );
+
+    if (!success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'envoi du rapport matinal. Vérifiez la configuration SMTP.'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Rapport matinal envoyé avec succès',
+      sentTo: admin.email
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur envoi manuel rapport matinal:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur lors de l\'envoi du rapport matinal'
+    });
+  }
+}));
+
 router.post('/reports/daily-activity', asyncHandler(async (req, res) => {
   try {
     const authUser = (req as any).user as AuthUser;
@@ -6370,6 +6430,7 @@ router.get('/notifications', async (req, res) => {
       .from('AdminNotificationWithStatus')
       .select('*')
       .eq('admin_id', adminDatabaseId)
+      .neq('status', 'replaced')
       .order('created_at', { ascending: false });
     
     // Filtrer par statut individuel (user_status)

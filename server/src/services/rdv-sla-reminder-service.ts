@@ -202,17 +202,17 @@ export class RDVSlaReminderService {
       const clientName = rdv.Client?.company_name || rdv.Client?.name || 'Client';
       const expertName = rdv.Expert?.name || 'Non assigné';
       const rdvDate = rdv.scheduled_date ? new Date(rdv.scheduled_date).toLocaleDateString('fr-FR') : 'Date non définie';
-      const rdvTime = rdv.scheduled_time || 'Heure non définie';
+      const rdvTime = rdv.scheduled_time ? rdv.scheduled_time.substring(0, 5) : 'Heure non définie';
 
       if (threshold === '120h') {
         reminderPriority = 'urgent';
-        reminderMessage = `🚨 URGENT : RDV non traité depuis ${daysElapsed} jours - ${rdv.title || 'Sans titre'} - Client: ${clientName}`;
+        reminderMessage = `🚨 URGENT : RDV prévu le ${rdvDate} à ${rdvTime} passé depuis ${daysElapsed} jours - ${rdv.title || 'Sans titre'} - Client: ${clientName}`;
       } else if (threshold === '48h') {
         reminderPriority = 'high';
-        reminderMessage = `⚠️ RDV en attente depuis ${daysElapsed} jours - ${rdv.title || 'Sans titre'} - Client: ${clientName}`;
+        reminderMessage = `⚠️ RDV prévu le ${rdvDate} à ${rdvTime} passé depuis ${daysElapsed} jours - ${rdv.title || 'Sans titre'} - Client: ${clientName}`;
       } else {
         reminderPriority = 'high';
-        reminderMessage = `📋 Rappel : RDV à traiter - ${rdv.title || 'Sans titre'} - Client: ${clientName}`;
+        reminderMessage = `📋 Rappel : RDV prévu le ${rdvDate} à ${rdvTime} à traiter - ${rdv.title || 'Sans titre'} - Client: ${clientName}`;
       }
 
       // Récupérer tous les admins actifs
@@ -251,35 +251,84 @@ export class RDVSlaReminderService {
 
         // Créer la notification in-app si autorisée
         if (shouldSendInApp) {
-          await supabase.from('notification').insert({
-            user_id: admin.auth_user_id,
-            user_type: 'admin',
-            title: reminderMessage,
-            message: `RDV prévu le ${rdvDate} à ${rdvTime} - Expert: ${expertName}`,
-            notification_type: 'rdv_sla_reminder',
-            priority: reminderPriority,
-            is_read: false,
-            status: 'unread',
-            action_url: `/admin/agenda-admin?rdvId=${rdv.id}`,
-            action_data: {
-              rdv_id: rdv.id,
-              threshold: threshold,
-              days_elapsed: daysElapsed,
-              hours_elapsed: Math.floor(hoursElapsed)
-            },
-            metadata: {
-              rdv_id: rdv.id,
-              threshold: threshold,
-              days_elapsed: daysElapsed,
-              hours_elapsed: Math.floor(hoursElapsed),
-              client_name: clientName,
-              expert_name: expertName,
-              scheduled_date: rdv.scheduled_date,
-              scheduled_time: rdv.scheduled_time
-            },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
+          const { data: newNotification, error: insertError } = await supabase
+            .from('notification')
+            .insert({
+              user_id: admin.auth_user_id,
+              user_type: 'admin',
+              title: reminderMessage,
+              message: `RDV était prévu le ${rdvDate} à ${rdvTime} (passé depuis ${Math.floor(hoursElapsed)}h). Expert: ${expertName}`,
+              notification_type: 'rdv_sla_reminder',
+              priority: reminderPriority,
+              is_read: false,
+              status: 'unread',
+              action_url: `/admin/agenda-admin?rdvId=${rdv.id}`,
+              action_data: {
+                rdv_id: rdv.id,
+                threshold: threshold,
+                days_elapsed: daysElapsed,
+                hours_elapsed: Math.floor(hoursElapsed),
+                scheduled_datetime: `${rdv.scheduled_date}T${rdv.scheduled_time}`
+              },
+              metadata: {
+                rdv_id: rdv.id,
+                threshold: threshold,
+                days_elapsed: daysElapsed,
+                hours_elapsed: Math.floor(hoursElapsed),
+                client_name: clientName,
+                expert_name: expertName,
+                scheduled_date: rdv.scheduled_date,
+                scheduled_time: rdv.scheduled_time,
+                scheduled_datetime: `${rdv.scheduled_date}T${rdv.scheduled_time}`
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select();
+
+          if (!insertError && newNotification && newNotification.length > 0) {
+            // Marquer les anciennes notifications pour ce RDV comme remplacées
+            // On cherche les notifications calendar_invitation et calendar_reminder non lues pour ce RDV
+            const { data: oldNotifications } = await supabase
+              .from('notification')
+              .select('id')
+              .eq('user_id', admin.auth_user_id)
+              .in('notification_type', ['calendar_invitation', 'calendar_reminder'])
+              .eq('is_read', false)
+              .neq('status', 'replaced')
+              .or(`metadata->>rdv_id.eq.${rdv.id},action_data->>rdv_id.eq.${rdv.id}`);
+
+            if (oldNotifications && oldNotifications.length > 0) {
+              // Récupérer les notifications complètes pour fusionner les metadata
+              const { data: fullNotifications } = await supabase
+                .from('notification')
+                .select('id, metadata')
+                .in('id', oldNotifications.map((n: any) => n.id));
+
+              // Mettre à jour chaque notification avec ses metadata fusionnés
+              if (fullNotifications) {
+                for (const notif of fullNotifications) {
+                  const updatedMetadata = {
+                    ...(notif.metadata || {}),
+                    replaced_by_sla_reminder: true,
+                    sla_reminder_notification_id: newNotification[0]?.id,
+                    replacement_date: new Date().toISOString()
+                  };
+
+                  await supabase
+                    .from('notification')
+                    .update({
+                      status: 'replaced',
+                      metadata: updatedMetadata,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', notif.id);
+                }
+              }
+              
+              console.log(`✅ [RDV SLA Reminder] ${oldNotifications.length} notification(s) originale(s) marquée(s) comme remplacée(s) pour l'admin ${admin.email}`);
+            }
+          }
         } else {
           console.log(`⏭️ [RDV SLA Reminder] Notification in-app non créée pour ${admin.email} - préférences désactivées`);
         }

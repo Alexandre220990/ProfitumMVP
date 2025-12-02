@@ -28,6 +28,7 @@ export default function AdminProfil() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [sendingReport, setSendingReport] = useState(false);
+  const [sendingMorningReport, setSendingMorningReport] = useState(false);
 
   const validatePassword = (password: string): { valid: boolean; message?: string } => {
     if (password.length < 8) {
@@ -160,6 +161,45 @@ export default function AdminProfil() {
       });
     } finally {
       setSendingReport(false);
+    }
+  };
+
+  const handleSendMorningReport = async () => {
+    setSendingMorningReport(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Vous devez être connecté');
+      }
+
+      const response = await fetch(`${config.API_URL}/api/admin/reports/morning`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Erreur lors de l\'envoi du rapport matinal');
+      }
+
+      toast.success('Rapport matinal envoyé avec succès', {
+        description: `Le rapport matinal a été envoyé à ${result.sentTo || 'votre adresse email'}`
+      });
+
+    } catch (err: any) {
+      console.error('Erreur envoi rapport matinal:', err);
+      setError(err.message || 'Erreur lors de l\'envoi du rapport matinal');
+      toast.error('Erreur', {
+        description: err.message || 'Une erreur est survenue lors de l\'envoi du rapport matinal'
+      });
+    } finally {
+      setSendingMorningReport(false);
     }
   };
 
@@ -394,6 +434,55 @@ export default function AdminProfil() {
                   <NotificationPreferencesPanel />
                 </TabsContent>
               </Tabs>
+
+              {/* Section Rapport Matinal */}
+              <div className="mt-8 pt-8 border-t">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Mail className="w-5 h-5 mr-2 text-amber-600" />
+                    🌅 Rapport Matinal
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Envoyer le rapport matinal par email. Ce rapport inclut :
+                  </p>
+                  <ul className="text-sm text-gray-600 mb-6 space-y-1 list-disc list-inside">
+                    <li>RDV du jour avec détails complets</li>
+                    <li>Notifications urgentes non lues (high/urgent, dernières 24h)</li>
+                    <li>RDV en retard nécessitant une action</li>
+                    <li>Actions en attente (critical et high)</li>
+                    <li>Contacts/Leads urgents (48h et 120h)</li>
+                    <li>Notifications escaladées</li>
+                  </ul>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Note : L'envoi manuel n'affecte pas l'envoi automatique quotidien à 7h.
+                  </p>
+
+                  {error && (
+                    <Alert variant="destructive" className="mb-4">
+                      <AlertCircle className="w-4 h-4" />
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <Button
+                    onClick={handleSendMorningReport}
+                    disabled={sendingMorningReport}
+                    className="w-full bg-amber-600 hover:bg-amber-700"
+                  >
+                    {sendingMorningReport ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Envoi en cours...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4 mr-2" />
+                        Envoyer le rapport matinal
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
 
               {/* Section Rapport d'activité quotidien */}
               <div className="mt-8 pt-8 border-t">

@@ -167,15 +167,23 @@ export class MorningReportService {
       ApporteurAffaires: Array.isArray(rdv.ApporteurAffaires) ? rdv.ApporteurAffaires[0] : rdv.ApporteurAffaires
     });
 
-    // 2. Récupérer toutes les notifications non lues (hors RDV)
-    const { data: unreadNotifications, error: unreadError } = await supabase
+    // 2. Récupérer les notifications urgentes et importantes du jour uniquement
+    // On filtre pour avoir seulement : priorité high/urgent + créées dans les dernières 24h
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+    
+    const { data: unreadNotificationsRaw, error: unreadError } = await supabase
       .from('notification')
-      .select('id, title, message, notification_type, priority, created_at, is_read, action_url, action_data')
+      .select('id, title, message, notification_type, priority, created_at, is_read, action_url, action_data, metadata')
       .eq('user_type', 'admin')
       .eq('is_read', false)
       .neq('notification_type', 'rdv_reminder')
       .neq('notification_type', 'rdv_confirmed')
       .neq('notification_type', 'rdv_cancelled')
+      .neq('status', 'replaced')
+      .in('priority', ['high', 'urgent'])
+      .gte('created_at', twentyFourHoursAgo.toISOString())
+      .order('priority', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(100);
 
@@ -183,44 +191,47 @@ export class MorningReportService {
       console.error('❌ Erreur récupération notifications non lues:', unreadError);
     }
 
-    // 3. Récupérer toutes les notifications lues (hors RDV) - seulement celles récentes (30 derniers jours)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const dateLimit = thirtyDaysAgo.toISOString();
+    // 3. Dédoublonner les notifications
+    const unreadNotifications = this.deduplicateNotifications(unreadNotificationsRaw || []);
 
-    const { data: readNotifications, error: readError } = await supabase
+    // 4. Récupérer les notifications lues récentes (dernières 24h seulement)
+    const { data: readNotificationsRaw, error: readError } = await supabase
       .from('notification')
-      .select('id, title, message, notification_type, priority, created_at, is_read, action_url, action_data')
+      .select('id, title, message, notification_type, priority, created_at, is_read, action_url, action_data, metadata')
       .eq('user_type', 'admin')
       .eq('is_read', true)
       .neq('notification_type', 'rdv_reminder')
       .neq('notification_type', 'rdv_confirmed')
       .neq('notification_type', 'rdv_cancelled')
-      .gte('created_at', dateLimit)
+      .neq('status', 'replaced')
+      .gte('created_at', twentyFourHoursAgo.toISOString())
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(20);
 
     if (readError) {
       console.error('❌ Erreur récupération notifications lues:', readError);
     }
 
-    // 4. Récupérer les RDV en retard (24h, 48h, 120h)
+    // 5. Dédoublonner les notifications lues
+    const readNotifications = this.deduplicateNotifications(readNotificationsRaw || []);
+
+    // 6. Récupérer les RDV en retard (24h, 48h, 120h)
     const now = new Date();
     const overdueRDVs = await this.getOverdueRDVs(now);
 
-    // 5. Récupérer les dossiers nécessitant une action
-    const pendingActions = await this.getPendingActions(now);
+    // 7. Récupérer les dossiers nécessitant une action URGENTE uniquement
+    const pendingActions = await this.getPendingActions(now, true); // true = urgent only
 
-    // 6. Récupérer les contacts/leads en attente
-    const pendingContactsLeads = await this.getPendingContactsLeads(now);
+    // 8. Récupérer les contacts/leads en attente URGENTS uniquement
+    const pendingContactsLeads = await this.getPendingContactsLeads(now, true); // true = urgent only
 
-    // 7. Récupérer les notifications escaladées
+    // 9. Récupérer les notifications escaladées
     const escalatedNotifications = await this.getEscalatedNotifications();
 
     return {
       reportDate: dateStr,
       rdvToday: (rdvToday || []).map(normalizeRDV),
-      unreadNotifications: (unreadNotifications || []).map((n: any) => ({
+      unreadNotifications: unreadNotifications.map((n: any) => ({
         id: n.id,
         title: n.title,
         message: n.message,
@@ -230,7 +241,7 @@ export class MorningReportService {
         is_read: n.is_read,
         action_url: n.action_url || (n.action_data?.action_url || null)
       })),
-      readNotifications: (readNotifications || []).map((n: any) => ({
+      readNotifications: readNotifications.map((n: any) => ({
         id: n.id,
         title: n.title,
         message: n.message,
@@ -246,14 +257,69 @@ export class MorningReportService {
       escalatedNotifications,
       stats: {
         totalRDVToday: (rdvToday || []).length,
-        totalUnreadNotifications: (unreadNotifications || []).length,
-        totalReadNotifications: (readNotifications || []).length,
+        totalUnreadNotifications: unreadNotifications.length,
+        totalReadNotifications: readNotifications.length,
         totalOverdueRDVs: overdueRDVs.length,
         totalPendingActions: pendingActions.length,
         totalPendingContactsLeads: pendingContactsLeads.length,
         totalEscalatedNotifications: escalatedNotifications.length
       }
     };
+  }
+
+  /**
+   * Dédoublonner les notifications selon des clés métier
+   */
+  private static deduplicateNotifications(notifications: any[]): any[] {
+    const seen = new Map<string, any>();
+    
+    for (const notif of notifications) {
+      // Créer une clé unique basée sur le type et le contenu métier
+      let dedupeKey: string;
+      
+      // Pour les rdv_sla_reminder : utiliser l'ID du RDV
+      if (notif.notification_type === 'rdv_sla_reminder') {
+        const rdvId = notif.metadata?.rdv_id || notif.action_data?.rdv_id;
+        dedupeKey = `rdv_sla_${rdvId}`;
+      }
+      // Pour les reminders génériques : utiliser l'original_notification_id
+      else if (notif.notification_type === 'reminder') {
+        const originalId = notif.metadata?.original_notification_id || notif.action_data?.original_notification_id;
+        dedupeKey = originalId ? `reminder_${originalId}` : `reminder_${notif.id}`;
+      }
+      // Pour les contact_message : utiliser contact_message_id
+      else if (notif.notification_type === 'contact_message') {
+        const contactMsgId = notif.metadata?.contact_message_id || notif.action_data?.contact_message_id;
+        dedupeKey = contactMsgId ? `contact_msg_${contactMsgId}` : `contact_msg_${notif.id}`;
+      }
+      // Pour les lead_to_treat : utiliser l'ID du contact
+      else if (notif.notification_type === 'lead_to_treat') {
+        const contactId = notif.metadata?.contact_id || notif.action_data?.contact_id;
+        dedupeKey = contactId ? `lead_${contactId}` : `lead_${notif.id}`;
+      }
+      // Pour les autres : utiliser notification_type + title + message (hash)
+      else {
+        dedupeKey = `${notif.notification_type}_${notif.title}_${notif.message}`.substring(0, 100);
+      }
+      
+      // Garder seulement la notification la plus récente (ou la plus prioritaire)
+      const existing = seen.get(dedupeKey);
+      if (!existing) {
+        seen.set(dedupeKey, notif);
+      } else {
+        // Garder la plus prioritaire ou la plus récente
+        const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1, normal: 1 };
+        const existingPriority = priorityOrder[existing.priority as keyof typeof priorityOrder] || 1;
+        const newPriority = priorityOrder[notif.priority as keyof typeof priorityOrder] || 1;
+        
+        if (newPriority > existingPriority || 
+            (newPriority === existingPriority && new Date(notif.created_at) > new Date(existing.created_at))) {
+          seen.set(dedupeKey, notif);
+        }
+      }
+    }
+    
+    return Array.from(seen.values());
   }
 
   /**
@@ -329,7 +395,7 @@ export class MorningReportService {
   /**
    * Récupérer les dossiers nécessitant une action
    */
-  private static async getPendingActions(now: Date): Promise<PendingAction[]> {
+  private static async getPendingActions(now: Date, urgentOnly: boolean = false): Promise<PendingAction[]> {
     try {
       // Récupérer les dossiers avec actionType
       const { data: dossiers, error } = await supabase
@@ -367,6 +433,11 @@ export class MorningReportService {
           priority = 'medium';
         }
 
+        // Si urgentOnly, ne garder que critical et high
+        if (urgentOnly && priority !== 'critical' && priority !== 'high') {
+          continue;
+        }
+
         pendingActions.push({
           dossier_id: dossier.id,
           actionType: dossier.actionType,
@@ -393,7 +464,7 @@ export class MorningReportService {
   /**
    * Récupérer les contacts/leads en attente
    */
-  private static async getPendingContactsLeads(now: Date): Promise<PendingContactLead[]> {
+  private static async getPendingContactsLeads(now: Date, urgentOnly: boolean = false): Promise<PendingContactLead[]> {
     try {
       const { data: notifications, error } = await supabase
         .from('notification')
@@ -421,6 +492,11 @@ export class MorningReportService {
           threshold = '48h';
         } else if (hoursElapsed >= 24) {
           threshold = '24h';
+        }
+
+        // Si urgentOnly, ne garder que 48h et 120h
+        if (urgentOnly && threshold === '24h') {
+          continue;
         }
 
         if (threshold) {

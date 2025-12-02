@@ -111,7 +111,7 @@ const ESCALATION_HANDLERS: Record<string, EscalationHandler> = {
     }
 
     // Créer une notification de rappel
-    const { error: reminderError } = await supabase
+    const { data: newReminder, error: reminderError } = await supabase
       .from('notification')
       .insert({
         user_id: notification.user_id,
@@ -138,10 +138,30 @@ const ESCALATION_HANDLERS: Record<string, EscalationHandler> = {
           escalation_level: escalationLevel + 1,
           reminder_type: 'contact_message'
         }
-      });
+      })
+      .select();
 
     if (reminderError) {
       console.error('❌ Erreur création rappel contact_message:', reminderError);
+    } else if (newReminder && newReminder.length > 0) {
+      // Marquer la notification originale comme remplacée
+      const updatedMetadata = {
+        ...metadata,
+        replaced_by_reminder: true,
+        reminder_notification_id: newReminder[0]?.id,
+        replacement_date: new Date().toISOString()
+      };
+      
+      await supabase
+        .from('notification')
+        .update({
+          status: 'replaced',
+          metadata: updatedMetadata,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', notification.id);
+      
+      console.log(`✅ [Escalation] Notification originale ${notification.id} marquée comme remplacée par le reminder`);
     }
   },
   lead_to_treat: async (notification) => {
@@ -187,7 +207,7 @@ const ESCALATION_HANDLERS: Record<string, EscalationHandler> = {
     }
 
     // Créer une notification de rappel
-    const { error: reminderError } = await supabase
+    const { data: newReminder, error: reminderError } = await supabase
       .from('notification')
       .insert({
         user_id: notification.user_id,
@@ -214,10 +234,30 @@ const ESCALATION_HANDLERS: Record<string, EscalationHandler> = {
           escalation_level: escalationLevel + 1,
           reminder_type: 'lead_to_treat'
         }
-      });
+      })
+      .select();
 
     if (reminderError) {
       console.error('❌ Erreur création rappel lead_to_treat:', reminderError);
+    } else if (newReminder && newReminder.length > 0) {
+      // Marquer la notification originale comme remplacée
+      const updatedMetadata = {
+        ...metadata,
+        replaced_by_reminder: true,
+        reminder_notification_id: newReminder[0]?.id,
+        replacement_date: new Date().toISOString()
+      };
+      
+      await supabase
+        .from('notification')
+        .update({
+          status: 'replaced',
+          metadata: updatedMetadata,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', notification.id);
+      
+      console.log(`✅ [Escalation] Notification originale ${notification.id} marquée comme remplacée par le reminder`);
     }
   }
 };

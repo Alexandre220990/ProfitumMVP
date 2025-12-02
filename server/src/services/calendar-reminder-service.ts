@@ -111,20 +111,47 @@ export class CalendarReminderService {
       const recipients = await this.getEventRecipients(event);
 
       for (const recipient of recipients) {
-        // Notification système
-        await NotificationService.sendSystemNotification({
+        // Vérifier si une notification de rappel existe déjà pour cet événement et ce destinataire
+        const { data: existingReminder } = await supabase
+          .from('notification')
+          .select('id')
+          .eq('user_id', recipient.user_id)
+          .eq('notification_type', 'calendar_reminder')
+          .eq('is_read', false)
+          .neq('status', 'replaced')
+          .filter('metadata', 'cs', `{"rdv_id":"${event.id}","reminder_id":"${reminder.id}"}`)
+          .maybeSingle();
+
+        if (existingReminder) {
+          console.log(`⏭️ [Calendar Reminder] Rappel déjà envoyé pour RDV ${event.id} à ${recipient.user_id}`);
+          continue;
+        }
+
+        // Créer la notification avec le bon type
+        await supabase.from('notification').insert({
           user_id: recipient.user_id,
+          user_type: recipient.user_type || 'admin',
           title: 'Rappel événement calendrier',
-          message: `Rappel pour l'événement "${event.title}" dans ${this.formatReminderTime(timeUntilEvent)}`,
-          type: 'system',
-          event_title: event.title,
-          event_date: eventStart.toLocaleDateString('fr-FR'),
-          event_time: eventStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-          event_location: event.location || 'Non spécifié',
-          reminder_time: this.formatReminderTime(timeUntilEvent),
-          event_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}`,
-          recipient_name: recipient.name || 'Utilisateur'
+          message: `Rappel pour l'événement "${event.title}" le ${eventStart.toLocaleDateString('fr-FR')} à ${eventStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+          notification_type: 'calendar_reminder',
+          priority: 'medium',
+          is_read: false,
+          status: 'unread',
+          action_url: `/calendar/event/${event.id}`,
+          metadata: {
+            rdv_id: event.id,
+            reminder_id: reminder.id,
+            event_title: event.title,
+            scheduled_datetime: `${event.scheduled_date}T${event.scheduled_time}`,
+            reminder_minutes_before: reminder.minutes_before,
+            event_location: event.location || 'Non spécifié',
+            reminder_time: this.formatReminderTime(timeUntilEvent)
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
+
+        console.log(`✅ [Calendar Reminder] Notification créée pour RDV ${event.id} - ${recipient.user_id}`);
 
         // Envoyer un email pour tous les rappels
         await this.sendReminderEmail(recipient, event, timeUntilEvent, eventStart);
