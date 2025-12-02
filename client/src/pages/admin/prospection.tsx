@@ -2414,17 +2414,20 @@ export default function ProspectionAdmin() {
                       className="rounded border-gray-300"
                     />
                   </TableHead>
-                  <SortableHeader field="email" className="min-w-[200px]">
-                    <Mail className="h-4 w-4 inline mr-2" />
-                    Email
+                  <SortableHeader field="company_name" className="min-w-[180px]">
+                    <Building2 className="h-4 w-4 inline mr-2" />
+                    Entreprise
                   </SortableHeader>
                   <SortableHeader field="firstname" className="min-w-[150px]">
                     <User className="h-4 w-4 inline mr-2" />
                     Contact
                   </SortableHeader>
-                  <SortableHeader field="company_name" className="min-w-[180px]">
-                    <Building2 className="h-4 w-4 inline mr-2" />
-                    Entreprise
+                  <TableHead className="min-w-[130px]">
+                    Téléphone
+                  </TableHead>
+                  <SortableHeader field="email" className="min-w-[200px]">
+                    <Mail className="h-4 w-4 inline mr-2" />
+                    Email
                   </SortableHeader>
                   <SortableHeader field="enrichment_status" className="w-[120px]">
                     Enrichissement
@@ -2445,7 +2448,7 @@ export default function ProspectionAdmin() {
               <TableBody>
                 {prospects.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                       Aucun prospect trouvé
                     </TableCell>
                   </TableRow>
@@ -2470,19 +2473,11 @@ export default function ProspectionAdmin() {
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium">{prospect.email}</span>
-                          {prospect.email_validity === 'valid' && (
-                            <Badge className="bg-green-100 text-green-800 text-xs">✓ Valid</Badge>
-                          )}
-                          {prospect.email_validity === 'risky' && (
-                            <Badge className="bg-yellow-100 text-yellow-800 text-xs">⚠ Risky</Badge>
-                          )}
-                          {prospect.email_validity === 'invalid' && (
-                            <Badge className="bg-red-100 text-red-800 text-xs">✗ Invalid</Badge>
-                          )}
-                        </div>
+                        {prospect.company_name ? (
+                          <div className="font-medium">{prospect.company_name}</div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {prospect.firstname || prospect.lastname ? (
@@ -2499,16 +2494,25 @@ export default function ProspectionAdmin() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {prospect.company_name ? (
-                          <div>
-                            <div className="font-medium">{prospect.company_name}</div>
-                            {prospect.siren && (
-                              <div className="text-sm text-gray-500">SIREN: {prospect.siren}</div>
-                            )}
-                          </div>
+                        {prospect.phone_direct || prospect.phone_standard ? (
+                          <span className="font-medium">{prospect.phone_direct || prospect.phone_standard}</span>
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{prospect.email}</span>
+                          {prospect.email_validity === 'valid' && (
+                            <Badge className="bg-green-100 text-green-800 text-xs">✓ Valid</Badge>
+                          )}
+                          {prospect.email_validity === 'risky' && (
+                            <Badge className="bg-yellow-100 text-yellow-800 text-xs">⚠ Risky</Badge>
+                          )}
+                          {prospect.email_validity === 'invalid' && (
+                            <Badge className="bg-red-100 text-red-800 text-xs">✗ Invalid</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(prospect.enrichment_status, 'enrichment')}
