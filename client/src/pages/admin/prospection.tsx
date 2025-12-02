@@ -1906,7 +1906,169 @@ export default function ProspectionAdmin() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              {/* Vue Mobile - Cartes empilables (< md) */}
+              <div className="md:hidden space-y-3">
+                {prospects.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    {loading ? 'Chargement...' : 'Aucun prospect trouvé'}
+                  </div>
+                ) : (
+                  prospects.map((prospect) => (
+                    <Card key={prospect.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleProspectClick(prospect)}>
+                      <CardContent className="p-4 space-y-3">
+                        {/* Header avec checkbox et priorité */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedProspectIds.has(prospect.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                const newSet = new Set(selectedProspectIds);
+                                if (e.target.checked) {
+                                  newSet.add(prospect.id);
+                                } else {
+                                  newSet.delete(prospect.id);
+                                }
+                                setSelectedProspectIds(newSet);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded border-gray-300"
+                            />
+                            <div className="flex items-center gap-1">
+                              <TrendingUp className="h-3 w-3 text-gray-400" />
+                              <span className="text-sm font-semibold">{prospect.score_priority}</span>
+                              {prospect.score_priority >= 80 && (
+                                <Badge className="bg-red-100 text-red-800 text-xs">Haute</Badge>
+                              )}
+                              {prospect.score_priority >= 50 && prospect.score_priority < 80 && (
+                                <Badge className="bg-yellow-100 text-yellow-800 text-xs">Moyenne</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => handleShowDetails(prospect, e)}
+                              title="Voir les détails"
+                            >
+                              <Eye className="h-4 w-4 text-gray-600" />
+                            </Button>
+                            {activeTab === 'scheduled-sequences' && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => handlePauseSequence(prospect.id, e)}
+                                  disabled={isPausingSequence}
+                                  title="Suspendre"
+                                >
+                                  <Pause className="h-4 w-4 text-yellow-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => handleOpenEditSequenceModal(prospect, e)}
+                                  title="Modifier"
+                                >
+                                  <Edit2 className="h-4 w-4 text-blue-600" />
+                                </Button>
+                              </>
+                            )}
+                            {activeTab === 'completed-sequences' && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => handleOpenEditSequenceModal(prospect, e)}
+                                  title="Modifier"
+                                >
+                                  <Edit2 className="h-4 w-4 text-blue-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRestartSequence(prospect);
+                                  }}
+                                  disabled={isRestartingSequence}
+                                  title="Relancer"
+                                >
+                                  <RotateCcw className="h-4 w-4 text-green-600" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Email */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="font-medium text-sm break-all">{prospect.email}</span>
+                          {prospect.email_validity === 'valid' && (
+                            <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>
+                          )}
+                          {prospect.email_validity === 'risky' && (
+                            <Badge className="bg-yellow-100 text-yellow-800 text-xs">⚠</Badge>
+                          )}
+                          {prospect.email_validity === 'invalid' && (
+                            <Badge className="bg-red-100 text-red-800 text-xs">✗</Badge>
+                          )}
+                        </div>
+
+                        {/* Contact */}
+                        {(prospect.firstname || prospect.lastname) && (
+                          <div className="flex items-start gap-2">
+                            <User className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <div className="font-medium text-sm">
+                                {prospect.firstname} {prospect.lastname}
+                              </div>
+                              {prospect.job_title && (
+                                <div className="text-xs text-gray-500 truncate">{prospect.job_title}</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Entreprise */}
+                        {prospect.company_name && (
+                          <div className="flex items-start gap-2">
+                            <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <div className="font-medium text-sm truncate">{prospect.company_name}</div>
+                              {prospect.siren && (
+                                <div className="text-xs text-gray-500">SIREN: {prospect.siren}</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Statuts */}
+                        <div className="flex flex-wrap gap-2 pt-2 border-t">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-gray-500">Enrichissement</span>
+                            {getStatusBadge(prospect.enrichment_status, 'enrichment')}
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-gray-500">IA</span>
+                            {getStatusBadge(prospect.ai_status, 'ai')}
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-gray-500">Emailing</span>
+                            {getStatusBadge(prospect.emailing_status, 'emailing')}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+
+              {/* Vue Desktop - Table (>= md) */}
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1924,32 +2086,32 @@ export default function ProspectionAdmin() {
                           className="rounded border-gray-300"
                         />
                       </TableHead>
-                      <SortableHeader field="email" className="min-w-[200px]">
+                      <SortableHeader field="email">
                         <Mail className="h-4 w-4 inline mr-2" />
                         Email
                       </SortableHeader>
-                      <SortableHeader field="firstname" className="min-w-[150px]">
+                      <SortableHeader field="firstname">
                         <User className="h-4 w-4 inline mr-2" />
                         Contact
                       </SortableHeader>
-                      <SortableHeader field="company_name" className="min-w-[180px]">
+                      <SortableHeader field="company_name">
                         <Building2 className="h-4 w-4 inline mr-2" />
                         Entreprise
                       </SortableHeader>
-                      <SortableHeader field="enrichment_status" className="w-[120px]">
+                      <SortableHeader field="enrichment_status">
                         Enrichissement
                       </SortableHeader>
-                      <SortableHeader field="ai_status" className="w-[100px]">
+                      <SortableHeader field="ai_status">
                         IA
                       </SortableHeader>
-                      <SortableHeader field="emailing_status" className="w-[120px]">
+                      <SortableHeader field="emailing_status">
                         Emailing
                       </SortableHeader>
-                      <SortableHeader field="score_priority" className="w-[120px]">
+                      <SortableHeader field="score_priority">
                         <TrendingUp className="h-4 w-4 inline mr-2" />
                         Priorité
                       </SortableHeader>
-                      <TableHead className="w-[140px]">Actions</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1982,15 +2144,15 @@ export default function ProspectionAdmin() {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Mail className="h-4 w-4 text-gray-400" />
-                              <span className="font-medium">{prospect.email}</span>
+                              <span className="font-medium break-all">{prospect.email}</span>
                               {prospect.email_validity === 'valid' && (
-                                <Badge className="bg-green-100 text-green-800 text-xs">✓ Valid</Badge>
+                                <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>
                               )}
                               {prospect.email_validity === 'risky' && (
-                                <Badge className="bg-yellow-100 text-yellow-800 text-xs">⚠ Risky</Badge>
+                                <Badge className="bg-yellow-100 text-yellow-800 text-xs">⚠</Badge>
                               )}
                               {prospect.email_validity === 'invalid' && (
-                                <Badge className="bg-red-100 text-red-800 text-xs">✗ Invalid</Badge>
+                                <Badge className="bg-red-100 text-red-800 text-xs">✗</Badge>
                               )}
                             </div>
                           </TableCell>
@@ -2286,7 +2448,7 @@ export default function ProspectionAdmin() {
           <CardTitle className="text-lg">Filtres</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -2359,33 +2521,38 @@ export default function ProspectionAdmin() {
       {selectedProspectIds.size > 0 && (
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="font-medium text-blue-900">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full md:w-auto">
+                <span className="font-medium text-blue-900 text-sm sm:text-base">
                   {selectedProspectIds.size} prospect{selectedProspectIds.size > 1 ? 's' : ''} sélectionné{selectedProspectIds.size > 1 ? 's' : ''}
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setSelectedProspectIds(new Set())}
+                  className="w-full sm:w-auto"
                 >
                   Tout désélectionner
                 </Button>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                 <Button
                   onClick={handleOpenSequenceModal}
-                  className="bg-purple-600 hover:bg-purple-700"
+                  className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto text-sm"
                 >
                   <Calendar className="h-4 w-4 mr-2" />
-                  Programmer la séquence ({selectedProspectIds.size})
+                  <span className="hidden sm:inline">Programmer la séquence</span>
+                  <span className="sm:hidden">Séquence</span>
+                  <span className="ml-1">({selectedProspectIds.size})</span>
                 </Button>
                 <Button
                   onClick={() => setShowSendEmailModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto text-sm"
                 >
                   <Mail className="h-4 w-4 mr-2" />
-                  Envoyer un email ({selectedProspectIds.size})
+                  <span className="hidden sm:inline">Envoyer un email</span>
+                  <span className="sm:hidden">Email</span>
+                  <span className="ml-1">({selectedProspectIds.size})</span>
                 </Button>
               </div>
             </div>
@@ -2411,7 +2578,143 @@ export default function ProspectionAdmin() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/* Vue Mobile - Cartes empilables (< md) */}
+          <div className="md:hidden space-y-3">
+            {prospects.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Aucun prospect trouvé
+              </div>
+            ) : (
+              prospects.map((prospect) => (
+                <Card key={prospect.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleProspectClick(prospect)}>
+                  <CardContent className="p-4 space-y-3">
+                    {/* Header avec checkbox et priorité */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedProspectIds.has(prospect.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            const newSet = new Set(selectedProspectIds);
+                            if (e.target.checked) {
+                              newSet.add(prospect.id);
+                            } else {
+                              newSet.delete(prospect.id);
+                            }
+                            setSelectedProspectIds(newSet);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="rounded border-gray-300"
+                        />
+                        <div className="flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3 text-gray-400" />
+                          <span className="text-sm font-semibold">{prospect.score_priority}</span>
+                          {prospect.score_priority >= 80 && (
+                            <Badge className="bg-red-100 text-red-800 text-xs">Haute</Badge>
+                          )}
+                          {prospect.score_priority >= 50 && prospect.score_priority < 80 && (
+                            <Badge className="bg-yellow-100 text-yellow-800 text-xs">Moyenne</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleShowDetails(prospect, e)}
+                          title="Détails"
+                        >
+                          <Eye className="h-4 w-4 text-gray-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCreateSequenceForProspect(prospect);
+                          }}
+                          title="Créer séquence"
+                        >
+                          <Mail className="h-4 w-4 text-purple-600" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Entreprise */}
+                    {prospect.company_name && (
+                      <div className="flex items-start gap-2">
+                        <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm truncate">{prospect.company_name}</div>
+                          {prospect.siren && (
+                            <div className="text-xs text-gray-500">SIREN: {prospect.siren}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Contact */}
+                    {(prospect.firstname || prospect.lastname) && (
+                      <div className="flex items-start gap-2">
+                        <User className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm">
+                            {prospect.firstname} {prospect.lastname}
+                          </div>
+                          {prospect.job_title && (
+                            <div className="text-xs text-gray-500 truncate">{prospect.job_title}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Email */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      <span className="font-medium text-sm break-all">{prospect.email}</span>
+                      {prospect.email_validity === 'valid' && (
+                        <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>
+                      )}
+                      {prospect.email_validity === 'risky' && (
+                        <Badge className="bg-yellow-100 text-yellow-800 text-xs">⚠</Badge>
+                      )}
+                      {prospect.email_validity === 'invalid' && (
+                        <Badge className="bg-red-100 text-red-800 text-xs">✗</Badge>
+                      )}
+                    </div>
+
+                    {/* Téléphone */}
+                    {(prospect.phone_direct || prospect.phone_standard) && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">📞</span>
+                        <span className="font-medium text-sm">{prospect.phone_direct || prospect.phone_standard}</span>
+                      </div>
+                    )}
+
+                    {/* Statuts */}
+                    <div className="flex flex-wrap gap-2 pt-2 border-t">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-gray-500">Enrichissement</span>
+                        {getStatusBadge(prospect.enrichment_status, 'enrichment')}
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-gray-500">IA</span>
+                        {getStatusBadge(prospect.ai_status, 'ai')}
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-gray-500">Emailing</span>
+                        {getStatusBadge(prospect.emailing_status, 'emailing')}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+
+          {/* Vue Desktop - Table (>= md) */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -2429,35 +2732,35 @@ export default function ProspectionAdmin() {
                       className="rounded border-gray-300"
                     />
                   </TableHead>
-                  <SortableHeader field="company_name" className="min-w-[180px]">
+                  <SortableHeader field="company_name">
                     <Building2 className="h-4 w-4 inline mr-2" />
                     Entreprise
                   </SortableHeader>
-                  <SortableHeader field="firstname" className="min-w-[150px]">
+                  <SortableHeader field="firstname">
                     <User className="h-4 w-4 inline mr-2" />
                     Contact
                   </SortableHeader>
-                  <TableHead className="min-w-[130px]">
+                  <TableHead>
                     Téléphone
                   </TableHead>
-                  <SortableHeader field="email" className="min-w-[200px]">
+                  <SortableHeader field="email">
                     <Mail className="h-4 w-4 inline mr-2" />
                     Email
                   </SortableHeader>
-                  <SortableHeader field="enrichment_status" className="w-[120px]">
+                  <SortableHeader field="enrichment_status">
                     Enrichissement
                   </SortableHeader>
-                  <SortableHeader field="ai_status" className="w-[100px]">
+                  <SortableHeader field="ai_status">
                     IA
                   </SortableHeader>
-                  <SortableHeader field="emailing_status" className="w-[120px]">
+                  <SortableHeader field="emailing_status">
                     Emailing
                   </SortableHeader>
-                  <SortableHeader field="score_priority" className="w-[120px]">
+                  <SortableHeader field="score_priority">
                     <TrendingUp className="h-4 w-4 inline mr-2" />
                     Priorité
                   </SortableHeader>
-                  <TableHead className="w-[80px]">Actions</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -2517,15 +2820,15 @@ export default function ProspectionAdmin() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{prospect.email}</span>
+                          <span className="font-medium break-all">{prospect.email}</span>
                           {prospect.email_validity === 'valid' && (
-                            <Badge className="bg-green-100 text-green-800 text-xs">✓ Valid</Badge>
+                            <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>
                           )}
                           {prospect.email_validity === 'risky' && (
-                            <Badge className="bg-yellow-100 text-yellow-800 text-xs">⚠ Risky</Badge>
+                            <Badge className="bg-yellow-100 text-yellow-800 text-xs">⚠</Badge>
                           )}
                           {prospect.email_validity === 'invalid' && (
-                            <Badge className="bg-red-100 text-red-800 text-xs">✗ Invalid</Badge>
+                            <Badge className="bg-red-100 text-red-800 text-xs">✗</Badge>
                           )}
                         </div>
                       </TableCell>
@@ -2613,7 +2916,7 @@ export default function ProspectionAdmin() {
 
       {/* Modal Détails */}
       <Dialog open={showDetails} onOpenChange={handleCloseDetails}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Détails du Prospect</DialogTitle>
           </DialogHeader>
@@ -2868,7 +3171,7 @@ export default function ProspectionAdmin() {
 
       {/* Modal Envoi Email */}
       <Dialog open={showSendEmailModal} onOpenChange={setShowSendEmailModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl">
           <DialogHeader>
             <DialogTitle>Envoyer un email à {selectedProspectIds.size} prospect{selectedProspectIds.size > 1 ? 's' : ''}</DialogTitle>
           </DialogHeader>
@@ -2977,7 +3280,7 @@ export default function ProspectionAdmin() {
 
       {/* Modal Programmation de Séquence */}
       <Dialog open={showSequenceModal} onOpenChange={setShowSequenceModal}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Programmer les séquences d'emails</DialogTitle>
           </DialogHeader>
@@ -3354,7 +3657,7 @@ export default function ProspectionAdmin() {
 
       {/* Modal Contexte pour Génération IA */}
       <Dialog open={showAIContextModal} onOpenChange={setShowAIContextModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl">
           <DialogHeader>
             <DialogTitle>Générer par IA - Contexte du mailing</DialogTitle>
           </DialogHeader>
@@ -3431,7 +3734,7 @@ export default function ProspectionAdmin() {
 
       {/* Modal Contexte pour Génération IA - Séquences Génériques */}
       <Dialog open={showAIContextModalGeneric} onOpenChange={setShowAIContextModalGeneric}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl">
           <DialogHeader>
             <DialogTitle>Générer par IA - Contexte du mailing</DialogTitle>
           </DialogHeader>
@@ -3494,7 +3797,7 @@ export default function ProspectionAdmin() {
 
       {/* Modal Contexte pour Génération IA en Batch (toute la sélection) */}
       <Dialog open={showAIContextModalBatch} onOpenChange={setShowAIContextModalBatch}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl">
           <DialogHeader>
             <DialogTitle>Générer par IA pour toute la sélection</DialogTitle>
           </DialogHeader>
@@ -3589,7 +3892,7 @@ Ces instructions seront la base de génération. L'IA les adaptera automatiqueme
           }
         }}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingSequence 
@@ -3640,7 +3943,7 @@ Ces instructions seront la base de génération. L'IA les adaptera automatiqueme
                         }
                       }}
                     >
-                      <SelectTrigger className="w-auto min-w-[200px]">
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Utiliser template existant" />
                       </SelectTrigger>
                       <SelectContent>
@@ -3783,7 +4086,7 @@ Ces instructions seront la base de génération. L'IA les adaptera automatiqueme
 
       {/* Modal Modification/Relance Séquence */}
       <Dialog open={showEditSequenceModal} onOpenChange={setShowEditSequenceModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingProspectSequence && activeTab === 'completed-sequences' 
@@ -4010,7 +4313,7 @@ Ces instructions seront la base de génération. L'IA les adaptera automatiqueme
 
       {/* Modal Création de Prospect */}
       <Dialog open={showCreateProspectModal} onOpenChange={setShowCreateProspectModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">Ajouter un nouveau prospect</DialogTitle>
             <p className="text-sm text-gray-500 mt-1">Créez un prospect manuellement sans passer par l'upload</p>
