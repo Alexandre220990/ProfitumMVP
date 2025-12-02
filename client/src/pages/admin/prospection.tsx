@@ -188,6 +188,7 @@ export default function ProspectionAdmin() {
     ]
   });
   const [loadingSequences, setLoadingSequences] = useState(false);
+  const [sequenceForProspect, setSequenceForProspect] = useState<Prospect | null>(null); // Prospect pour lequel on crée la séquence depuis l'onglet list
 
   // États pour la gestion des séquences (suspendre/modifier/relancer)
   const [showEditSequenceModal, setShowEditSequenceModal] = useState(false);
@@ -234,10 +235,14 @@ export default function ProspectionAdmin() {
     }
   }, [user, page, sortBy, sortOrder, search, filterSource, filterEnrichment, filterAI, filterEmailing, activeTab]);
 
-  // Fermer le popup de création de séquence si on change d'onglet
+  // Fermer le popup de création de séquence générique si on change d'onglet vers autre chose que list ou sequences
   useEffect(() => {
-    if (activeTab !== 'sequences' && showSequenceForm) {
+    if (activeTab !== 'sequences' && activeTab !== 'list' && showSequenceForm && !sequenceForProspect) {
       setShowSequenceForm(false);
+    }
+    // Réinitialiser le prospect si on change d'onglet vers sequences
+    if (activeTab === 'sequences' && sequenceForProspect) {
+      setSequenceForProspect(null);
     }
   }, [activeTab]);
 
@@ -1045,13 +1050,15 @@ export default function ProspectionAdmin() {
   };
 
   const handleCreateSequence = async () => {
-    // S'assurer qu'on est dans l'onglet "sequences"
-    if (activeTab !== 'sequences') {
+    // Si on est dans l'onglet "list", on ne change pas d'onglet, on reste dans list
+    // Si on est ailleurs, on bascule vers "sequences" pour créer une séquence générique
+    if (activeTab !== 'sequences' && activeTab !== 'list') {
       setSearchParams({ tab: 'sequences' });
       // Attendre un peu pour que l'onglet change avant d'ouvrir le popup
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     setEditingSequence(null);
+    setSequenceForProspect(null); // Pas de prospect spécifique pour les séquences génériques
     setSequenceForm({
       name: '',
       description: '',
@@ -1063,6 +1070,41 @@ export default function ProspectionAdmin() {
     });
     // Charger les séquences sauvegardées pour les templates
     await fetchSavedSequences();
+    setShowSequenceForm(true);
+  };
+
+  // Créer une séquence pour un prospect spécifique depuis l'onglet list
+  const handleCreateSequenceForProspect = async (prospect: Prospect) => {
+    setEditingSequence(null);
+    setSequenceForProspect(prospect); // Mémoriser le prospect pour préremplissage
+    await fetchSavedSequences();
+    
+    // Préremplir le formulaire avec les infos du prospect
+    const prospectName = `${prospect.firstname || ''} ${prospect.lastname || ''}`.trim() || prospect.email;
+    setSequenceForm({
+      name: `Séquence pour ${prospectName}`,
+      description: `Séquence personnalisée pour ${prospectName}${prospect.company_name ? ` - ${prospect.company_name}` : ''}`,
+      steps: [
+        { 
+          stepNumber: 1, 
+          delayDays: 0, 
+          subject: `Contact avec ${prospectName}`,
+          body: `Bonjour ${prospect.firstname || prospectName},\n\n...`
+        },
+        { 
+          stepNumber: 2, 
+          delayDays: 3, 
+          subject: `Relance - ${prospect.company_name || 'Notre échange'}`,
+          body: `Bonjour ${prospect.firstname || prospectName},\n\n...`
+        },
+        { 
+          stepNumber: 3, 
+          delayDays: 7, 
+          subject: `Dernière relance`,
+          body: `Bonjour ${prospect.firstname || prospectName},\n\n...`
+        }
+      ]
+    });
     setShowSequenceForm(true);
   };
 
@@ -2344,7 +2386,19 @@ export default function ProspectionAdmin() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {/* Le clic sur la ligne gère déjà l'ouverture des détails */}
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCreateSequenceForProspect(prospect);
+                            }}
+                            title="Créer une séquence personnalisée pour ce prospect"
+                          >
+                            <Mail className="h-4 w-4 text-purple-600" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -3111,11 +3165,11 @@ export default function ProspectionAdmin() {
                 id="ai-context"
                 value={aiContext}
                 onChange={(e) => setAiContext(e.target.value)}
-                placeholder="Précisez des éléments spécifiques, s'il s'agit d'une relance particulière, d'une demande particulière, etc. Ce contexte sera ajouté au prompt système pour personnaliser davantage les emails générés."
+                placeholder="Décris ce que tu souhaites pour cette séquence d'emails : le style, le ton, les angles d'approche, les bénéfices à mettre en avant, le type de relance, etc. Ces instructions seront la base de génération, optimisées par le prompt système pour créer des emails professionnels et efficaces."
                 className="mt-2 min-h-[150px]"
               />
               <div className="text-xs text-gray-500 mt-1">
-                Si ce champ reste vide, les emails seront générés avec le prompt système standard.
+                Ces instructions sont prioritaires. Le prompt système servira à optimiser et enrichir ton souhait pour créer des emails de qualité professionnelle.
               </div>
             </div>
 
@@ -3188,11 +3242,11 @@ export default function ProspectionAdmin() {
                 id="ai-context-generic"
                 value={aiContextGeneric}
                 onChange={(e) => setAiContextGeneric(e.target.value)}
-                placeholder="Précisez des éléments spécifiques, s'il s'agit d'une relance particulière, d'une demande particulière, le type d'entreprise cible, etc. Ce contexte sera ajouté au prompt système pour personnaliser davantage les emails générés."
+                placeholder="Décris ce que tu souhaites pour cette séquence d'emails générique : le style, le ton, les angles d'approche, les bénéfices à mettre en avant, le type de relance, etc. Ces instructions seront la base de génération, optimisées par le prompt système pour créer des emails professionnels et efficaces."
                 className="mt-2 min-h-[150px]"
               />
               <div className="text-xs text-gray-500 mt-1">
-                Si ce champ reste vide, les emails seront générés avec le prompt système standard pour une séquence générique.
+                Ces instructions sont prioritaires. Le prompt système servira à optimiser et enrichir ton souhait pour créer des emails de qualité professionnelle utilisables comme template.
               </div>
             </div>
 
@@ -3237,19 +3291,23 @@ export default function ProspectionAdmin() {
 
       {/* Modal Création/Édition de Séquence */}
       <Dialog 
-        open={showSequenceForm && activeTab === 'sequences'} 
+        open={showSequenceForm && (activeTab === 'sequences' || activeTab === 'list')} 
         onOpenChange={(open) => {
           setShowSequenceForm(open);
-          // Si on ferme le modal, s'assurer qu'on reste sur l'onglet sequences
-          if (!open && activeTab === 'sequences') {
-            setSearchParams({ tab: 'sequences' });
+          if (!open) {
+            // Réinitialiser le prospect quand on ferme
+            setSequenceForProspect(null);
           }
         }}
       >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingSequence ? 'Modifier la séquence' : 'Créer une nouvelle séquence'}
+              {editingSequence 
+                ? 'Modifier la séquence' 
+                : sequenceForProspect 
+                  ? `Créer une séquence personnalisée pour ${sequenceForProspect.firstname || ''} ${sequenceForProspect.lastname || ''}`.trim() || sequenceForProspect.email
+                  : 'Créer une nouvelle séquence'}
             </DialogTitle>
           </DialogHeader>
           
