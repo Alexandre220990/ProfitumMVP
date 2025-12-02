@@ -15,17 +15,18 @@ async function checkRDVSlaReminders() {
 
 /**
  * Démarrer le cron job pour les rappels SLA des RDV
- * Exécution : Tous les jours à 9h (timezone Europe/Paris)
+ * Exécution : Toutes les 5 minutes (timezone Europe/Paris)
+ * Permet de détecter les RDV qui démarrent à n'importe quelle heure
  */
 export function startRDVSlaRemindersCron() {
-  // Cron expression: 0 9 * * * = Tous les jours à 9h
-  cron.schedule('0 9 * * *', async () => {
+  // Cron expression: */5 * * * * = Toutes les 5 minutes
+  cron.schedule('*/5 * * * *', async () => {
     await checkRDVSlaReminders();
   }, {
     timezone: 'Europe/Paris'
   });
 
-  console.log('✅ Cron job rappels SLA RDV activé (tous les jours à 9h)');
+  console.log('✅ Cron job rappels SLA RDV activé (toutes les 5 minutes)');
 }
 
 /**

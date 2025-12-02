@@ -146,34 +146,51 @@ export class RDVSlaReminderService {
       return { should: false, threshold: null };
     }
 
-    // Construire la date/heure complète du RDV prévu
-    const scheduledDateTime = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
-    
-    // Vérifier si le RDV est passé (overdue)
-    if (scheduledDateTime > now) {
-      // RDV pas encore arrivé, pas de rappel SLA
+    try {
+      // Récupérer le timezone du RDV (par défaut Europe/Paris)
+      const timezone = (rdv as any).timezone || 'Europe/Paris';
+      
+      // Construire la date de référence pour obtenir l'offset
+      const [year, month, day] = rdv.scheduled_date.split('-').map(Number);
+      const [hour, minute] = rdv.scheduled_time.split(':').map(Number);
+      const refDate = new Date(year, month - 1, day, hour, minute);
+      
+      // Obtenir l'offset du timezone
+      const offset = this.getTimezoneOffset(refDate, timezone);
+      
+      // Construire la date complète avec timezone
+      const dateTimeWithTimezone = `${rdv.scheduled_date}T${rdv.scheduled_time}:00${offset}`;
+      const scheduledDateTime = new Date(dateTimeWithTimezone);
+      
+      // Vérifier si le RDV est passé (overdue)
+      if (scheduledDateTime > now) {
+        // RDV pas encore arrivé, pas de rappel SLA
+        return { should: false, threshold: null };
+      }
+
+      // Calculer les heures écoulées depuis la date/heure prévue
+      const hoursElapsed = (now.getTime() - scheduledDateTime.getTime()) / (1000 * 60 * 60);
+
+      // Récupérer les métadonnées pour vérifier les rappels déjà envoyés
+      const metadata = (rdv as any).metadata || {};
+      const remindersSent = metadata.reminders_sent || {};
+
+      // Vérifier chaque seuil dans l'ordre (du plus récent au plus ancien)
+      if (hoursElapsed >= RDV_SLA_CONFIG.criticalHours && !remindersSent['120h']) {
+        return { should: true, threshold: '120h' };
+      }
+      if (hoursElapsed >= RDV_SLA_CONFIG.acceptableHours && !remindersSent['48h']) {
+        return { should: true, threshold: '48h' };
+      }
+      if (hoursElapsed >= RDV_SLA_CONFIG.targetHours && !remindersSent['24h']) {
+        return { should: true, threshold: '24h' };
+      }
+
+      return { should: false, threshold: null };
+    } catch (error) {
+      console.error(`❌ [RDV SLA Reminder] Erreur calcul shouldSendReminder pour RDV ${rdv.id}:`, error);
       return { should: false, threshold: null };
     }
-
-    // Calculer les heures écoulées depuis la date/heure prévue
-    const hoursElapsed = (now.getTime() - scheduledDateTime.getTime()) / (1000 * 60 * 60);
-
-    // Récupérer les métadonnées pour vérifier les rappels déjà envoyés
-    const metadata = (rdv as any).metadata || {};
-    const remindersSent = metadata.reminders_sent || {};
-
-    // Vérifier chaque seuil dans l'ordre (du plus récent au plus ancien)
-    if (hoursElapsed >= RDV_SLA_CONFIG.criticalHours && !remindersSent['120h']) {
-      return { should: true, threshold: '120h' };
-    }
-    if (hoursElapsed >= RDV_SLA_CONFIG.acceptableHours && !remindersSent['48h']) {
-      return { should: true, threshold: '48h' };
-    }
-    if (hoursElapsed >= RDV_SLA_CONFIG.targetHours && !remindersSent['24h']) {
-      return { should: true, threshold: '24h' };
-    }
-
-    return { should: false, threshold: null };
   }
 
   /**
@@ -190,7 +207,21 @@ export class RDVSlaReminderService {
         return;
       }
 
-      const scheduledDateTime = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+      // Récupérer le timezone du RDV (par défaut Europe/Paris)
+      const timezone = (rdv as any).timezone || 'Europe/Paris';
+      
+      // Construire la date de référence pour obtenir l'offset
+      const [year, month, day] = rdv.scheduled_date.split('-').map(Number);
+      const [hour, minute] = rdv.scheduled_time.split(':').map(Number);
+      const refDate = new Date(year, month - 1, day, hour, minute);
+      
+      // Obtenir l'offset du timezone
+      const offset = this.getTimezoneOffset(refDate, timezone);
+      
+      // Construire la date complète avec timezone
+      const dateTimeWithTimezone = `${rdv.scheduled_date}T${rdv.scheduled_time}:00${offset}`;
+      const scheduledDateTime = new Date(dateTimeWithTimezone);
+      
       const now = new Date();
       const hoursElapsed = (now.getTime() - scheduledDateTime.getTime()) / (1000 * 60 * 60);
       const daysElapsed = Math.floor(hoursElapsed / 24);
@@ -685,6 +716,43 @@ Voir le RDV : ${process.env.FRONTEND_URL || 'https://app.profitum.fr'}${actionPa
   }
 
   /**
+   * Obtient l'offset du timezone (en format +01:00) pour une date donnée
+   * Gère automatiquement l'heure d'été/hiver
+   */
+  static getTimezoneOffset(date: Date, timezone: string): string {
+    // Créer un formatter avec le timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    
+    // Obtenir la date dans le timezone cible
+    const parts = formatter.formatToParts(date);
+    const dateInTimezone = new Date(
+      parseInt(parts.find(p => p.type === 'year')!.value),
+      parseInt(parts.find(p => p.type === 'month')!.value) - 1,
+      parseInt(parts.find(p => p.type === 'day')!.value),
+      parseInt(parts.find(p => p.type === 'hour')!.value),
+      parseInt(parts.find(p => p.type === 'minute')!.value),
+      parseInt(parts.find(p => p.type === 'second')!.value)
+    );
+    
+    // Calculer l'offset en minutes
+    const offsetMinutes = (dateInTimezone.getTime() - date.getTime()) / (1000 * 60);
+    const offsetHours = Math.floor(Math.abs(offsetMinutes) / 60);
+    const offsetMins = Math.abs(offsetMinutes) % 60;
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    
+    return `${sign}${String(offsetHours).padStart(2, '0')}:${String(offsetMins).padStart(2, '0')}`;
+  }
+
+  /**
    * Vérifie si un RDV démarre maintenant (heure de début = heure actuelle, avec une tolérance de 5 minutes)
    */
   static isRdvStartingNow(rdv: RDVNotification, now: Date): boolean {
@@ -693,7 +761,21 @@ Voir le RDV : ${process.env.FRONTEND_URL || 'https://app.profitum.fr'}${actionPa
     }
 
     try {
-      const scheduledDateTime = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+      // Récupérer le timezone du RDV (par défaut Europe/Paris)
+      const timezone = (rdv as any).timezone || 'Europe/Paris';
+      
+      // Construire une date de référence pour obtenir l'offset correct (gère heure d'été/hiver)
+      const [year, month, day] = rdv.scheduled_date.split('-').map(Number);
+      const [hour, minute] = rdv.scheduled_time.split(':').map(Number);
+      const refDate = new Date(year, month - 1, day, hour, minute);
+      
+      // Obtenir l'offset du timezone pour cette date
+      const offset = this.getTimezoneOffset(refDate, timezone);
+      
+      // Construire la date complète avec timezone
+      const dateTimeWithTimezone = `${rdv.scheduled_date}T${rdv.scheduled_time}:00${offset}`;
+      const scheduledDateTime = new Date(dateTimeWithTimezone);
+      
       const timeDiff = Math.abs(now.getTime() - scheduledDateTime.getTime());
       const minutesDiff = timeDiff / (1000 * 60);
 
