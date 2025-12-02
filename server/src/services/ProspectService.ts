@@ -1508,10 +1508,10 @@ export class ProspectService {
         };
       }
 
-      // Récupérer les prospects correspondants
+      // Récupérer les prospects correspondants avec leurs emails pour détecter les réponses
       let query = supabase
         .from('prospects')
-        .select('*', { count: 'exact' })
+        .select('*, prospects_emails(replied, replied_at)', { count: 'exact' })
         .in('id', completedProspectIds);
 
       // Application des filtres de base
@@ -1531,17 +1531,56 @@ export class ProspectService {
         query = query.or(`email.ilike.%${filters.search}%,firstname.ilike.%${filters.search}%,lastname.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%`);
       }
 
-      // Tri
-      query = query.order(sort_by, { ascending: sort_order === 'asc' });
+      const { data: rawData, error: queryError, count } = await query;
 
-      const { data, error, count } = await query.range(offset, offset + limit - 1);
-
-      if (error) {
+      if (queryError) {
         return {
           success: false,
-          error: `Erreur récupération prospects: ${error.message}`
+          error: `Erreur récupération prospects: ${queryError.message}`
         };
       }
+
+      // ✅ TRI PERSONNALISÉ : Prospects avec réponses en premier, triés par date de réponse
+      const prospectsWithReplies = (rawData || []).filter((p: any) => {
+        const hasReply = p.prospects_emails?.some((e: any) => e.replied === true);
+        return hasReply || p.emailing_status === 'replied';
+      });
+
+      const prospectsWithoutReplies = (rawData || []).filter((p: any) => {
+        const hasReply = p.prospects_emails?.some((e: any) => e.replied === true);
+        return !hasReply && p.emailing_status !== 'replied';
+      });
+
+      // Trier les prospects avec réponses par date de réponse (plus récent en premier)
+      prospectsWithReplies.sort((a: any, b: any) => {
+        const aReplyDate = a.prospects_emails
+          ?.filter((e: any) => e.replied)
+          ?.map((e: any) => new Date(e.replied_at).getTime())
+          ?.sort((x: number, y: number) => y - x)[0] || 0;
+        
+        const bReplyDate = b.prospects_emails
+          ?.filter((e: any) => e.replied)
+          ?.map((e: any) => new Date(e.replied_at).getTime())
+          ?.sort((x: number, y: number) => y - x)[0] || 0;
+        
+        return bReplyDate - aReplyDate; // Plus récent en premier
+      });
+
+      // Trier les prospects sans réponses selon le tri demandé
+      prospectsWithoutReplies.sort((a: any, b: any) => {
+        const aValue = a[sort_by] || '';
+        const bValue = b[sort_by] || '';
+        if (sort_order === 'asc') {
+          return aValue > bValue ? 1 : -1;
+        }
+        return aValue < bValue ? 1 : -1;
+      });
+
+      // Combiner : réponses d'abord, puis les autres
+      const sortedData = [...prospectsWithReplies, ...prospectsWithoutReplies];
+
+      // Pagination
+      const data = sortedData.slice(offset, offset + limit);
 
       return {
         success: true,

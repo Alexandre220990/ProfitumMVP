@@ -237,6 +237,12 @@ export class GmailService {
             } else {
               results.updated++;
               console.log(`✅ Réponse détectée pour prospect ${match.prospectId}, email ${match.emailId}`);
+              
+              // ✅ Arrêter automatiquement la séquence pour ce prospect
+              await this.stopProspectSequence(match.prospectId, fromEmail);
+              
+              // ✅ Créer une notification admin
+              await this.createAdminNotificationForReply(match.prospectId, fromEmail, message.id || 'unknown');
             }
           }
 
@@ -274,6 +280,116 @@ export class GmailService {
     } catch (error: any) {
       console.error('Erreur marquage email comme lu:', error);
       return false;
+    }
+  }
+
+  /**
+   * Arrêter automatiquement la séquence d'un prospect qui a répondu
+   */
+  private static async stopProspectSequence(prospectId: string, replyFrom: string): Promise<void> {
+    try {
+      // 1. Annuler tous les emails programmés en attente pour ce prospect
+      const { data: cancelledEmails, error: cancelError } = await supabase
+        .from('prospect_email_scheduled')
+        .update({
+          status: 'cancelled',
+          updated_at: new Date().toISOString(),
+          metadata: {
+            cancelled_reason: 'prospect_replied',
+            cancelled_at: new Date().toISOString(),
+            reply_from: replyFrom
+          }
+        })
+        .eq('prospect_id', prospectId)
+        .eq('status', 'pending')
+        .select();
+
+      if (cancelError) {
+        console.error(`❌ Erreur annulation emails programmés pour prospect ${prospectId}:`, cancelError);
+      } else {
+        const count = cancelledEmails?.length || 0;
+        console.log(`✅ ${count} email(s) programmé(s) annulé(s) pour prospect ${prospectId} (a répondu)`);
+      }
+
+      // 2. Mettre à jour le statut du prospect
+      const { error: prospectError } = await supabase
+        .from('prospects')
+        .update({
+          emailing_status: 'replied',
+          updated_at: new Date().toISOString(),
+          metadata: {
+            last_reply_from: replyFrom,
+            last_reply_at: new Date().toISOString(),
+            sequence_stopped: true
+          }
+        })
+        .eq('id', prospectId);
+
+      if (prospectError) {
+        console.error(`❌ Erreur mise à jour statut prospect ${prospectId}:`, prospectError);
+      } else {
+        console.log(`✅ Prospect ${prospectId} marqué comme "replied", séquence arrêtée`);
+      }
+    } catch (error: any) {
+      console.error(`❌ Erreur stopProspectSequence pour ${prospectId}:`, error);
+    }
+  }
+
+  /**
+   * Créer une notification admin quand un prospect répond
+   */
+  private static async createAdminNotificationForReply(
+    prospectId: string,
+    replyFrom: string,
+    gmailMessageId: string
+  ): Promise<void> {
+    try {
+      // Récupérer les infos du prospect
+      const { data: prospect, error: prospectError } = await supabase
+        .from('prospects')
+        .select('email, firstname, lastname, company_name')
+        .eq('id', prospectId)
+        .single();
+
+      if (prospectError || !prospect) {
+        console.error(`❌ Impossible de récupérer prospect ${prospectId} pour notification`);
+        return;
+      }
+
+      const prospectName = prospect.firstname && prospect.lastname 
+        ? `${prospect.firstname} ${prospect.lastname}`
+        : prospect.company_name || prospect.email;
+
+      // Créer la notification admin
+      const { error: notifError } = await supabase
+        .from('AdminNotification')
+        .insert({
+          type: 'prospect_reply',
+          title: `📧 Réponse reçue de ${prospectName}`,
+          message: `Le prospect ${prospectName} (${prospect.email}) a répondu à votre email de prospection.`,
+          priority: 'high',
+          status: 'unread',
+          is_read: false,
+          metadata: {
+            prospect_id: prospectId,
+            prospect_email: prospect.email,
+            prospect_name: prospectName,
+            reply_from: replyFrom,
+            gmail_message_id: gmailMessageId,
+            replied_at: new Date().toISOString()
+          },
+          action_url: `/admin/prospection?prospect_id=${prospectId}`,
+          action_label: 'Voir le prospect',
+          created_at: new Date().toISOString()
+        });
+
+      if (notifError) {
+        console.error(`❌ Erreur création notification admin pour prospect ${prospectId}:`, notifError);
+      } else {
+        console.log(`✅ Notification admin créée pour réponse de ${prospectName}`);
+      }
+    } catch (error: any) {
+      console.error(`❌ Erreur createAdminNotificationForReply pour ${prospectId}:`, error);
     }
   }
 }
