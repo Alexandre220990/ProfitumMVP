@@ -38,7 +38,8 @@ import {
   Edit2,
   Pause,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  Eye
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { cn } from "@/lib/utils";
@@ -137,6 +138,7 @@ export default function ProspectionAdmin() {
   
   // Sélection
   const [selectedProspectIds, setSelectedProspectIds] = useState<Set<string>>(new Set());
+  const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   
   // Modal envoi email
   const [showSendEmailModal, setShowSendEmailModal] = useState(false);
@@ -534,6 +536,19 @@ export default function ProspectionAdmin() {
   const handleProspectClick = async (prospect: Prospect) => {
     // Toujours rediriger vers la synthèse de la séquence
     navigate(`/admin/prospection/sequence/${prospect.id}`);
+  };
+
+  const handleShowDetails = async (prospect: Prospect, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedProspect(prospect);
+    setShowDetails(true);
+  };
+
+  const handleCloseDetails = (open: boolean) => {
+    setShowDetails(open);
+    if (!open) {
+      setSelectedProspect(null);
+    }
   };
 
   // Fonctions pour la programmation de séquences
@@ -2030,6 +2045,14 @@ export default function ProspectionAdmin() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => handleShowDetails(prospect, e)}
+                                title="Voir les détails"
+                              >
+                                <Eye className="h-4 w-4 text-gray-600" />
+                              </Button>
                               {activeTab === 'scheduled-sequences' && (
                                 <>
                                   <Button
@@ -2534,6 +2557,14 @@ export default function ProspectionAdmin() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={(e) => handleShowDetails(prospect, e)}
+                            title="Voir les détails"
+                          >
+                            <Eye className="h-4 w-4 text-gray-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleCreateSequenceForProspect(prospect);
@@ -2581,7 +2612,7 @@ export default function ProspectionAdmin() {
       </Card>
 
       {/* Modal Détails */}
-      <Dialog open={showDetails} onOpenChange={setShowDetails}>
+      <Dialog open={showDetails} onOpenChange={handleCloseDetails}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Détails du Prospect</DialogTitle>
