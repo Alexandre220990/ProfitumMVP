@@ -603,13 +603,13 @@ export default function GestionDossiers() { const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50">
-      <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Gestion des Dossiers</h1>
-        <Button variant="outline" size="sm" onClick={ () => navigate('/admin/dashboard-optimized') }>
+      <div className="w-full mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Gestion des Dossiers</h1>
+        <Button variant="outline" size="sm" onClick={ () => navigate('/admin/dashboard-optimized') } className="w-full sm:w-auto">
           ← Retour au Dashboard
         </Button>
       </div>
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <p className="text-gray-600 mt-2">
@@ -685,7 +685,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                     .filter(d => d.validation_state === 'documents_uploaded' || d.validation_state === 'eligible_confirmed')
                     .map(dossier => (
                       <div key={dossier.id} className="bg-white border border-red-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-3">
                           <div className="flex-1">
                             <h4 className="font-semibold text-gray-900">
                               {dossier.Client?.company_name || 'Client inconnu'}
@@ -697,11 +697,11 @@ export default function GestionDossiers() { const { user } = useAuth();
                               Créé le {formatDate(dossier.created_at)}
                             </p>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2">
                             <Button
                               size="sm"
                               variant="default"
-                              className="bg-green-600 hover:bg-green-700"
+                              className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                               onClick={() => handleValidateEligibility(
                                 dossier.id,
                                 dossier.Client?.company_name || dossier.ProduitEligible?.nom || 'Dossier'
@@ -713,6 +713,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                             <Button
                               size="sm"
                               variant="destructive"
+                              className="w-full sm:w-auto"
                               onClick={() => handleRejectEligibility(
                                 dossier.id,
                                 dossier.Client?.company_name || dossier.ProduitEligible?.nom || 'Dossier'
@@ -725,8 +726,8 @@ export default function GestionDossiers() { const { user } = useAuth();
                               <Button
                                 size="sm"
                                 variant="outline"
+                                className="bg-blue-50 hover:bg-blue-100 text-blue-700 w-full sm:w-auto"
                                 onClick={() => openProposeExpert(dossier)}
-                                className="bg-blue-50 hover:bg-blue-100 text-blue-700"
                               >
                                 <Users className="w-3 h-3 mr-1" />
                                 Proposer Expert
@@ -790,12 +791,12 @@ export default function GestionDossiers() { const { user } = useAuth();
                   <CardTitle>Dossiers Clients</CardTitle>
                   <Dialog open={ showAddDossier } onOpenChange={ setShowAddDossier }>
                     <DialogTrigger asChild>
-                      <Button className="flex items-center gap-2">
+                      <Button className="flex items-center gap-2 w-full sm:w-auto">
                         <Plus className="h-4 w-4" />
                         Nouveau Dossier
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>Ajouter un nouveau dossier</DialogTitle>
                       </DialogHeader>
@@ -868,8 +869,8 @@ export default function GestionDossiers() { const { user } = useAuth();
               </CardHeader>
               <CardContent>
                 { /* Filtres */ }
-                <div className="flex flex-wrap gap-4 mb-6">
-                  <div className="flex-1 min-w-[200px]">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
+                  <div className="flex-1">
                     <Input
                       placeholder="Rechercher..."
                       value={ filters.search }
@@ -878,7 +879,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                     />
                   </div>
                   <Select value={ filters.status } onValueChange={ (value) => setFilters(prev => ({ ...prev, status: value }))}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Statut" />
                     </SelectTrigger>
                     <SelectContent>
@@ -891,13 +892,79 @@ export default function GestionDossiers() { const { user } = useAuth();
                   </Select>
                 </div>
 
-                { /* Tableau des dossiers */ }
-                <div className="rounded-md border">
+                { /* Vue Mobile - Cartes */ }
+                <div className="md:hidden space-y-3">
+                  { dossiers.map((dossier) => (
+                    <Card 
+                      key={dossier.id}
+                      className="cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={ () => {
+                        setSelectedDossier(dossier);
+                        setShowDetails(true);
+                      }}
+                    >
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-sm truncate">
+                              { dossier.Client?.company_name || 'N/A' }
+                            </div>
+                            <div className="text-xs text-gray-500 break-all">
+                              { dossier.Client?.email }
+                            </div>
+                          </div>
+                          <div>
+                            { getStatusBadge(dossier.validation_state) }
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <div className="text-sm">
+                            <span className="font-medium">Produit:</span>{' '}
+                            <span className="text-gray-700">{ dossier.ProduitEligible?.nom }</span>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            { dossier.ProduitEligible?.description }
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="font-medium">Montant:</span>{' '}
+                            <span className="text-gray-700">
+                              { dossier.montant ? formatCurrency(dossier.montant) : 'N/A' }
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-medium">Date:</span>{' '}
+                            <span className="text-gray-700 text-xs">
+                              { new Date(dossier.created_at).toLocaleDateString('fr-FR') }
+                            </span>
+                          </div>
+                        </div>
+
+                        { dossier.Expert ? (
+                          <div className="text-sm pt-2 border-t">
+                            <span className="font-medium">Expert:</span>{' '}
+                            <span className="text-gray-700">{ dossier.Expert.company_name }</span>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400 pt-2 border-t">
+                            Expert non assigné
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                { /* Vue Desktop - Table */ }
+                <div className="hidden md:block rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSort('Client.company_name') }
                         >
                           <div className="flex items-center gap-2">
@@ -906,7 +973,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSort('ProduitEligible.nom') }
                         >
                           <div className="flex items-center gap-2">
@@ -915,7 +982,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSort('validation_state') }
                         >
                           <div className="flex items-center gap-2">
@@ -924,7 +991,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSort('montant') }
                         >
                           <div className="flex items-center gap-2">
@@ -933,7 +1000,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSort('Expert.company_name') }
                         >
                           <div className="flex items-center gap-2">
@@ -942,7 +1009,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSort('created_at') }
                         >
                           <div className="flex items-center gap-2">
@@ -956,7 +1023,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                       { dossiers.map((dossier) => (
                         <TableRow 
                           key={dossier.id }
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => {
                             setSelectedDossier(dossier);
                             setShowDetails(true); }}
@@ -964,7 +1031,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                           <TableCell>
                             <div>
                               <div className="font-medium">{ dossier.Client?.company_name || 'N/A' }</div>
-                              <div className="text-sm text-gray-500">{ dossier.Client?.email }</div>
+                              <div className="text-sm text-gray-500 break-all">{ dossier.Client?.email }</div>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -981,7 +1048,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                             { dossier.Expert ? (
                               <div>
                                 <div className="font-medium">{dossier.Expert.company_name }</div>
-                                <div className="text-sm text-gray-500">{ dossier.Expert.email }</div>
+                                <div className="text-sm text-gray-500 break-all">{ dossier.Expert.email }</div>
                               </div>
                             ) : (
                               <span className="text-gray-400">Non assigné</span>
@@ -1032,12 +1099,12 @@ export default function GestionDossiers() { const { user } = useAuth();
                   <CardTitle>Produits Éligibles</CardTitle>
                   <Dialog open={ showAddProduit } onOpenChange={ setShowAddProduit }>
                     <DialogTrigger asChild>
-                      <Button className="flex items-center gap-2">
+                      <Button className="flex items-center gap-2 w-full sm:w-auto">
                         <Plus className="h-4 w-4" />
                         Nouveau Produit
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>Ajouter un nouveau produit</DialogTitle>
                       </DialogHeader>
@@ -1069,7 +1136,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                             placeholder="Catégorie"
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor="montant_min">Montant min</Label>
                             <Input
@@ -1091,7 +1158,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                             />
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor="taux_min">Taux min</Label>
                             <Input
@@ -1115,7 +1182,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                             />
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor="duree_min">Durée min (mois)</Label>
                             <Input
@@ -1146,12 +1213,104 @@ export default function GestionDossiers() { const { user } = useAuth();
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border">
+                { /* Vue Mobile - Cartes */ }
+                <div className="md:hidden space-y-3">
+                  { produits.map((produit) => (
+                    <Card 
+                      key={produit.id}
+                      className="hover:shadow-md transition-shadow"
+                    >
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-sm truncate">
+                              { produit.nom }
+                            </h3>
+                            <p className="text-xs text-gray-500 line-clamp-2">
+                              { produit.description }
+                            </p>
+                          </div>
+                        </div>
+                        
+                        { produit.categorie && (
+                          <div className="text-sm">
+                            <span className="font-medium">Catégorie:</span>{' '}
+                            <span className="text-gray-700">{ produit.categorie }</span>
+                          </div>
+                        )}
+
+                        <div className="space-y-1 text-sm">
+                          <div>
+                            <span className="font-medium">Montant:</span>{' '}
+                            <span className="text-gray-700">
+                              { produit.montant_min && produit.montant_max 
+                                ? `${formatCurrency(produit.montant_min) } - ${ formatCurrency(produit.montant_max) }`
+                                : 'N/A'
+                              }
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-medium">Taux:</span>{' '}
+                            <span className="text-gray-700">
+                              { produit.taux_min && produit.taux_max 
+                                ? `${produit.taux_min.toFixed(1)}% - ${produit.taux_max.toFixed(1)}%`
+                                : 'N/A'
+                              }
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-medium">Durée:</span>{' '}
+                            <span className="text-gray-700">
+                              { produit.duree_min && produit.duree_max 
+                                ? `${produit.duree_min } - ${ produit.duree_max } mois`
+                                : 'N/A'
+                              }
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-2 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={ () => {
+                              setSelectedProduit(produit);
+                              setShowProduitDetails(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Voir
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={ () => openEditProduit(produit) }
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Éditer
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={ () => openDeleteProduit(produit) }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                { /* Vue Desktop - Table */ }
+                <div className="hidden md:block rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSortProduit('nom') }
                         >
                           <div className="flex items-center gap-2">
@@ -1160,7 +1319,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSortProduit('description') }
                         >
                           <div className="flex items-center gap-2">
@@ -1169,7 +1328,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSortProduit('categorie') }
                         >
                           <div className="flex items-center gap-2">
@@ -1178,7 +1337,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSortProduit('montant_min') }
                         >
                           <div className="flex items-center gap-2">
@@ -1187,7 +1346,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSortProduit('taux_min') }
                         >
                           <div className="flex items-center gap-2">
@@ -1196,7 +1355,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover: bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50"
                           onClick={ () => handleSortProduit('duree_min') }
                         >
                           <div className="flex items-center gap-2">
@@ -1275,17 +1434,17 @@ export default function GestionDossiers() { const { user } = useAuth();
 
         { /* Modale Détails Dossier */ }
         <Dialog open={ showDetails } onOpenChange={ setShowDetails }>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Détails du Dossier</DialogTitle>
             </DialogHeader>
             { selectedDossier && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>Client</Label>
                     <div className="text-sm font-medium">{selectedDossier.Client?.company_name || 'N/A' }</div>
-                    <div className="text-sm text-gray-500">{ selectedDossier.Client?.email }</div>
+                    <div className="text-sm text-gray-500 break-all">{ selectedDossier.Client?.email }</div>
                   </div>
                   <div>
                     <Label>Produit</Label>
@@ -1293,7 +1452,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                     <div className="text-sm text-gray-500">{ selectedDossier.ProduitEligible?.description }</div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>Statut</Label>
                     <div>{ getStatusBadge(selectedDossier.validation_state) }</div>
@@ -1304,7 +1463,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                       { selectedDossier.Expert ? (
                         <>
                           <div className="font-medium">{selectedDossier.Expert.company_name }</div>
-                          <div className="text-gray-500">{ selectedDossier.Expert.email }</div>
+                          <div className="text-gray-500 break-all">{ selectedDossier.Expert.email }</div>
                         </>
                       ) : (
                         <span className="text-gray-400">Non assigné</span>
@@ -1312,7 +1471,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <Label>Montant</Label>
                     <div className="text-sm font-medium">
@@ -1332,7 +1491,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>Étape actuelle</Label>
                     <div className="text-sm font-medium">{ selectedDossier.current_step || 0 }</div>
@@ -1353,7 +1512,7 @@ export default function GestionDossiers() { const { user } = useAuth();
 
         { /* Modale Détails Produit */ }
         <Dialog open={ showProduitDetails } onOpenChange={ setShowProduitDetails }>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Détails du Produit</DialogTitle>
             </DialogHeader>
@@ -1367,7 +1526,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                   <Label>Description</Label>
                   <div className="text-sm">{ selectedProduit.description }</div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>Catégorie</Label>
                     <div className="text-sm">{ selectedProduit.categorie || 'N/A' }</div>
@@ -1377,7 +1536,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                     <div className="text-sm">{ formatDate(selectedProduit.created_at) }</div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>Montant</Label>
                     <div className="text-sm">
@@ -1413,7 +1572,7 @@ export default function GestionDossiers() { const { user } = useAuth();
 
         { /* Modale Édition Produit */ }
         <Dialog open={ showEditProduit } onOpenChange={ setShowEditProduit }>
-          <DialogContent className="max-w-md">
+          <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Modifier le produit</DialogTitle>
             </DialogHeader>
@@ -1445,7 +1604,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                   placeholder="Catégorie"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit-montant_min">Montant min</Label>
                   <Input
@@ -1467,7 +1626,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit-taux_min">Taux min</Label>
                   <Input
@@ -1491,7 +1650,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit-duree_min">Durée min</Label>
                   <Input
@@ -1513,11 +1672,11 @@ export default function GestionDossiers() { const { user } = useAuth();
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={ () => setShowEditProduit(false) }>
+              <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+                <Button variant="outline" className="w-full sm:w-auto" onClick={ () => setShowEditProduit(false) }>
                   Annuler
                 </Button>
-                <Button onClick={ updateProduit }>
+                <Button className="w-full sm:w-auto" onClick={ updateProduit }>
                   Modifier
                 </Button>
               </div>
@@ -1527,7 +1686,7 @@ export default function GestionDossiers() { const { user } = useAuth();
 
         { /* Modale Suppression Produit */ }
         <Dialog open={ showDeleteProduit } onOpenChange={ setShowDeleteProduit }>
-          <DialogContent className="max-w-md">
+          <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Supprimer le produit</DialogTitle>
             </DialogHeader>
@@ -1536,11 +1695,11 @@ export default function GestionDossiers() { const { user } = useAuth();
                 Êtes-vous sûr de vouloir supprimer le produit <strong>{ selectedProduit?.nom }</strong> ?
                 Cette action est irréversible.
               </p>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={ () => setShowDeleteProduit(false) }>
+              <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+                <Button variant="outline" className="w-full sm:w-auto" onClick={ () => setShowDeleteProduit(false) }>
                   Annuler
                 </Button>
-                <Button variant="destructive" onClick={ deleteProduit }>
+                <Button variant="destructive" className="w-full sm:w-auto" onClick={ deleteProduit }>
                   Supprimer
                 </Button>
               </div>
@@ -1550,7 +1709,7 @@ export default function GestionDossiers() { const { user } = useAuth();
 
         {/* Modale Proposition Expert */}
         <Dialog open={showProposeExpert} onOpenChange={setShowProposeExpert}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-blue-600" />
@@ -1598,9 +1757,10 @@ export default function GestionDossiers() { const { user } = useAuth();
                 />
               </div>
 
-              <div className="flex gap-3 justify-end">
+              <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => setShowProposeExpert(false)}
                 >
                   Annuler
@@ -1608,7 +1768,7 @@ export default function GestionDossiers() { const { user } = useAuth();
                 <Button
                   onClick={handleProposeExpert}
                   disabled={!selectedExpert}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
                 >
                   <Users className="w-4 h-4 mr-2" />
                   Proposer l'Expert
