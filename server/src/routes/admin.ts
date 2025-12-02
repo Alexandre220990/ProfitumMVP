@@ -6430,7 +6430,7 @@ router.get('/notifications', async (req, res) => {
       .from('AdminNotificationWithStatus')
       .select('*')
       .eq('admin_id', adminDatabaseId)
-      .neq('status', 'replaced')
+      .neq('global_status', 'replaced')
       .order('created_at', { ascending: false });
     
     // Filtrer par statut individuel (user_status)
