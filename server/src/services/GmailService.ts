@@ -664,10 +664,10 @@ export class GmailService {
         : `📧 Réponse reçue de ${prospectName}`;
 
       const message = isNewProspect
-        ? `Un nouvel email a été reçu de ${prospectName} (${prospect.email}). Un prospect a été créé automatiquement. Consultez l'email et répondez directement.`
-        : `Le prospect ${prospectName} (${prospect.email}) a répondu à votre email de prospection. Consultez sa réponse et répondez directement.`;
+        ? `Un nouvel email a été reçu de ${prospectName} (${prospect.email}). Un prospect a été créé automatiquement. Consultez la séquence et répondez.`
+        : `Le prospect ${prospectName} (${prospect.email}) a répondu à votre email de prospection. Consultez la séquence complète et sa réponse.`;
 
-      // ✅ Créer la notification admin avec lien vers page de synthèse
+      // ✅ Créer la notification admin avec lien vers page de synthèse de la séquence
       const { error: notifError } = await supabase
         .from('AdminNotification')
         .insert({
@@ -686,9 +686,9 @@ export class GmailService {
             is_new_prospect: isNewProspect,
             replied_at: new Date().toISOString()
           },
-          // ✅ Pointer vers la page de synthèse de l'email
-          action_url: `/admin/prospection/email-reply/${prospectId}/${emailReceivedId}`,
-          action_label: 'Voir l\'email et répondre',
+          // ✅ Pointer vers la page de synthèse de la séquence (conversation complète)
+          action_url: `/admin/prospection/sequence/${prospectId}`,
+          action_label: 'Voir la séquence',
           created_at: new Date().toISOString()
         });
 

@@ -2,8 +2,9 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { ProspectService } from '../services/ProspectService';
 import { ProspectEmailService } from '../services/ProspectEmailService';
-import { ProspectFilters } from '../types/prospects';
+import { ProspectFilters, ProspectEnrichmentData } from '../types/prospects';
 import OpenAI from 'openai';
+import { pool } from '../config/database';
 
 const router = express.Router();
 
