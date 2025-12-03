@@ -63,12 +63,42 @@ const VALID_CATEGORIES: EventCategory[] = [
 
 /**
  * Transformer un RDV en format CalendarEvent pour compatibilité
+ * ⚠️ IMPORTANT: Retourner les dates au format ISO avec fuseau horaire pour préserver l'heure locale
  */
 function transformRDVToCalendarEvent(rdv: any): any {
-  const startDateTime = `${rdv.scheduled_date}T${rdv.scheduled_time}`;
-  const endDateTime = new Date(
-    new Date(startDateTime).getTime() + (rdv.duration_minutes || 60) * 60000
-  ).toISOString();
+  // Parser manuellement les composants de date pour éviter les conversions de fuseau horaire
+  const dateParts = rdv.scheduled_date.split('-');
+  const timeParts = rdv.scheduled_time.split(':');
+  
+  const year = parseInt(dateParts[0], 10);
+  const month = parseInt(dateParts[1], 10) - 1; // Mois commence à 0
+  const day = parseInt(dateParts[2], 10);
+  const hours = parseInt(timeParts[0], 10);
+  const minutes = parseInt(timeParts[1], 10);
+  
+  // Créer la date en heure locale (pas UTC)
+  const startDate = new Date(year, month, day, hours, minutes, 0);
+  const endDate = new Date(startDate.getTime() + (rdv.duration_minutes || 60) * 60000);
+  
+  // Formater en ISO avec l'offset du fuseau horaire local
+  const formatWithOffset = (date: Date): string => {
+    const offset = -date.getTimezoneOffset();
+    const offsetHours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
+    const offsetMinutes = String(Math.abs(offset) % 60).padStart(2, '0');
+    const offsetSign = offset >= 0 ? '+' : '-';
+    
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const h = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    const s = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${y}-${m}-${d}T${h}:${min}:${s}${offsetSign}${offsetHours}:${offsetMinutes}`;
+  };
+  
+  const startDateTime = formatWithOffset(startDate);
+  const endDateTime = formatWithOffset(endDate);
 
   // Extraire color depuis metadata si présent, sinon utiliser getStatusColor
   const color = rdv.metadata?.color || getStatusColor(rdv.status);
