@@ -13,7 +13,6 @@ export default function ConnexionClient() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const [wrongTypeError, setWrongTypeError] = useState<any>(null);
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -46,7 +45,6 @@ export default function ConnexionClient() {
     }
 
     setIsLoading(true);
-    setWrongTypeError(null);
     
     try {
       await login({
@@ -58,23 +56,10 @@ export default function ConnexionClient() {
       navigate(`/dashboard/client`);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
-      
-      // Gérer l'erreur 403 avec redirection (multi-profils)
-      if (error.response?.status === 403 && error.response?.data?.redirect_to_type) {
-        setWrongTypeError(error.response.data);
-        toast.error(error.response.data.message);
-        return;
-      }
-      
-      toast.error('Email ou mot de passe incorrect');
+      toast.error(error.message || 'Email ou mot de passe incorrect');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleRedirect = (loginUrl: string) => {
-    toast.info('Redirection vers votre compte...');
-    setTimeout(() => navigate(loginUrl), 500);
   };
 
   return (
@@ -145,41 +130,6 @@ export default function ConnexionClient() {
               </Link>
             </p>
           </div>
-
-          {/* Alerte de redirection si mauvais type */}
-          {wrongTypeError && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-red-800 mb-2">
-                    {wrongTypeError.message}
-                  </p>
-                  <p className="text-xs text-red-700 mb-3">
-                    Nous avons trouvé un autre type de compte avec cet email :
-                  </p>
-                  
-                  {/* Boutons de redirection */}
-                  <div className="space-y-2">
-                    {wrongTypeError.available_types?.map((type: any) => (
-                      <Button
-                        key={type.type}
-                        onClick={() => handleRedirect(type.login_url)}
-                        variant="secondary"
-                        className="w-full justify-between bg-white hover:bg-red-50 border border-red-300"
-                        size="sm"
-                      >
-                        <span>
-                          Se connecter en tant que <strong>{type.name || type.type}</strong>
-                        </span>
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Formulaire amélioré */}
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">

@@ -14,7 +14,6 @@ export default function ConnexionExpert() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const [wrongTypeError, setWrongTypeError] = useState<any>(null);
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -47,7 +46,6 @@ export default function ConnexionExpert() {
     }
 
     setIsLoading(true);
-    setWrongTypeError(null);
     
     try {
       await login({
@@ -61,8 +59,7 @@ export default function ConnexionExpert() {
       console.error("Erreur de connexion:", error);
       
       // Gérer l'erreur 403 avec redirection (multi-profils)
-      if (error.response?.status === 403 && error.response?.data?.redirect_to_type) {
-        setWrongTypeError(error.response.data);
+      
         toast.error(error.response.data.message);
         return;
       }
@@ -71,11 +68,6 @@ export default function ConnexionExpert() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleRedirect = (loginUrl: string) => {
-    toast.info('Redirection vers votre compte...');
-    setTimeout(() => navigate(loginUrl), 500);
   };
 
   return (

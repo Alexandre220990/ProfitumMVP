@@ -158,7 +158,7 @@ router.get('/check', checkAuth);
 // ===== ROUTES D'AUTHENTIFICATION DISTINCTES =====
 
 // ============================================================================
-// ROUTES D'AUTHENTIFICATION MULTI-PROFILS
+// ROUTES D'AUTHENTIFICATION SIMPLIFIÉES (1 email = 1 type)
 // ============================================================================
 
 // POST /api/auth/client/login - Connexion CLIENT (SIMPLIFIÉ)
