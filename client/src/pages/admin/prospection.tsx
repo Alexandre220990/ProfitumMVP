@@ -142,6 +142,8 @@ export default function ProspectionAdmin() {
   const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list'); // 'list' ou 'grouped'
   const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
   const [editingBatchName, setEditingBatchName] = useState<string>('');
+  const [batchProspects, setBatchProspects] = useState<Map<string, Prospect[]>>(new Map());
+  const [loadingBatchIds, setLoadingBatchIds] = useState<Set<string>>(new Set());
   
   // Sélection
   const [selectedProspectIds, setSelectedProspectIds] = useState<Set<string>>(new Set());
@@ -353,6 +355,44 @@ export default function ProspectionAdmin() {
     } catch (error: any) {
       console.error('Erreur modification nom:', error);
       toast.error('Erreur lors de la modification du nom');
+    }
+  };
+
+  const fetchBatchProspects = async (batchId: string) => {
+    // Vérifier si on a déjà chargé ces prospects
+    if (batchProspects.has(batchId)) {
+      return;
+    }
+
+    try {
+      setLoadingBatchIds(prev => new Set(prev).add(batchId));
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      const response = await fetch(`${config.API_URL}/api/prospects/import-batches/${batchId}/prospects?limit=100`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setBatchProspects(prev => {
+          const newMap = new Map(prev);
+          newMap.set(batchId, result.data.data || []);
+          return newMap;
+        });
+      }
+    } catch (error: any) {
+      console.error('Erreur chargement prospects du batch:', error);
+      toast.error('Erreur lors du chargement des prospects');
+    } finally {
+      setLoadingBatchIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(batchId);
+        return newSet;
+      });
     }
   };
 
@@ -2804,11 +2844,14 @@ export default function ProspectionAdmin() {
               <Card key={batch.id || 'manual'} className="overflow-hidden">
                 <button
                   onClick={() => {
+                    const batchKey = batch.id || 'manual';
                     const newExpanded = new Set(expandedBatchIds);
-                    if (expandedBatchIds.has(batch.id || 'manual')) {
-                      newExpanded.delete(batch.id || 'manual');
+                    if (expandedBatchIds.has(batchKey)) {
+                      newExpanded.delete(batchKey);
                     } else {
-                      newExpanded.add(batch.id || 'manual');
+                      newExpanded.add(batchKey);
+                      // Charger les prospects du batch s'ils ne sont pas déjà chargés
+                      fetchBatchProspects(batchKey);
                     }
                     setExpandedBatchIds(newExpanded);
                   }}
@@ -2892,10 +2935,20 @@ export default function ProspectionAdmin() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <Badge variant="outline" className="bg-white px-4 py-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 px-3 py-1">
                           {batch.prospects_count} prospect{batch.prospects_count > 1 ? 's' : ''}
                         </Badge>
+                        {batch.success_count !== undefined && batch.success_count !== null && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 px-3 py-1">
+                            ✓ {batch.success_count} importé{batch.success_count > 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                        {batch.error_count !== undefined && batch.error_count !== null && batch.error_count > 0 && (
+                          <Badge variant="outline" className="bg-red-50 text-red-700 px-3 py-1">
+                            ✗ {batch.error_count} erreur{batch.error_count > 1 ? 's' : ''}
+                          </Badge>
+                        )}
                         {batch.status && (
                           <Badge 
                             className={
@@ -2915,10 +2968,236 @@ export default function ProspectionAdmin() {
                 </button>
                 {expandedBatchIds.has(batch.id || 'manual') && (
                   <CardContent className="pt-6">
-                    <p className="text-sm text-gray-500 mb-4">
-                      Chargement des prospects de cette liste...
-                    </p>
-                    {/* TODO: Charger et afficher les prospects de ce batch */}
+                    {loadingBatchIds.has(batch.id || 'manual') ? (
+                      <div className="flex items-center justify-center py-8">
+                        <RefreshCw className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+                        <span className="text-gray-600">Chargement des prospects...</span>
+                      </div>
+                    ) : (
+                      (() => {
+                        const batchKey = batch.id || 'manual';
+                        const prospectsInBatch = batchProspects.get(batchKey) || [];
+                        
+                        if (prospectsInBatch.length === 0) {
+                          return (
+                            <p className="text-center py-8 text-gray-500">
+                              Aucun prospect dans cette liste
+                            </p>
+                          );
+                        }
+
+                        // Calculer les statistiques des prospects
+                        const stats = {
+                          total: prospectsInBatch.length,
+                          enriched: prospectsInBatch.filter(p => p.enrichment_status === 'completed').length,
+                          aiProcessed: prospectsInBatch.filter(p => p.ai_status === 'completed').length,
+                          readyForEmail: prospectsInBatch.filter(p => p.emailing_status === 'pending' && p.enrichment_status === 'completed').length,
+                          emailSent: prospectsInBatch.filter(p => ['sent', 'opened', 'clicked', 'replied'].includes(p.emailing_status)).length,
+                          highPriority: prospectsInBatch.filter(p => p.score_priority >= 80).length,
+                        };
+
+                        return (
+                          <div className="space-y-4">
+                            {/* Statistiques détaillées */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-4 bg-gray-50 rounded-lg">
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
+                                <p className="text-xs text-gray-600">Total</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-green-600">{stats.enriched}</p>
+                                <p className="text-xs text-gray-600">Enrichis</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-purple-600">{stats.aiProcessed}</p>
+                                <p className="text-xs text-gray-600">IA complété</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-yellow-600">{stats.readyForEmail}</p>
+                                <p className="text-xs text-gray-600">Prêts email</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-indigo-600">{stats.emailSent}</p>
+                                <p className="text-xs text-gray-600">Emails envoyés</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-red-600">{stats.highPriority}</p>
+                                <p className="text-xs text-gray-600">Priorité haute</p>
+                              </div>
+                            </div>
+                            {/* Vue Mobile - Cartes */}
+                            <div className="md:hidden space-y-3">
+                              {prospectsInBatch.map((prospect) => (
+                                <Card key={prospect.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleProspectClick(prospect)}>
+                                  <CardContent className="p-4 space-y-3">
+                                    {/* Header avec checkbox et priorité */}
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedProspectIds.has(prospect.id)}
+                                          onChange={(e) => {
+                                            e.stopPropagation();
+                                            const newSet = new Set(selectedProspectIds);
+                                            if (e.target.checked) {
+                                              newSet.add(prospect.id);
+                                            } else {
+                                              newSet.delete(prospect.id);
+                                            }
+                                            setSelectedProspectIds(newSet);
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="rounded border-gray-300"
+                                        />
+                                        <div className="flex items-center gap-1">
+                                          <TrendingUp className="h-3 w-3 text-gray-400" />
+                                          <span className="text-sm font-semibold">{prospect.score_priority}</span>
+                                          {prospect.score_priority >= 80 && (
+                                            <Badge className="bg-red-100 text-red-800 text-xs">Haute</Badge>
+                                          )}
+                                          {prospect.score_priority >= 50 && prospect.score_priority < 80 && (
+                                            <Badge className="bg-yellow-100 text-yellow-800 text-xs">Moyenne</Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Entreprise et Contact */}
+                                    <div className="space-y-2">
+                                      <div className="flex items-start gap-2">
+                                        <Building2 className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-semibold text-gray-900 truncate">
+                                            {prospect.company_name || 'N/A'}
+                                          </p>
+                                          {prospect.naf_label && (
+                                            <p className="text-xs text-gray-500 truncate">{prospect.naf_label}</p>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <User className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                        <span className="text-sm text-gray-700 truncate">
+                                          {prospect.firstname || prospect.lastname
+                                            ? `${prospect.firstname || ''} ${prospect.lastname || ''}`.trim()
+                                            : 'N/A'}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                        <span className="text-sm text-gray-700 truncate">{prospect.email}</span>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+
+                            {/* Vue Desktop - Table */}
+                            <div className="hidden md:block overflow-x-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="w-12">
+                                      <input
+                                        type="checkbox"
+                                        checked={
+                                          prospectsInBatch.length > 0 &&
+                                          prospectsInBatch.every((p) => selectedProspectIds.has(p.id))
+                                        }
+                                        onChange={(e) => {
+                                          const newSet = new Set(selectedProspectIds);
+                                          if (e.target.checked) {
+                                            prospectsInBatch.forEach((p) => newSet.add(p.id));
+                                          } else {
+                                            prospectsInBatch.forEach((p) => newSet.delete(p.id));
+                                          }
+                                          setSelectedProspectIds(newSet);
+                                        }}
+                                        className="rounded border-gray-300"
+                                      />
+                                    </TableHead>
+                                    <TableHead>Score</TableHead>
+                                    <TableHead>Entreprise</TableHead>
+                                    <TableHead>Contact</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>Téléphone</TableHead>
+                                    <TableHead>Actions</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {prospectsInBatch.map((prospect) => (
+                                    <TableRow 
+                                      key={prospect.id} 
+                                      className="cursor-pointer hover:bg-gray-50"
+                                      onClick={() => handleProspectClick(prospect)}
+                                    >
+                                      <TableCell onClick={(e) => e.stopPropagation()}>
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedProspectIds.has(prospect.id)}
+                                          onChange={(e) => {
+                                            const newSet = new Set(selectedProspectIds);
+                                            if (e.target.checked) {
+                                              newSet.add(prospect.id);
+                                            } else {
+                                              newSet.delete(prospect.id);
+                                            }
+                                            setSelectedProspectIds(newSet);
+                                          }}
+                                          className="rounded border-gray-300"
+                                        />
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex items-center gap-1">
+                                          <TrendingUp className="h-3 w-3 text-gray-400" />
+                                          <span className="font-semibold">{prospect.score_priority}</span>
+                                          {prospect.score_priority >= 80 && (
+                                            <Badge className="bg-red-100 text-red-800 text-xs ml-1">Haute</Badge>
+                                          )}
+                                          {prospect.score_priority >= 50 && prospect.score_priority < 80 && (
+                                            <Badge className="bg-yellow-100 text-yellow-800 text-xs ml-1">Moyenne</Badge>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div>
+                                          <p className="font-medium">{prospect.company_name || 'N/A'}</p>
+                                          {prospect.naf_label && (
+                                            <p className="text-xs text-gray-500">{prospect.naf_label}</p>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        {prospect.firstname || prospect.lastname
+                                          ? `${prospect.firstname || ''} ${prospect.lastname || ''}`.trim()
+                                          : 'N/A'}
+                                      </TableCell>
+                                      <TableCell>{prospect.email}</TableCell>
+                                      <TableCell>{prospect.phone_direct || prospect.phone_standard || 'N/A'}</TableCell>
+                                      <TableCell onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => handleShowDetails(prospect, e)}
+                                            className="h-8 w-8 p-0"
+                                          >
+                                            <Eye className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    )}
                   </CardContent>
                 )}
               </Card>

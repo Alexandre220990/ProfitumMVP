@@ -136,8 +136,34 @@ Response: {
     file_name: string,
     created_at: string,
     status: string,
-    prospects_count: number
+    prospects_count: number,
+    success_count: number,
+    error_count: number,
+    total_rows: number
   }>
+}
+```
+
+### 4. Prospects d'un batch spécifique (NOUVEAU)
+```
+GET /api/prospects/import-batches/:batchId/prospects?page=1&limit=50&search=&sort_by=created_at&sort_order=desc
+Paramètres:
+- batchId: UUID du batch ou 'manual' pour prospects sans batch
+- page: Numéro de page (défaut: 1)
+- limit: Nombre de résultats (défaut: 50, max recommandé: 100)
+- search: Recherche dans email, nom entreprise, prénom, nom
+- sort_by: Champ de tri (défaut: created_at)
+- sort_order: Ordre de tri 'asc' ou 'desc' (défaut: desc)
+
+Response: {
+  success: boolean,
+  data: {
+    data: Array<Prospect>,
+    total: number,
+    page: number,
+    limit: number,
+    total_pages: number
+  }
 }
 ```
 
@@ -190,12 +216,61 @@ Response: {
 
 ---
 
-## 🔄 Prochaines étapes (optionnel)
+## 🔄 Prochaines étapes (optionnel) - ✅ COMPLÉTÉ
 
-- [ ] Ajouter le chargement des prospects dans la vue groupée (actuellement TODO)
-- [ ] Permettre la sélection dans la vue groupée
-- [ ] Ajouter des filtres spécifiques à la vue groupée
-- [ ] Statistiques par liste d'import
+- [x] Ajouter le chargement des prospects dans la vue groupée
+- [x] Permettre la sélection dans la vue groupée
+- [x] Ajouter des filtres spécifiques à la vue groupée (via API)
+- [x] Statistiques par liste d'import
+
+### Détails des implémentations :
+
+#### 1. **Chargement des prospects dans la vue groupée**
+- Nouvelle route API : `GET /api/prospects/import-batches/:batchId/prospects`
+- Support de la pagination (limite 100 par défaut)
+- Chargement dynamique lors de l'expansion d'un batch
+- État de chargement avec spinner
+
+#### 2. **Sélection dans la vue groupée**
+- Checkboxes individuelles pour chaque prospect
+- Checkbox "tout sélectionner" par batch
+- Synchronisation avec la sélection globale
+- Actions groupées disponibles (envoi email, suppression)
+
+#### 3. **Filtres pour la vue groupée**
+- Recherche dans les prospects via l'API
+- Tri par date, nom, score de priorité
+- Filtres hériter de la vue liste
+
+#### 4. **Statistiques par liste d'import**
+- Badges détaillés dans l'en-tête :
+  - Nombre total de prospects
+  - Nombre de prospects importés avec succès
+  - Nombre d'erreurs d'import
+  - Statut de l'import (Terminé/Échoué/En cours)
+- Panneau de statistiques détaillées lors de l'expansion :
+  - Total de prospects
+  - Prospects enrichis
+  - Prospects traités par IA
+  - Prospects prêts pour emailing
+  - Emails envoyés
+  - Prospects haute priorité
+
+### Nouveaux composants ajoutés :
+
+**États frontend** :
+```typescript
+const [batchProspects, setBatchProspects] = useState<Map<string, Prospect[]>>(new Map());
+const [loadingBatchIds, setLoadingBatchIds] = useState<Set<string>>(new Set());
+```
+
+**Fonction de chargement** :
+```typescript
+const fetchBatchProspects = async (batchId: string) => {
+  // Charge les prospects d'un batch spécifique
+  // Gère le cache pour éviter les chargements multiples
+}
+```
 
 ---
 

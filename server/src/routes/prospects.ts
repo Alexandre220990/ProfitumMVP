@@ -1,10 +1,17 @@
 import express from 'express';
+import { createClient } from '@supabase/supabase-js';
 import { ProspectService } from '../services/ProspectService';
 import { ProspectEmailService } from '../services/ProspectEmailService';
 import { ProspectFilters } from '../types/prospects';
 import OpenAI from 'openai';
 
 const router = express.Router();
+
+// Initialiser Supabase
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 // Initialiser OpenAI
 const openai = process.env.OPENAI_API_KEY 
@@ -1416,6 +1423,68 @@ router.get('/import-batches', async (req, res) => {
   try {
     const result = await ProspectService.getImportBatchesWithStats();
     return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/prospects/import-batches/:batchId/prospects - Récupérer les prospects d'un batch spécifique
+router.get('/import-batches/:batchId/prospects', async (req, res) => {
+  try {
+    const { batchId } = req.params;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    const filters: ProspectFilters = {
+      page,
+      limit,
+      search: req.query.search as string,
+      sort_by: (req.query.sort_by as any) || 'created_at',
+      sort_order: (req.query.sort_order as any) || 'desc'
+    };
+
+    // Si batchId est 'manual', on récupère les prospects sans import_batch_id
+    let query = supabase
+      .from('prospects')
+      .select('*', { count: 'exact' });
+
+    if (batchId === 'manual') {
+      query = query.is('import_batch_id', null);
+    } else {
+      query = query.eq('import_batch_id', batchId);
+    }
+
+    // Appliquer la recherche
+    if (filters.search) {
+      query = query.or(`email.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%,firstname.ilike.%${filters.search}%,lastname.ilike.%${filters.search}%`);
+    }
+
+    // Pagination
+    const offset = (page - 1) * limit;
+    query = query.range(offset, offset + limit - 1);
+
+    // Tri
+    query = query.order(filters.sort_by || 'created_at', { ascending: filters.sort_order === 'asc' });
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        error: `Erreur récupération prospects: ${error.message}`
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        data: data || [],
+        total: count || 0,
+        page: page,
+        limit: limit,
+        total_pages: Math.ceil((count || 0) / limit)
+      }
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
