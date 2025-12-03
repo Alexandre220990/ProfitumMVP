@@ -162,16 +162,22 @@ if (envExists) {
   }
 }
 
-// Charger le fichier .env (optionnel en production)
-const envResult = dotenv.config({ path: envPath });
-if (envResult.error) {
-  console.warn('⚠️ Fichier .env non trouvé (normal en production). Les variables d\'environnement système seront utilisées.');
-} else {
-  console.log('✅ Fichier .env chargé avec succès');
-  if (envResult.parsed) {
-    const smtpVars = Object.keys(envResult.parsed).filter(key => key.startsWith('SMTP_'));
-    console.log(`📧 Variables SMTP dans .env: ${smtpVars.length} trouvée(s)`);
+// Charger le fichier .env UNIQUEMENT en développement
+// En production (Railway), les variables d'environnement sont injectées directement
+if (process.env.NODE_ENV !== 'production' && envExists) {
+  const envResult = dotenv.config({ path: envPath });
+  if (envResult.error) {
+    console.warn('⚠️ Fichier .env non trouvé.');
+  } else {
+    console.log('✅ Fichier .env chargé avec succès (mode développement)');
+    if (envResult.parsed) {
+      const smtpVars = Object.keys(envResult.parsed).filter(key => key.startsWith('SMTP_'));
+      console.log(`📧 Variables SMTP dans .env: ${smtpVars.length} trouvée(s)`);
+    }
   }
+} else {
+  console.log('🚀 Mode production: utilisation des variables d\'environnement Railway uniquement');
+  console.log('📝 NODE_ENV:', process.env.NODE_ENV || 'undefined');
 }
 
 // Debug: Vérifier que les variables SMTP sont chargées APRÈS dotenv.config()
