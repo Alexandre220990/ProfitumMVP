@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { config } from "@/config/env";
 import { toast } from "sonner";
@@ -37,7 +38,7 @@ import {
   Users,
   TrendingUp,
   Loader2,
-  Sparkles
+  Eye
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import ProspectEnrichmentView from "@/components/ProspectEnrichmentView";
@@ -182,6 +183,7 @@ export default function ProspectSequencePage() {
   // États pour les modals
   const [showSendEmailModal, setShowSendEmailModal] = useState(false);
   const [showScheduleSequenceModal, setShowScheduleSequenceModal] = useState(false);
+  const [showEnrichmentModal, setShowEnrichmentModal] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   
   // États pour l'édition des informations
@@ -576,58 +578,56 @@ export default function ProspectSequencePage() {
           </Button>
         </div>
 
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          {/* Titre + Statuts */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Fiche prospect</h1>
-            
-            {/* Statuts compacts */}
+        <div className="flex flex-col gap-3">
+          {/* Titre */}
+          <h1 className="text-2xl font-bold text-gray-900">Fiche prospect</h1>
+          
+          {/* Ligne avec statuts et boutons d'action */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Statuts ultra-compacts sur une seule ligne */}
             {prospect && (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <Badge 
                   variant="outline" 
-                  className={`text-xs ${
+                  className={`text-[10px] px-1.5 py-0.5 h-5 ${
                     prospect.enrichment_status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
                     prospect.enrichment_status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                     prospect.enrichment_status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' :
-                    'bg-gray-50 text-gray-700 border-gray-200'
+                    'bg-gray-50 text-gray-600 border-gray-200'
                   }`}
                 >
-                  <Brain className="h-3 w-3 mr-1" />
                   {prospect.enrichment_status === 'completed' ? '✓ Enrichi' :
-                   prospect.enrichment_status === 'in_progress' ? '⏳ Enrichissement...' :
+                   prospect.enrichment_status === 'in_progress' ? '⏳ Enrichissement' :
                    prospect.enrichment_status === 'failed' ? '✗ Échec' :
                    '○ Non enrichi'}
                 </Badge>
                 
                 <Badge 
                   variant="outline" 
-                  className={`text-xs ${
+                  className={`text-[10px] px-1.5 py-0.5 h-5 ${
                     prospect.ai_status === 'completed' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                     prospect.ai_status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                     prospect.ai_status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' :
-                    'bg-gray-50 text-gray-700 border-gray-200'
+                    'bg-gray-50 text-gray-600 border-gray-200'
                   }`}
                 >
-                  <Sparkles className="h-3 w-3 mr-1" />
                   {prospect.ai_status === 'completed' ? '✓ IA' :
-                   prospect.ai_status === 'in_progress' ? '⏳ IA...' :
+                   prospect.ai_status === 'in_progress' ? '⏳ IA' :
                    prospect.ai_status === 'failed' ? '✗ IA' :
                    '○ IA'}
                 </Badge>
                 
                 <Badge 
                   variant="outline" 
-                  className={`text-xs ${
+                  className={`text-[10px] px-1.5 py-0.5 h-5 ${
                     prospect.emailing_status === 'replied' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                     prospect.emailing_status === 'opened' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                     prospect.emailing_status === 'sent' ? 'bg-green-50 text-green-700 border-green-200' :
                     prospect.emailing_status === 'clicked' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
                     prospect.emailing_status === 'bounced' ? 'bg-red-50 text-red-700 border-red-200' :
-                    'bg-gray-50 text-gray-700 border-gray-200'
+                    'bg-gray-50 text-gray-600 border-gray-200'
                   }`}
                 >
-                  <Mail className="h-3 w-3 mr-1" />
                   {prospect.emailing_status === 'replied' ? '✓ Répondu' :
                    prospect.emailing_status === 'opened' ? '👁 Ouvert' :
                    prospect.emailing_status === 'sent' ? '✓ Envoyé' :
@@ -637,48 +637,57 @@ export default function ProspectSequencePage() {
                 </Badge>
               </div>
             )}
-          </div>
-          
-          {/* Boutons d'action */}
-          <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-            <Button
-              onClick={enrichWithAI}
-              disabled={isEnriching}
-              className="flex-1 sm:flex-initial bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-              size="sm"
-            >
-              {isEnriching ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  <span className="hidden sm:inline">Enrichissement...</span>
-                  <span className="sm:hidden">...</span>
-                </>
+            
+            {/* Boutons d'action compacts */}
+            <div className="flex items-center gap-1.5">
+              {/* Bouton Enrichissement - Change selon le statut */}
+              {prospect.enrichment_status === 'completed' && prospect.enrichment_data ? (
+                <Button
+                  onClick={() => setShowEnrichmentModal(true)}
+                  className="h-7 px-2 text-[11px] bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-md"
+                  size="sm"
+                >
+                  <Eye className="h-3 w-3 mr-1" />
+                  Consulter l'enrichissement
+                </Button>
               ) : (
-                <>
-                  <Brain className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Enrichir avec l'IA</span>
-                  <span className="sm:hidden">Enrichir</span>
-                </>
+                <Button
+                  onClick={enrichWithAI}
+                  disabled={isEnriching}
+                  className="h-7 px-2 text-[11px] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                  size="sm"
+                >
+                  {isEnriching ? (
+                    <>
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      Enrichissement...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="h-3 w-3 mr-1" />
+                      Enrichir avec l'IA
+                    </>
+                  )}
+                </Button>
               )}
-            </Button>
-            <Button
-              onClick={() => setShowSendEmailModal(true)}
-              className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700"
-              size="sm"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Envoyer un email</span>
-              <span className="sm:hidden">Email</span>
-            </Button>
-            <Button
-              onClick={() => setShowScheduleSequenceModal(true)}
-              className="flex-1 sm:flex-initial bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-              size="sm"
-            >
-              <Calendar className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Programmer une séquence</span>
-              <span className="sm:hidden">Séquence</span>
-            </Button>
+              
+              <Button
+                onClick={() => setShowSendEmailModal(true)}
+                className="h-7 px-2 text-[11px] bg-blue-600 hover:bg-blue-700"
+                size="sm"
+              >
+                <Send className="h-3 w-3 mr-1" />
+                Envoyer un email
+              </Button>
+              <Button
+                onClick={() => setShowScheduleSequenceModal(true)}
+                className="h-7 px-2 text-[11px] bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                size="sm"
+              >
+                <Calendar className="h-3 w-3 mr-1" />
+                Programmer une séquence
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -773,7 +782,7 @@ export default function ProspectSequencePage() {
                   <Badge variant="secondary" className="text-xs">{conversation.length}</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 lg:space-y-4 max-h-[calc(100vh-350px)] overflow-y-auto scroll-smooth">
+              <CardContent className="space-y-3 lg:space-y-4">
                 {conversation.map((item, index) => (
                   <div key={item.id} className="relative">
                     {/* Ligne de connexion - cachée sur mobile */}
@@ -1021,18 +1030,18 @@ export default function ProspectSequencePage() {
                     {/* Email programmé */}
                     {item.type === 'scheduled' && (
                       <div className="flex gap-3 lg:gap-4">
-                        <div className="flex-shrink-0 w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                        <div className="flex-shrink-0 w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-orange-100 flex items-center justify-center shadow-sm">
                           <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-orange-600" />
                         </div>
-                        <div className="flex-1 border border-dashed border-orange-300 rounded-lg p-3 lg:p-4 bg-orange-50/30">
+                        <div className="flex-1 border-2 border-orange-300 rounded-lg p-3 lg:p-4 bg-gradient-to-br from-orange-50 to-amber-50/50 shadow-sm">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <Badge variant="outline" className="text-xs bg-white">
+                                <Badge variant="outline" className="text-xs bg-white font-semibold">
                                   Étape {item.step}
                                 </Badge>
                                 <Badge className={
-                                  item.status === 'scheduled' ? 'bg-orange-100 text-orange-800' :
+                                  item.status === 'scheduled' ? 'bg-orange-500 text-white shadow-sm' :
                                   item.status === 'sent' ? 'bg-green-100 text-green-800' :
                                   'bg-red-100 text-red-800'
                                 }>
@@ -1041,16 +1050,51 @@ export default function ProspectSequencePage() {
                                    '❌ Annulé'}
                                 </Badge>
                               </div>
-                              <div className="font-medium text-sm">{item.subject}</div>
-                              <div className="text-xs text-gray-500 mt-1">
+                              <div className="font-semibold text-base text-gray-900 mb-1">{item.subject}</div>
+                              <div className="text-xs text-orange-700 font-medium bg-white/70 px-2 py-1 rounded inline-flex items-center">
                                 <Calendar className="h-3 w-3 inline mr-1" />
                                 Prévu le {new Date(item.scheduled_for!).toLocaleString('fr-FR', {
-                                  dateStyle: 'medium',
-                                  timeStyle: 'short'
+                                  day: '2-digit',
+                                  month: 'long',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
                                 })}
                               </div>
                             </div>
                           </div>
+
+                          {/* Corps de l'email programmé */}
+                          {item.body && (
+                            <div className="mt-3 pt-3 border-t border-orange-200">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleBody(item.id)}
+                                className="text-xs text-orange-700 hover:text-orange-800 h-6 px-2 font-medium"
+                              >
+                                {expandedBodies.has(item.id) ? (
+                                  <>
+                                    <ChevronUp className="h-3 w-3 mr-1" />
+                                    Masquer le message
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown className="h-3 w-3 mr-1" />
+                                    Voir le message complet
+                                  </>
+                                )}
+                              </Button>
+                              {expandedBodies.has(item.id) && (
+                                <div className="mt-2 bg-white rounded-lg p-4 border border-orange-200 animate-in slide-in-from-top-2 duration-200">
+                                  <div 
+                                    className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
+                                    dangerouslySetInnerHTML={{ __html: item.body }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           {/* Commentaire */}
                           <div className="mt-3 pt-3 border-t border-orange-200">
@@ -1741,6 +1785,50 @@ export default function ProspectSequencePage() {
               toast.success('Séquence programmée avec succès !');
             }}
           />
+
+          {/* Dialog pour consulter l'enrichissement */}
+          <Dialog open={showEnrichmentModal} onOpenChange={setShowEnrichmentModal}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-xl">
+                  <Brain className="h-6 w-6 text-blue-600" />
+                  Enrichissement IA - {prospect.company_name || 'Prospect'}
+                </DialogTitle>
+              </DialogHeader>
+              {prospect.enrichment_data && (
+                <div className="mt-4">
+                  <ProspectEnrichmentView
+                    enrichmentData={prospect.enrichment_data}
+                    prospectId={prospect.id}
+                    onUpdate={async (updatedData) => {
+                      try {
+                        const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                        const response = await fetch(`${config.API_URL}/api/prospects/${prospect.id}`, {
+                          method: 'PATCH',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({ enrichment_data: updatedData })
+                        });
+
+                        if (response.ok) {
+                          toast.success('Enrichissement mis à jour !');
+                          const updatedProspect = { ...prospect, enrichment_data: updatedData };
+                          setProspect(updatedProspect);
+                        } else {
+                          toast.error('Erreur lors de la mise à jour');
+                        }
+                      } catch (error) {
+                        console.error('Erreur:', error);
+                        toast.error('Erreur lors de la mise à jour');
+                      }
+                    }}
+                  />
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>
