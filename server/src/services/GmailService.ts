@@ -429,8 +429,16 @@ export class GmailService {
               .single();
 
             if (insertError) {
-              results.errors.push(`Erreur stockage email reçu: ${insertError.message}`);
-              console.error('❌ Erreur stockage email:', insertError);
+              const errorDetails = {
+                message: insertError.message,
+                details: insertError.details,
+                hint: insertError.hint,
+                code: insertError.code
+              };
+              const errorMsg = insertError.message || insertError.details || insertError.hint || JSON.stringify(insertError);
+              results.errors.push(`Erreur stockage email reçu: ${errorMsg}`);
+              console.error('❌ Erreur stockage email:', errorDetails);
+              console.error('❌ Erreur complète:', JSON.stringify(insertError, null, 2));
             } else {
               console.log(`✅ Email reçu stocké: ${emailReceived.id}`);
 
