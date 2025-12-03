@@ -2156,14 +2156,16 @@ export default function ProspectionAdmin() {
                               className="rounded border-gray-300"
                             />
                             <div className="flex items-center gap-1">
-                              <TrendingUp className="h-3 w-3 text-gray-400" />
-                              <span className="text-sm font-semibold">{prospect.score_priority}</span>
-                              {prospect.score_priority >= 80 && (
-                                <Badge className="bg-red-100 text-red-800 text-xs">Haute</Badge>
-                              )}
-                              {prospect.score_priority >= 50 && prospect.score_priority < 80 && (
-                                <Badge className="bg-yellow-100 text-yellow-800 text-xs">Moyenne</Badge>
-                              )}
+                              <Calendar className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-600">
+                                {prospect.created_at ? (
+                                  new Date(prospect.created_at).toLocaleDateString('fr-FR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric'
+                                  })
+                                ) : '-'}
+                              </span>
                             </div>
                           </div>
                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
@@ -2322,14 +2324,14 @@ export default function ProspectionAdmin() {
                         Enrichissement
                       </SortableHeader>
                       <SortableHeader field="ai_status">
-                        IA
+                        Séquence
                       </SortableHeader>
                       <SortableHeader field="emailing_status">
                         Emailing
                       </SortableHeader>
-                      <SortableHeader field="score_priority">
-                        <TrendingUp className="h-4 w-4 inline mr-2" />
-                        Priorité
+                      <SortableHeader field="created_at">
+                        <Calendar className="h-4 w-4 inline mr-2" />
+                        Date de création
                       </SortableHeader>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -2412,16 +2414,15 @@ export default function ProspectionAdmin() {
                             {getStatusBadge(prospect.emailing_status, 'emailing')}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{prospect.score_priority}</span>
-                              {prospect.score_priority >= 80 && (
-                                <Badge className="bg-red-100 text-red-800">Haute</Badge>
-                              )}
-                              {prospect.score_priority >= 50 && prospect.score_priority < 80 && (
-                                <Badge className="bg-yellow-100 text-yellow-800">Moyenne</Badge>
-                              )}
-                              {prospect.score_priority < 50 && (
-                                <Badge className="bg-gray-100 text-gray-800">Basse</Badge>
+                            <div className="text-sm">
+                              {prospect.created_at ? (
+                                new Date(prospect.created_at).toLocaleDateString('fr-FR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric'
+                                })
+                              ) : (
+                                <span className="text-gray-400">-</span>
                               )}
                             </div>
                           </TableCell>
