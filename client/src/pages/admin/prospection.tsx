@@ -70,6 +70,8 @@ interface Prospect {
   phone_standard: string | null;
   linkedin_company: string | null;
   enrichment_status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  enrichment_data?: any | null;
+  enriched_at?: string | null;
   ai_status: 'pending' | 'in_progress' | 'completed' | 'failed';
   emailing_status: 'pending' | 'queued' | 'sent' | 'opened' | 'clicked' | 'replied' | 'bounced' | 'unsubscribed';
   score_priority: number;
@@ -853,13 +855,18 @@ export default function ProspectionAdmin() {
       setShowAIContextModal(false);
       const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
 
-      // Préparer les informations du prospect
+      // Préparer les informations du prospect (avec toutes les données pour l'enrichissement)
       const prospectInfo = {
+        id: currentProspect.id,
         company_name: currentProspect.company_name,
         siren: currentProspect.siren,
         firstname: currentProspect.firstname,
         lastname: currentProspect.lastname,
-        email: seqConfig.email || currentProspect.email
+        email: seqConfig.email || currentProspect.email,
+        naf_code: currentProspect.naf_code,
+        naf_label: currentProspect.naf_label,
+        enrichment_status: currentProspect.enrichment_status,
+        enrichment_data: currentProspect.enrichment_data
       };
 
       // Préparer les étapes avec leurs délais
@@ -868,7 +875,7 @@ export default function ProspectionAdmin() {
         delayDays: step.delayDays
       }));
 
-      const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-sequence`, {
+      const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-sequence-v2`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -877,7 +884,8 @@ export default function ProspectionAdmin() {
         body: JSON.stringify({
           prospectInfo,
           steps,
-          context: aiContext.trim() || undefined // Envoyer undefined si vide
+          context: aiContext.trim() || undefined, // Envoyer undefined si vide
+          forceReenrichment: false // Peut être modifié pour forcer un nouvel enrichissement
         })
       });
 
@@ -905,8 +913,16 @@ export default function ProspectionAdmin() {
       updatedConfigs.set(currentProspect.id, updatedConfig);
       setSequenceConfigs(updatedConfigs);
 
-      toast.success('Séquence générée par IA avec succès !');
+      // Rafraîchir les prospects pour obtenir le nouveau statut d'enrichissement
+      await fetchProspects();
+
+      toast.success('✅ Séquence générée avec enrichissement !');
       setAiContext(''); // Réinitialiser le contexte après génération
+      
+      // Log de l'enrichissement pour debug (optionnel)
+      if (result.data.enrichment) {
+        console.log('Enrichissement du prospect:', result.data.enrichment);
+      }
     } catch (error: any) {
       console.error('Erreur génération IA:', error);
       toast.error('Erreur lors de la génération par IA');

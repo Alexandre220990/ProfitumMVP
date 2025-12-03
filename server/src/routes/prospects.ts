@@ -4,7 +4,6 @@ import { ProspectService } from '../services/ProspectService';
 import { ProspectEmailService } from '../services/ProspectEmailService';
 import { ProspectFilters, ProspectEnrichmentData } from '../types/prospects';
 import OpenAI from 'openai';
-import { pool } from '../config/database';
 
 const router = express.Router();
 
@@ -1013,6 +1012,448 @@ IMPORTANT :
 
   } catch (error: any) {
     console.error('Erreur génération IA:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur lors de la génération par IA'
+    });
+  }
+});
+
+// Fonction helper pour créer un enrichissement de fallback
+function createFallbackEnrichment(prospectInfo: any): ProspectEnrichmentData {
+  const nafLabel = prospectInfo.naf_label || 'Activité non renseignée';
+  const companyName = prospectInfo.company_name || 'l\'entreprise';
+  
+  return {
+    secteur_activite: {
+      description: `${companyName} opère dans le secteur : ${nafLabel}`,
+      tendances_profitum: "Les entreprises de ce secteur peuvent bénéficier d'optimisations fiscales, sociales et énergétiques selon leur profil opérationnel."
+    },
+    actualites_entreprise: {
+      recentes: ["Informations non disponibles - analyse basée sur le secteur général"],
+      pertinence_profitum: "Profitum peut aider à identifier les dispositifs d'optimisation adaptés à l'activité de l'entreprise."
+    },
+    signaux_operationnels: {
+      recrutements_en_cours: false,
+      locaux_physiques: true,
+      parc_vehicules_lourds: false,
+      consommation_gaz_importante: false,
+      details: "Analyse générique - informations précises non disponibles"
+    },
+    profil_eligibilite: {
+      ticpe: {
+        eligible: false,
+        raison: "À évaluer selon le parc de véhicules professionnels",
+        potentiel_economie: "À évaluer"
+      },
+      cee: {
+        eligible: true,
+        raison: "La plupart des entreprises avec locaux sont éligibles aux CEE",
+        potentiel_economie: "À évaluer"
+      },
+      optimisation_sociale: {
+        eligible: true,
+        raison: "Les entreprises avec salariés peuvent optimiser leurs charges sociales",
+        potentiel_economie: "À évaluer"
+      }
+    },
+    resume_strategique: `${companyName} pourrait bénéficier d'une analyse approfondie de son éligibilité aux dispositifs d'optimisation fiscale, sociale et énergétique disponibles via Profitum.`,
+    enriched_at: new Date().toISOString(),
+    enrichment_version: 'v2.0-fallback'
+  };
+}
+
+// POST /api/prospects/generate-ai-sequence-v2 - Génération V2 avec enrichissement en 2 étapes
+router.post('/generate-ai-sequence-v2', async (req, res) => {
+  try {
+    const { prospectInfo, steps, context, forceReenrichment = false } = req.body;
+
+    if (!prospectInfo || !steps || !Array.isArray(steps) || steps.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Informations prospect et étapes requises'
+      });
+    }
+
+    if (!openai) {
+      return res.status(500).json({
+        success: false,
+        error: 'Configuration OpenAI manquante. Veuillez configurer OPENAI_API_KEY.'
+      });
+    }
+
+    const companyName = prospectInfo.company_name || prospectInfo.name || 'l\'entreprise';
+    const firstName = prospectInfo.firstname || prospectInfo.first_name || '';
+    const lastName = prospectInfo.lastname || prospectInfo.last_name || '';
+    const fullName = prospectInfo.name || `${firstName} ${lastName}`.trim() || 'le décisionnaire';
+    const siren = prospectInfo.siren || '';
+    
+    let enrichedData: ProspectEnrichmentData | null = null;
+
+    // ========================================================================
+    // ÉTAPE 1 : ENRICHISSEMENT DU PROSPECT
+    // ========================================================================
+    
+    // Vérifier si le prospect a déjà été enrichi
+    const hasExistingEnrichment = prospectInfo.enrichment_status === 'completed' 
+      && prospectInfo.enrichment_data 
+      && !forceReenrichment;
+
+    if (hasExistingEnrichment) {
+      console.log(`✅ Utilisation de l'enrichissement existant pour ${companyName}`);
+      enrichedData = prospectInfo.enrichment_data;
+    } else {
+      console.log(`🔍 Enrichissement du prospect : ${companyName}...`);
+      
+      // Mettre à jour le statut à 'in_progress'
+      if (prospectInfo.id) {
+        await supabase
+          .from('prospects')
+          .update({ enrichment_status: 'in_progress', updated_at: new Date().toISOString() })
+          .eq('id', prospectInfo.id);
+      }
+
+      try {
+        const enrichmentPrompt = `Tu es un analyste d'entreprise expert spécialisé dans l'identification d'opportunités d'optimisation financière pour les entreprises françaises.
+
+📊 INFORMATIONS DU PROSPECT :
+- Entreprise : ${companyName}
+- SIREN : ${siren || 'non disponible'}
+- Contact : ${fullName}
+- Prénom : ${firstName || 'non disponible'}
+- Nom : ${lastName || 'non disponible'}
+- Code NAF : ${prospectInfo.naf_code || 'non disponible'}
+- Libellé NAF : ${prospectInfo.naf_label || 'non disponible'}
+- Secteur : ${prospectInfo.naf_label || 'à déterminer'}
+
+🎯 CONTEXTE : PROFITUM
+Profitum est une plateforme SaaS (marketplace B2B) spécialisée dans l'optimisation financière pour les entreprises françaises. 
+
+Domaines d'activité principaux :
+- **Optimisation Fiscale** : TICPE (taxe carburants), TVA, CIR (Crédit Impôt Recherche), optimisation fiscalité foncière
+- **Optimisation Sociale** : URSSAF (charges sociales), MSA (Mutuelle Sociale Agricole), DFS (Déduction Forfaitaire Spécifique)
+- **Optimisation Énergétique** : CEE (Certificats d'Économies d'Énergie), optimisation contrats électricité/gaz
+
+📋 TA MISSION :
+En te basant sur les informations fournies et tes connaissances générales sur les entreprises françaises, fournis une analyse structurée au format JSON suivant :
+
+{
+  "secteur_activite": {
+    "description": "Description précise du secteur d'activité de l'entreprise",
+    "tendances_profitum": "Comment ce secteur peut bénéficier spécifiquement des services Profitum (TICPE, URSSAF, DFS, CEE, etc.). Sois concret et pertinent."
+  },
+  "actualites_entreprise": {
+    "recentes": [
+      "Liste des actualités pertinentes si connues, sinon actualités sectorielles générales"
+    ],
+    "pertinence_profitum": "En quoi le contexte actuel de l'entreprise ou du secteur crée des opportunités pour Profitum"
+  },
+  "signaux_operationnels": {
+    "recrutements_en_cours": false,
+    "locaux_physiques": true,
+    "parc_vehicules_lourds": false,
+    "consommation_gaz_importante": false,
+    "details": "Détails supplémentaires sur les signaux détectés"
+  },
+  "profil_eligibilite": {
+    "ticpe": {
+      "eligible": true,
+      "raison": "Explication claire de l'éligibilité ou non-éligibilité",
+      "potentiel_economie": "Estimation si possible (ex: '5 000€ à 20 000€/an') ou 'À évaluer'"
+    },
+    "cee": {
+      "eligible": false,
+      "raison": "Explication",
+      "potentiel_economie": "À évaluer"
+    },
+    "optimisation_sociale": {
+      "eligible": true,
+      "raison": "Explication",
+      "potentiel_economie": "À évaluer"
+    }
+  },
+  "resume_strategique": "Synthèse en 2-3 phrases des opportunités principales pour ce prospect. Sois concret et actionnable."
+}
+
+⚠️ RÈGLES IMPORTANTES :
+1. Si tu manques d'informations précises (pas de SIREN, entreprise inconnue), base-toi sur le secteur NAF et fais des déductions raisonnables
+2. Évite les incohérences : si c'est un cabinet d'avocats, ne mentionne pas de parc de camions
+3. Sois pragmatique : mieux vaut une analyse générique cohérente qu'une analyse spéculative incohérente
+4. Pour l'éligibilité TICPE : nécessite un parc de véhicules professionnels (camions +7.5t, engins TP, etc.)
+5. Pour l'éligibilité CEE : nécessite des locaux physiques et une consommation énergétique significative
+6. Pour l'optimisation sociale : presque toutes les entreprises avec des salariés sont éligibles
+
+Retourne UNIQUEMENT le JSON, sans texte avant ou après.`;
+
+        const enrichmentCompletion = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [{
+            role: 'user',
+            content: enrichmentPrompt
+          }],
+          response_format: { type: 'json_object' },
+          temperature: 0.5
+        });
+
+        const enrichmentContent = enrichmentCompletion.choices[0]?.message?.content;
+        if (!enrichmentContent) {
+          throw new Error('Pas de réponse de l\'IA pour l\'enrichissement');
+        }
+
+        const parsedData = JSON.parse(enrichmentContent);
+        
+        // Ajouter les métadonnées
+        enrichedData = {
+          ...parsedData,
+          enriched_at: new Date().toISOString(),
+          enrichment_version: 'v2.0'
+        };
+
+        // Sauvegarder l'enrichissement en base
+        if (prospectInfo.id && enrichedData) {
+          await supabase
+            .from('prospects')
+            .update({
+              enrichment_status: 'completed',
+              enrichment_data: enrichedData,
+              enriched_at: enrichedData.enriched_at,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospectInfo.id);
+          console.log(`✅ Enrichissement sauvegardé pour ${companyName}`);
+        }
+
+      } catch (enrichmentError: any) {
+        console.error('❌ Erreur lors de l\'enrichissement:', enrichmentError);
+        
+        // Fallback : créer un enrichissement standardisé basique
+        enrichedData = createFallbackEnrichment(prospectInfo);
+        
+        // Marquer comme 'failed' mais continuer quand même
+        if (prospectInfo.id) {
+          await supabase
+            .from('prospects')
+            .update({
+              enrichment_status: 'failed',
+              enrichment_data: enrichedData,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospectInfo.id);
+        }
+      }
+    }
+
+    // ========================================================================
+    // ÉTAPE 2 : GÉNÉRATION DES SÉQUENCES AVEC DONNÉES ENRICHIES
+    // ========================================================================
+    
+    console.log(`✍️ Génération de la séquence pour ${companyName}...`);
+
+    const numSteps = steps.length;
+    const stepsInfo = steps.map((step: any, index: number) => {
+      let stepType = '';
+      if (index === 0) {
+        stepType = 'Email 1 — Prise de contact (objectif : point téléphonique)';
+      } else if (index === numSteps - 1) {
+        stepType = `Email ${index + 1} — Dernière tentative courtoise`;
+      } else {
+        stepType = `Email ${index + 1} — Relance`;
+      }
+      return `Étape ${step.stepNumber}: ${stepType} (délai: ${step.delayDays} jour${step.delayDays > 1 ? 's' : ''})`;
+    }).join('\n');
+
+    // Construire le prompt système (rôle : ENRICHIR, pas REMPLACER)
+    const systemPrompt = `Tu es un expert en prospection B2B et en rédaction d'emails commerciaux pour Profitum, plateforme SaaS d'optimisation financière pour entreprises françaises.
+
+🎯 TON RÔLE EXACT
+
+Tu dois STRICTEMENT respecter les instructions de l'utilisateur concernant :
+- Le style demandé
+- Le ton demandé
+- Les angles d'approche demandés
+- Les bénéfices à mettre en avant
+- Le type de relance souhaité
+
+⚠️ RÈGLE D'OR : Si une instruction utilisateur est claire, tu ne la modifies PAS.
+Tu l'appliques et tu l'enrichis avec les données du prospect.
+
+Ton rôle est UNIQUEMENT d'ENRICHIR ces instructions avec :
+1. Les données d'enrichissement du prospect (secteur, actualités, signaux, éligibilité)
+2. Les meilleures pratiques d'emailing (taux d'ouverture, anti-spam, délivrabilité)
+3. Les principes de neuroscience et psychologie du consommateur/prospect
+4. Les techniques de conversion et vente B2B
+
+📊 DONNÉES D'ENRICHISSEMENT DU PROSPECT
+
+${JSON.stringify(enrichedData, null, 2)}
+
+💡 MEILLEURES PRATIQUES (à appliquer sans modifier l'intention utilisateur)
+
+**Neuroscience & Psychologie :**
+- Personnalisation (nom, entreprise, secteur) → augmente engagement de 26%
+- Preuve sociale ("vos homologues dans le secteur...") → crédibilité
+- Rareté/Urgence douce (sans agressivité) → action
+- Réciprocité (donner de la valeur avant de demander)
+
+**Anti-Spam & Délivrabilité :**
+- Éviter le mot "gratuit" → préférer "sans engagement", "sans frais", "complémentaire"
+- Limiter les emojis (max 1-2 par email)
+- Pas de CAPS LOCK ou points d'exclamation multiples
+- Éviter les call-to-action agressifs ("Cliquez maintenant!", "Offre limitée!")
+
+**Conversion B2B :**
+- CTA clairs et simples (ex: "Échanger 15 min par téléphone?")
+- Bénéfices concrets et chiffrés quand possible
+- Questions ouvertes qui invitent au dialogue
+- Ton consultatif plutôt que commercial
+
+**Structure Recommandée (adaptable selon contexte utilisateur) :**
+- Email 1 : Accroche personnalisée + valeur Profitum + CTA simple
+- Relances : Rappel doux + nouveau bénéfice/angle + CTA
+- Dernier email : Ton respectueux + clôture élégante
+
+STRUCTURE DE LA SÉQUENCE :
+${stepsInfo}`;
+
+    // Construire le prompt utilisateur (priorité absolue)
+    let userPrompt = '';
+    
+    if (context && context.trim()) {
+      userPrompt = `🎯 OBJECTIF DE LA SÉQUENCE (INSTRUCTIONS UTILISATEUR - PRIORITÉ ABSOLUE)
+
+${context.trim()}
+
+📋 TA TÂCHE
+
+En te basant STRICTEMENT sur ces instructions utilisateur :
+
+1. **Respecte à 100%** le style, ton, et approche demandés par l'utilisateur
+2. **Enrichis intelligemment** avec les données du prospect fournies dans le prompt système
+3. **Applique les meilleures pratiques** (anti-spam, neuroscience, conversion) sans dénaturer l'intention
+4. **Personnalise** chaque email avec les informations spécifiques du prospect (nom, entreprise, secteur, signaux opérationnels, éligibilité produits)
+
+Génère EXACTEMENT ${numSteps} email${numSteps > 1 ? 's' : ''} au format JSON suivant :
+
+{
+  "steps": [
+    {
+      "stepNumber": 1,
+      "subject": "Sujet de l'email (personnalisé avec le nom de l'entreprise)",
+      "body": "Corps de l'email (peut contenir des \\n pour les sauts de ligne)",
+      "personalization_notes": "Brève explication de comment tu as respecté l'intention utilisateur ET intégré les données d'enrichissement"
+    }
+  ]
+}
+
+⚠️ IMPORTANT :
+- Génère EXACTEMENT ${numSteps} email${numSteps > 1 ? 's' : ''} 
+- Les delayDays sont déjà définis, ne les modifie pas
+- Retourne UNIQUEMENT le JSON, sans texte avant ou après
+- Corps en français, professionnel, adapté au contexte
+- Utilise les données d'enrichissement pour personnaliser (secteur, signaux, éligibilité)`;
+    } else {
+      userPrompt = `🎯 GÉNÉRATION STANDARD PROFESSIONNELLE
+
+Aucune instruction spécifique n'a été fournie par l'utilisateur. 
+
+Génère une séquence d'emails professionnelle et personnalisée pour ${companyName} en te basant sur :
+1. Les données d'enrichissement (secteur, signaux, éligibilité) fournies dans le prompt système
+2. Les meilleures pratiques d'emailing B2B
+3. Les principes de neuroscience et conversion
+
+Ton objectif : créer une séquence efficace qui :
+- Capte l'attention avec une personnalisation secteur/entreprise
+- Met en avant les bénéfices Profitum les plus pertinents selon l'éligibilité
+- Adopte un ton consultatif et professionnel
+- Incite à un échange téléphonique de 15 minutes
+
+Génère EXACTEMENT ${numSteps} email${numSteps > 1 ? 's' : ''} au format JSON suivant :
+
+{
+  "steps": [
+    {
+      "stepNumber": 1,
+      "subject": "Sujet de l'email",
+      "body": "Corps de l'email (\\n pour sauts de ligne)",
+      "personalization_notes": "Comment tu as personnalisé cet email selon les données du prospect"
+    }
+  ]
+}
+
+⚠️ IMPORTANT : Retourne UNIQUEMENT le JSON.`;
+    }
+
+    // Appeler GPT-4 pour la génération
+    const generationCompletion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.6,
+      response_format: { type: 'json_object' }
+    });
+
+    const generationContent = generationCompletion.choices[0]?.message?.content;
+    if (!generationContent) {
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la génération par IA'
+      });
+    }
+
+    // Parser la réponse
+    let generatedSteps;
+    try {
+      generatedSteps = JSON.parse(generationContent);
+    } catch (parseError) {
+      const jsonMatch = generationContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        generatedSteps = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('Format de réponse invalide');
+      }
+    }
+
+    if (!generatedSteps.steps || !Array.isArray(generatedSteps.steps)) {
+      return res.status(500).json({
+        success: false,
+        error: 'Format de réponse IA invalide'
+      });
+    }
+
+    // Mapper les résultats avec les délais originaux
+    const result = generatedSteps.steps.map((generatedStep: any, index: number) => {
+      const originalStep = steps.find((s: any) => s.stepNumber === generatedStep.stepNumber);
+      return {
+        stepNumber: generatedStep.stepNumber,
+        delayDays: originalStep?.delayDays || steps[index]?.delayDays || 0,
+        subject: generatedStep.subject || '',
+        body: generatedStep.body?.replace(/\\n/g, '\n') || '',
+        personalization_notes: generatedStep.personalization_notes || ''
+      };
+    });
+
+    // Mettre à jour ai_status à 'completed'
+    if (prospectInfo.id) {
+      await supabase
+        .from('prospects')
+        .update({ ai_status: 'completed', updated_at: new Date().toISOString() })
+        .eq('id', prospectInfo.id);
+    }
+
+    console.log(`✅ Séquence générée avec succès pour ${companyName}`);
+
+    return res.json({
+      success: true,
+      data: {
+        enrichment: enrichedData,
+        steps: result
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur génération IA V2:', error);
     return res.status(500).json({
       success: false,
       error: error.message || 'Erreur lors de la génération par IA'

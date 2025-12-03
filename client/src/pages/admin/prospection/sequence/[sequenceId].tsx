@@ -19,9 +19,14 @@ import {
   CheckCircle2,
   MessageSquare,
   Save,
-  Edit2
+  Edit2,
+  FileText,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
+import ProspectEnrichmentView from "@/components/ProspectEnrichmentView";
+import { ProspectEnrichmentData } from "@/types/prospects";
 
 interface Prospect {
   id: string;
@@ -47,6 +52,8 @@ interface Prospect {
   phone_standard: string | null;
   linkedin_company: string | null;
   enrichment_status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  enrichment_data: ProspectEnrichmentData | null;
+  enriched_at: string | null;
   ai_status: 'pending' | 'in_progress' | 'completed' | 'failed';
   emailing_status: 'pending' | 'queued' | 'sent' | 'opened' | 'clicked' | 'replied' | 'bounced' | 'unsubscribed';
   score_priority: number;
@@ -143,6 +150,7 @@ export default function ProspectSequencePage() {
   const [sentEmails, setSentEmails] = useState<ProspectEmail[]>([]);
   const [scheduledEmails, setScheduledEmails] = useState<ScheduledEmail[]>([]);
   const [receivedEmails, setReceivedEmails] = useState<ReceivedEmail[]>([]);
+  const [showEnrichment, setShowEnrichment] = useState(false);
   const [conversation, setConversation] = useState<ConversationItem[]>([]);
   
   // États pour les commentaires
@@ -847,8 +855,69 @@ export default function ProspectSequencePage() {
                   </div>
                 </>
               )}
+
+              {/* Bouton pour afficher l'enrichissement */}
+              {prospect.enrichment_data && (
+                <>
+                  <Separator />
+                  <Button
+                    onClick={() => setShowEnrichment(!showEnrichment)}
+                    variant="outline"
+                    className="w-full flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <span>
+                        {showEnrichment ? 'Masquer' : 'Voir'} l'enrichissement IA
+                      </span>
+                    </div>
+                    {showEnrichment ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
+
+          {/* Affichage de l'enrichissement */}
+          {showEnrichment && prospect.enrichment_data && (
+            <Card>
+              <CardContent className="pt-6">
+                <ProspectEnrichmentView
+                  enrichmentData={prospect.enrichment_data}
+                  prospectId={prospect.id}
+                  onUpdate={async (updatedData) => {
+                    try {
+                      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                      const response = await fetch(`${config.API_URL}/api/prospects/${prospect.id}`, {
+                        method: 'PATCH',
+                        headers: {
+                          'Authorization': `Bearer ${token}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ enrichment_data: updatedData })
+                      });
+
+                      if (response.ok) {
+                        toast.success('Enrichissement mis à jour !');
+                        // Rafraîchir le prospect
+                        const updatedProspect = { ...prospect, enrichment_data: updatedData };
+                        setProspect(updatedProspect);
+                      } else {
+                        toast.error('Erreur lors de la mise à jour');
+                      }
+                    } catch (error) {
+                      console.error('Erreur:', error);
+                      toast.error('Erreur lors de la mise à jour');
+                    }
+                  }}
+                />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
