@@ -113,8 +113,7 @@ export default function GestionProduits() {
     'Restauration et Hôtellerie',
     'Santé et Services Sociaux',
     'Agriculture et Agroalimentaire',
-    'Services à la Personne',
-    'Autre secteur'
+    'Services à la Personne'
   ];
 
   // Liste des catégories disponibles
@@ -502,8 +501,30 @@ export default function GestionProduits() {
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="secteurs">Secteurs d'activité</Label>
-                      <p className="text-xs text-gray-500 mb-2">Sélectionnez les secteurs concernés (laisser vide = tous secteurs)</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <Label htmlFor="secteurs">Secteurs d'activité</Label>
+                          <p className="text-xs text-gray-500">Aucun secteur coché = tous secteurs</p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (newProduit.secteurs_activite.length === secteursActiviteOptions.length) {
+                              // Tout décocher
+                              setNewProduit(prev => ({ ...prev, secteurs_activite: [] }));
+                            } else {
+                              // Tout cocher
+                              setNewProduit(prev => ({ ...prev, secteurs_activite: [...secteursActiviteOptions] }));
+                            }
+                          }}
+                        >
+                          {newProduit.secteurs_activite.length === secteursActiviteOptions.length 
+                            ? '❌ Tout décocher' 
+                            : '✅ Tout cocher'}
+                        </Button>
+                      </div>
                       <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
                         {secteursActiviteOptions.map((secteur) => (
                           <div key={secteur} className="flex items-center space-x-2">
@@ -536,7 +557,8 @@ export default function GestionProduits() {
                     </div>
                     
                     <div className="border-t pt-4">
-                      <h4 className="font-semibold mb-3">Montants (€)</h4>
+                      <h4 className="font-semibold mb-1">Montants (€)</h4>
+                      <p className="text-xs text-gray-500 mb-3">Commission au forfait versée à Profitum</p>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="montant_min">Montant minimum</Label>
@@ -562,7 +584,8 @@ export default function GestionProduits() {
                     </div>
                     
                     <div className="border-t pt-4">
-                      <h4 className="font-semibold mb-3">Taux (%)</h4>
+                      <h4 className="font-semibold mb-1">Taux (%)</h4>
+                      <p className="text-xs text-gray-500 mb-3">Commission en pourcentage versée à l'expert</p>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="taux_min">Taux minimum</Label>
@@ -572,7 +595,7 @@ export default function GestionProduits() {
                             step="0.01"
                             value={newProduit.taux_min}
                             onChange={(e) => setNewProduit(prev => ({ ...prev, taux_min: e.target.value }))}
-                            placeholder="Ex: 0.05"
+                            placeholder="Ex: 5"
                           />
                         </div>
                         <div>
@@ -583,14 +606,15 @@ export default function GestionProduits() {
                             step="0.01"
                             value={newProduit.taux_max}
                             onChange={(e) => setNewProduit(prev => ({ ...prev, taux_max: e.target.value }))}
-                            placeholder="Ex: 0.15"
+                            placeholder="Ex: 15"
                           />
                         </div>
                       </div>
                     </div>
                     
                     <div className="border-t pt-4">
-                      <h4 className="font-semibold mb-3">Durée (mois)</h4>
+                      <h4 className="font-semibold mb-1">Durée (mois)</h4>
+                      <p className="text-xs text-gray-500 mb-3">Durée estimée du dossier du démarrage à la clôture</p>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="duree_min">Durée minimum</Label>
@@ -599,7 +623,7 @@ export default function GestionProduits() {
                             type="number"
                             value={newProduit.duree_min}
                             onChange={(e) => setNewProduit(prev => ({ ...prev, duree_min: e.target.value }))}
-                            placeholder="Ex: 12"
+                            placeholder="Ex: 3"
                           />
                         </div>
                         <div>
@@ -609,7 +633,7 @@ export default function GestionProduits() {
                             type="number"
                             value={newProduit.duree_max}
                             onChange={(e) => setNewProduit(prev => ({ ...prev, duree_max: e.target.value }))}
-                            placeholder="Ex: 36"
+                            placeholder="Ex: 12"
                           />
                         </div>
                       </div>
@@ -868,8 +892,30 @@ export default function GestionProduits() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="edit-secteurs">Secteurs d'activité</Label>
-                <p className="text-xs text-gray-500 mb-2">Sélectionnez les secteurs concernés (laisser vide = tous secteurs)</p>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <Label htmlFor="edit-secteurs">Secteurs d'activité</Label>
+                    <p className="text-xs text-gray-500">Aucun secteur coché = tous secteurs</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (editForm.secteurs_activite.length === secteursActiviteOptions.length) {
+                        // Tout décocher
+                        setEditForm(prev => ({ ...prev, secteurs_activite: [] }));
+                      } else {
+                        // Tout cocher
+                        setEditForm(prev => ({ ...prev, secteurs_activite: [...secteursActiviteOptions] }));
+                      }
+                    }}
+                  >
+                    {editForm.secteurs_activite.length === secteursActiviteOptions.length 
+                      ? '❌ Tout décocher' 
+                      : '✅ Tout cocher'}
+                  </Button>
+                </div>
                 <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
                   {secteursActiviteOptions.map((secteur) => (
                     <div key={secteur} className="flex items-center space-x-2">
@@ -900,66 +946,78 @@ export default function GestionProduits() {
                   ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-montant_min">Montant min</Label>
-                  <Input
-                    id="edit-montant_min"
-                    type="number"
-                    value={editForm.montant_min}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, montant_min: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-montant_max">Montant max</Label>
-                  <Input
-                    id="edit-montant_max"
-                    type="number"
-                    value={editForm.montant_max}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, montant_max: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-taux_min">Taux min</Label>
-                  <Input
-                    id="edit-taux_min"
-                    type="number"
-                    step="0.01"
-                    value={editForm.taux_min}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, taux_min: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-taux_max">Taux max</Label>
-                  <Input
-                    id="edit-taux_max"
-                    type="number"
-                    step="0.01"
-                    value={editForm.taux_max}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, taux_max: e.target.value }))}
-                  />
+              <div className="border-t pt-4">
+                <h4 className="font-semibold mb-1">Montants (€)</h4>
+                <p className="text-xs text-gray-500 mb-3">Commission au forfait versée à Profitum</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-montant_min">Montant min</Label>
+                    <Input
+                      id="edit-montant_min"
+                      type="number"
+                      value={editForm.montant_min}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, montant_min: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-montant_max">Montant max</Label>
+                    <Input
+                      id="edit-montant_max"
+                      type="number"
+                      value={editForm.montant_max}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, montant_max: e.target.value }))}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-duree_min">Durée min</Label>
-                  <Input
-                    id="edit-duree_min"
-                    type="number"
-                    value={editForm.duree_min}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, duree_min: e.target.value }))}
-                  />
+              <div className="border-t pt-4">
+                <h4 className="font-semibold mb-1">Taux (%)</h4>
+                <p className="text-xs text-gray-500 mb-3">Commission en pourcentage versée à l'expert</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-taux_min">Taux min</Label>
+                    <Input
+                      id="edit-taux_min"
+                      type="number"
+                      step="0.01"
+                      value={editForm.taux_min}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, taux_min: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-taux_max">Taux max</Label>
+                    <Input
+                      id="edit-taux_max"
+                      type="number"
+                      step="0.01"
+                      value={editForm.taux_max}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, taux_max: e.target.value }))}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="edit-duree_max">Durée max</Label>
-                  <Input
-                    id="edit-duree_max"
-                    type="number"
-                    value={editForm.duree_max}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, duree_max: e.target.value }))}
-                  />
+              </div>
+              <div className="border-t pt-4">
+                <h4 className="font-semibold mb-1">Durée (mois)</h4>
+                <p className="text-xs text-gray-500 mb-3">Durée estimée du dossier du démarrage à la clôture</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-duree_min">Durée min</Label>
+                    <Input
+                      id="edit-duree_min"
+                      type="number"
+                      value={editForm.duree_min}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, duree_min: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-duree_max">Durée max</Label>
+                    <Input
+                      id="edit-duree_max"
+                      type="number"
+                      value={editForm.duree_max}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, duree_max: e.target.value }))}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end gap-2">
