@@ -2,12 +2,16 @@ import { createClient } from "@supabase/supabase-js";
 import { Database } from "../types/supabase";
 import { config } from "../config/env";
 
-// Création du client Supabase avec la configuration centralisée
+// Création du client Supabase avec la configuration optimisée pour la persistance
 export const supabase = createClient<Database>(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, { 
   auth: {
     persistSession: true, 
     autoRefreshToken: true, 
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    // Configuration du stockage pour garantir la persistance
+    storage: window.localStorage,
+    storageKey: 'supabase.auth.token', // Clé explicite pour éviter les conflits
+    flowType: 'implicit' // Utiliser le flux implicite pour les PWA
   }
 });
 

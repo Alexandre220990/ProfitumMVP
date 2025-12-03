@@ -56,12 +56,7 @@ export const loginWithSupabase = async (credentials: LoginCredentials): Promise<
       description: data.user.user_metadata?.description 
     };
 
-    // Stocker le token Supabase
-    localStorage.setItem('supabase_token', data.session.access_token);
-    localStorage.setItem('supabase_refresh_token', data.session.refresh_token);
-    
-    // Stocker aussi dans 'token' pour compatibilité avec l'ancien système
-    localStorage.setItem('token', data.session.access_token);
+    // Supabase gère automatiquement le stockage de session
 
     return { success: true, data: {
         token: data.session.access_token, user: authUser }
@@ -253,10 +248,7 @@ export const checkSupabaseAuth = async (): Promise<AuthResponse> => {
       description: user.user_metadata?.description 
     };
 
-    // Mettre à jour les tokens dans localStorage
-    localStorage.setItem('supabase_token', session.access_token);
-    localStorage.setItem('supabase_refresh_token', session.refresh_token || '');
-    localStorage.setItem('token', session.access_token);
+    // Supabase gère automatiquement le stockage de session
 
     return { 
       success: true, 

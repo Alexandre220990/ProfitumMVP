@@ -52,10 +52,7 @@ export function useSessionRefresh() {
       }
 
       if (session?.access_token) {
-        // Mettre à jour les tokens dans localStorage
-        localStorage.setItem('supabase_token', session.access_token);
-        localStorage.setItem('supabase_refresh_token', session.refresh_token || '');
-        localStorage.setItem('token', session.access_token);
+        // Supabase met automatiquement à jour le stockage
         
         lastRefreshRef.current = Date.now();
         

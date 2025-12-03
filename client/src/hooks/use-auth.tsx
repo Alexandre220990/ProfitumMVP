@@ -92,10 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('🔐 Tentative de connexion avec services distincts...');
       
-      // Nettoyer les anciens tokens avant la nouvelle connexion
-      localStorage.removeItem('token');
-      localStorage.removeItem('supabase_token');
-      localStorage.removeItem('supabase_refresh_token');
+      // Supabase gère automatiquement le nettoyage de session
       
       // Utiliser la fonction d'authentification appropriée selon le type
       let response;
@@ -117,12 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(response.message || "Erreur de connexion");
       }
 
-      const { token, user } = response.data;
+      const { user } = response.data;
 
-      // Stocker le token pour compatibilité (optionnel)
-      if (token) {
-        localStorage.setItem("token", token);
-      }
+      // Supabase gère automatiquement le stockage du token
       
       // Convertir AuthUser vers UserType
       const userData: UserType = {
@@ -188,12 +182,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(response.message || "Erreur d'inscription");
       }
 
-      const { token, user } = response.data;
+      const { user } = response.data;
 
-      // Stocker le token pour compatibilité (optionnel)
-      if (token) {
-        localStorage.setItem("token", token);
-      }
+      // Supabase gère automatiquement le stockage du token
       
       // Convertir AuthUser vers UserType
       const userData: UserType = {
@@ -231,10 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await logoutFromSupabase();
-      // Nettoyer tous les tokens
-      localStorage.removeItem("token");
-      localStorage.removeItem("supabase_token");
-      localStorage.removeItem("supabase_refresh_token");
+      // Supabase gère automatiquement le nettoyage de session
       setUser(null);
       navigate("/");
       toast.success("Déconnexion réussie ! Vous avez été déconnecté");
@@ -252,7 +240,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Supabase le fait automatiquement avec persistSession: true, mais il faut un peu de temps
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Vérifier d'abord si une session existe déjà
+      // Supabase restaure automatiquement la session depuis localStorage
+      // Vérifier simplement si elle existe
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -262,31 +251,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: session.user?.email,
             expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toLocaleString() : 'N/A'
           });
-          
-          // Mettre à jour les tokens dans localStorage pour compatibilité
-          if (session.access_token) {
-            localStorage.setItem('supabase_token', session.access_token);
-            localStorage.setItem('supabase_refresh_token', session.refresh_token || '');
-            localStorage.setItem('token', session.access_token);
-          }
         } else {
           console.log('⚠️ Aucune session Supabase trouvée au démarrage');
-          
-          // Essayer de rafraîchir avec le refresh token si disponible
-          const refreshToken = localStorage.getItem('supabase_refresh_token');
-          if (refreshToken) {
-            console.log('🔄 Tentative de restauration avec refresh token...');
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-            
-            if (refreshData?.session && !refreshError) {
-              console.log('✅ Session restaurée avec refresh token');
-              localStorage.setItem('supabase_token', refreshData.session.access_token);
-              localStorage.setItem('supabase_refresh_token', refreshData.session.refresh_token || '');
-              localStorage.setItem('token', refreshData.session.access_token);
-            } else {
-              console.log('❌ Impossible de restaurer la session:', refreshError?.message);
-            }
-          }
         }
       } catch (error) {
         console.error('❌ Erreur lors de la vérification de session au démarrage:', error);
@@ -317,12 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       switch (event) {
         case 'SIGNED_IN':
           console.log('✅ Utilisateur connecté via onAuthStateChange');
-          // Rafraîchir les tokens dans localStorage
-          if (session?.access_token) {
-            localStorage.setItem('supabase_token', session.access_token);
-            localStorage.setItem('supabase_refresh_token', session.refresh_token || '');
-            localStorage.setItem('token', session.access_token);
-          }
+          // Supabase gère automatiquement le stockage de session
           // Vérifier l'authentification pour mettre à jour l'état utilisateur
           await checkAuth(false);
           break;
@@ -330,9 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         case 'SIGNED_OUT':
           console.log('👋 Utilisateur déconnecté via onAuthStateChange');
           setUser(null);
-          localStorage.removeItem('token');
-          localStorage.removeItem('supabase_token');
-          localStorage.removeItem('supabase_refresh_token');
+          // Supabase gère automatiquement le nettoyage de session
           // Réinitialiser le manifest PWA à "client" par défaut
           if (typeof window !== 'undefined' && (window as any).updatePWAManifest) {
             (window as any).updatePWAManifest('client');
@@ -342,13 +301,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         case 'TOKEN_REFRESHED':
           console.log('🔄 Token rafraîchi via onAuthStateChange');
-          // Mettre à jour les tokens dans localStorage
-          if (session?.access_token) {
-            localStorage.setItem('supabase_token', session.access_token);
-            localStorage.setItem('supabase_refresh_token', session.refresh_token || '');
-            localStorage.setItem('token', session.access_token);
-            console.log('✅ Tokens mis à jour dans localStorage');
-          }
+          // Supabase met automatiquement à jour le token dans localStorage
+          console.log('✅ Token automatiquement mis à jour par Supabase');
           // Vérifier l'authentification pour s'assurer que l'utilisateur est toujours valide
           await checkAuth(false);
           break;
