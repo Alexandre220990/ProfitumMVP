@@ -17,7 +17,7 @@ import { loginRateLimiter, registerRateLimiter } from '../middleware/rate-limite
 // Charger les variables d'environnement
 dotenv.config();
 
-// Créer un client Supabase avec la clé de service pour les opérations admin
+// Créer un client Supabase avec la clé de service pour les opérations admin (requêtes tables UNIQUEMENT)
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL || '',
   process.env.SUPABASE_SERVICE_ROLE_KEY || '',
@@ -25,6 +25,19 @@ const supabaseAdmin = createClient(
     auth: {
       autoRefreshToken: false,
       persistSession: false
+    }
+  }
+);
+
+// ✅ Créer un client Supabase ANON pour l'authentification utilisateur (signInWithPassword)
+const supabaseAuth = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_ANON_KEY || '',
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
     }
   }
 );
@@ -267,8 +280,8 @@ router.post('/client/login', loginRateLimiter, async (req, res) => {
     const { email, password } = req.body;
     console.log("🔑 Tentative de connexion CLIENT:", { email });
 
-    // 1. Authentifier avec Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+    // 1. ✅ Authentifier avec Supabase Auth (client ANON pour l'authentification)
+    const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email,
       password
     });
@@ -353,8 +366,8 @@ router.post('/expert/login', loginRateLimiter, async (req, res) => {
     const { email, password } = req.body;
     console.log("🔑 Tentative de connexion EXPERT:", { email });
 
-    // 1. Authentifier avec Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+    // 1. ✅ Authentifier avec Supabase Auth (client ANON pour l'authentification)
+    const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email,
       password
     });
@@ -454,8 +467,8 @@ router.post('/apporteur/login', loginRateLimiter, async (req, res) => {
     const { email, password } = req.body;
     console.log("🔑 Tentative de connexion APPORTEUR:", { email });
 
-    // 1. Authentifier avec Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+    // 1. ✅ Authentifier avec Supabase Auth (client ANON pour l'authentification)
+    const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email,
       password
     });
@@ -548,8 +561,8 @@ router.post('/admin/login', loginRateLimiter, async (req, res) => {
     const { email, password } = req.body;
     console.log("🔑 Tentative de connexion ADMIN:", { email });
 
-    // 1. Authentifier avec Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+    // 1. ✅ Authentifier avec Supabase Auth (client ANON pour l'authentification)
+    const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email,
       password
     });
@@ -646,8 +659,8 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     const effectiveType = type || user_type; // Support des deux formats
     console.log("🔑 Tentative de connexion:", { email, type: effectiveType });
 
-    // Authentifier avec Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    // ✅ Authentifier avec Supabase Auth (client ANON pour l'authentification)
+    const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email,
       password
     });
