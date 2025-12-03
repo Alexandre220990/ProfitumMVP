@@ -60,6 +60,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { NotificationGroup } from '@/components/admin/NotificationGroup';
+import { ExpertNotificationGroup } from '@/components/expert/ExpertNotificationGroup';
+import { ClientNotificationGroup } from '@/components/client/ClientNotificationGroup';
 
 interface UniversalNotificationCenterProps {
   /** Mode d'affichage : modal plein écran ou compact intégré */
@@ -1228,6 +1231,29 @@ export function UniversalNotificationCenter({
                        notification.notification_type === 'event_in_progress' ? 'in_progress' :
                        notification.notification_type === 'event_completed' ? 'completed' : null);
                     
+                    // Vérifier si c'est une notification parent (système de groupement)
+                    const isParent = notification.is_parent === true;
+                    const isAdmin = userRole === 'admin';
+                    const isExpert = userRole === 'expert';
+                    const isClient = userRole === 'client';
+                    
+                    // Utiliser composant groupé pour les notifications parent
+                    if (isParent && (isAdmin || isExpert || isClient)) {
+                      let GroupComponent = NotificationGroup;
+                      if (isExpert) GroupComponent = ExpertNotificationGroup;
+                      else if (isClient) GroupComponent = ClientNotificationGroup as any;
+                      
+                      return (
+                        <div key={notification.id} className="mb-2">
+                          <GroupComponent
+                            notification={notification}
+                            onNotificationClick={handleNotificationClick}
+                            onDismiss={(id: string) => archiveNotification(id)}
+                          />
+                        </div>
+                      );
+                    }
+                    
                     // Style amélioré pour les événements lu/non lu
                     const getCompactCardStyle = () => {
                       if (isArchived) return "opacity-60";
@@ -1261,6 +1287,7 @@ export function UniversalNotificationCenter({
                       return "opacity-60";
                     };
                     
+                    // Rendu standard pour les notifications non-parent
                     return (
                       <Card key={notification.id} className={cn(
                         "transition-all hover:shadow-md",

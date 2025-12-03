@@ -49,12 +49,13 @@ router.get('/', async (req: Request, res: Response) => {
 
     const { limit = 50, offset = 0 } = req.query;
 
-    // Récupérer les notifications
+    // Récupérer les notifications (masquer les enfants - système parent/enfant)
     const { data: notifications, error: notificationsError } = await supabase
       .from('notification')
       .select('*')
       .in('user_id', expertIds)
       .eq('user_type', 'expert')
+      .eq('hidden_in_list', false) // Ne pas afficher les notifications enfants masquées
       .order('created_at', { ascending: false })
       .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
 
@@ -66,12 +67,13 @@ router.get('/', async (req: Request, res: Response) => {
       });
     }
 
-    // Compter les notifications non lues
+    // Compter les notifications non lues (masquer les enfants)
     const { count: unreadCount, error: countError } = await supabase
       .from('notification')
       .select('*', { count: 'exact', head: true })
       .in('user_id', expertIds)
       .eq('user_type', 'expert')
+      .eq('hidden_in_list', false) // Ne compter que les parents
       .eq('is_read', false);
 
     if (countError) {
@@ -88,6 +90,83 @@ router.get('/', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('❌ Erreur route notifications:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
+    });
+  }
+});
+
+// GET /api/expert/notifications/:id/children - Récupérer les notifications enfants d'une parent
+router.get('/:id/children', async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user as AuthUser | undefined;
+    const expertIds = resolveExpertNotificationIds(authUser);
+
+    if (!authUser || expertIds.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    // Vérifier que l'utilisateur est un expert
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    const parentId = req.params.id;
+
+    // Vérifier que la notification parent existe et appartient à l'expert
+    const { data: parent, error: parentError } = await supabase
+      .from('notification')
+      .select('id, is_parent')
+      .eq('id', parentId)
+      .in('user_id', expertIds)
+      .eq('user_type', 'expert')
+      .single();
+
+    if (parentError || !parent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification parent non trouvée'
+      });
+    }
+
+    if (!parent.is_parent) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cette notification n\'est pas une notification parent'
+      });
+    }
+
+    // Récupérer les enfants
+    const { data: children, error: childrenError } = await supabase
+      .from('notification')
+      .select('*')
+      .eq('parent_id', parentId)
+      .order('created_at', { ascending: false });
+
+    if (childrenError) {
+      console.error('❌ Erreur récupération enfants:', childrenError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des notifications enfants'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        children: children || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route children:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'

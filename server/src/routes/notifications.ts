@@ -129,11 +129,12 @@ router.get('/', asyncHandler(async (req, res) => {
     const { page = 1, limit = 20, type, priority, read, status } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    // Construire la requête de base
+    // Construire la requête de base (masquer les enfants - système parent/enfant)
     let query = supabaseClient
       .from('notification')
       .select('*')
       .eq('user_id', userId)
+      .eq('hidden_in_list', false) // Ne pas afficher les notifications enfants masquées
       .order('created_at', { ascending: false });
 
     // Filtres
@@ -184,6 +185,71 @@ router.get('/', asyncHandler(async (req, res) => {
       success: false,
       message: 'Erreur lors de la récupération des notifications',
       error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
+    });
+  }
+}));
+
+// GET /api/notifications/:id/children - Récupérer les notifications enfants d'une parent
+router.get('/:id/children', asyncHandler(async (req, res) => {
+  try {
+    // Vérifier l'authentification
+    if (!req.user || !(req as any).user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    const userId = (req as any).user.id;
+    const parentId = req.params.id;
+
+    // Vérifier que la notification parent existe et appartient à l'utilisateur
+    const { data: parent, error: parentError } = await supabaseClient
+      .from('notification')
+      .select('id, is_parent')
+      .eq('id', parentId)
+      .eq('user_id', userId)
+      .single();
+
+    if (parentError || !parent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification parent non trouvée'
+      });
+    }
+
+    if (!parent.is_parent) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cette notification n\'est pas une notification parent'
+      });
+    }
+
+    // Récupérer les enfants
+    const { data: children, error: childrenError } = await supabaseClient
+      .from('notification')
+      .select('*')
+      .eq('parent_id', parentId)
+      .order('created_at', { ascending: false });
+
+    if (childrenError) {
+      console.error('❌ Erreur récupération enfants:', childrenError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des notifications enfants'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: children || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route children:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
     });
   }
 }));
