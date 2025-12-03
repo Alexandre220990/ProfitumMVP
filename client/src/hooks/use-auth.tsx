@@ -88,24 +88,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (credentials: LoginCredentials) => {
+    console.log('🎯 [use-auth] login() appelé avec:', { email: credentials.email, type: credentials.type });
     setIsLoading(true);
     try {
-      console.log('🔐 Tentative de connexion avec services distincts...');
+      console.log('🔐 [use-auth] Tentative de connexion avec services distincts...');
       
       // Supabase gère automatiquement le nettoyage de session
       
       // Utiliser la fonction d'authentification appropriée selon le type
       let response;
       if (credentials.type === 'client') {
+        console.log('→ [use-auth] Route CLIENT');
         response = await loginClient(credentials);
       } else if (credentials.type === 'expert') {
+        console.log('→ [use-auth] Route EXPERT');
         response = await loginExpert(credentials);
       } else if (credentials.type === 'apporteur') {
+        console.log('→ [use-auth] Route APPORTEUR');
         response = await loginApporteur(credentials);
       } else if (credentials.type === 'admin') {
+        console.log('→ [use-auth] Route ADMIN, import loginAdmin...');
         const { loginAdmin } = await import('@/lib/auth-distinct');
+        console.log('→ [use-auth] loginAdmin importé, appel en cours...');
         response = await loginAdmin(credentials);
+        console.log('→ [use-auth] loginAdmin terminé, response:', response);
       } else {
+        console.log('→ [use-auth] Route FALLBACK');
         // Fallback vers l'ancienne méthode pour compatibilité
         response = await loginWithSupabase(credentials);
       }

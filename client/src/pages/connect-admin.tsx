@@ -40,24 +40,29 @@ export default function ConnectAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🚀 [connect-admin] handleSubmit appelé', { email });
     
     if (!validateForm()) {
+      console.log('❌ [connect-admin] Validation formulaire échouée');
       toast.error('Veuillez corriger les erreurs dans le formulaire');
       return;
     }
 
+    console.log('✅ [connect-admin] Validation OK, début connexion...');
     setIsLoading(true);
     setWrongTypeError(null);
     
     try {
+      console.log('🔐 [connect-admin] Appel de login() avec:', { email, type: 'admin' });
       await login({
         email,
         password,
         type: 'admin'
       });
+      console.log('✅ [connect-admin] login() terminé avec succès');
       toast.success('Connexion réussie ! Bienvenue dans l\'espace d\'administration');
     } catch (error: any) {
-      console.error("Erreur de connexion:", error);
+      console.error("❌ [connect-admin] Erreur de connexion:", error);
       
       // Gérer l'erreur 403 avec redirection (multi-profils)
       if (error.response?.status === 403 && error.response?.data?.redirect_to_type) {
