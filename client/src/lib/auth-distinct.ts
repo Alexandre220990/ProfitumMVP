@@ -25,9 +25,10 @@ interface AuthResponse {
  */
 export const loginClient = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    console.log('🔑 Tentative de connexion CLIENT via API...');
+    const API_URL = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+    console.log('🔑 Tentative de connexion CLIENT via API...', { API_URL });
     
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/client/login`, {
+    const response = await fetch(`${API_URL}/api/auth/client/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -76,9 +77,10 @@ export const loginClient = async (credentials: LoginCredentials): Promise<AuthRe
  */
 export const loginExpert = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    console.log('🔑 Tentative de connexion EXPERT via API...');
+    const API_URL = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+    console.log('🔑 Tentative de connexion EXPERT via API...', { API_URL });
     
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/expert/login`, {
+    const response = await fetch(`${API_URL}/api/auth/expert/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -127,9 +129,10 @@ export const loginExpert = async (credentials: LoginCredentials): Promise<AuthRe
  */
 export const loginApporteur = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    console.log('🔑 Tentative de connexion APPORTEUR via API...');
+    const API_URL = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+    console.log('🔑 Tentative de connexion APPORTEUR via API...', { API_URL });
     
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/apporteur/login`, {
+    const response = await fetch(`${API_URL}/api/auth/apporteur/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -178,9 +181,10 @@ export const loginApporteur = async (credentials: LoginCredentials): Promise<Aut
  */
 export const loginAdmin = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    console.log('🔑 Tentative de connexion ADMIN via API...');
+    const API_URL = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+    console.log('🔑 Tentative de connexion ADMIN via API...', { API_URL });
     
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/admin/login`, {
+    const response = await fetch(`${API_URL}/api/auth/admin/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
