@@ -89,6 +89,50 @@ interface ScheduledEmail {
   comment?: string | null;
 }
 
+interface ReceivedEmail {
+  id: string;
+  prospect_id: string;
+  gmail_message_id: string;
+  gmail_thread_id: string | null;
+  from_email: string;
+  from_name: string | null;
+  to_email: string | null;
+  subject: string;
+  body_html: string | null;
+  body_text: string | null;
+  snippet: string | null;
+  received_at: string;
+  is_read: boolean;
+  is_replied: boolean;
+  replied_at: string | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+}
+
+interface ConversationItem {
+  id: string;
+  type: 'sent' | 'received' | 'scheduled';
+  date: string;
+  subject: string;
+  body?: string;
+  snippet?: string;
+  step?: number;
+  status?: string;
+  opened?: boolean;
+  opened_at?: string | null;
+  replied?: boolean;
+  replied_at?: string | null;
+  clicked?: boolean;
+  bounced?: boolean;
+  unsubscribed?: boolean;
+  from_email?: string;
+  from_name?: string | null;
+  scheduled_for?: string;
+  comment?: string | null;
+  prospect_id?: string;
+  raw?: ProspectEmail | ReceivedEmail | ScheduledEmail;
+}
+
 export default function ProspectSequencePage() {
   const { sequenceId } = useParams();
   const navigate = useNavigate();
@@ -98,6 +142,8 @@ export default function ProspectSequencePage() {
   const [prospect, setProspect] = useState<Prospect | null>(null);
   const [sentEmails, setSentEmails] = useState<ProspectEmail[]>([]);
   const [scheduledEmails, setScheduledEmails] = useState<ScheduledEmail[]>([]);
+  const [receivedEmails, setReceivedEmails] = useState<ReceivedEmail[]>([]);
+  const [conversation, setConversation] = useState<ConversationItem[]>([]);
   
   // États pour les commentaires
   const [emailComments, setEmailComments] = useState<Map<string, string>>(new Map());
@@ -130,6 +176,11 @@ export default function ProspectSequencePage() {
       const prospectResult = await prospectResponse.json();
       setProspect(prospectResult.data);
 
+      // Variables pour stocker les résultats
+      let emailsData: ProspectEmail[] = [];
+      let scheduledData: ScheduledEmail[] = [];
+      let receivedData: ReceivedEmail[] = [];
+
       // Récupérer les emails envoyés
       const emailsResponse = await fetch(`${config.API_URL}/api/prospects/${sequenceId}/emails`, {
         headers: {
@@ -140,11 +191,12 @@ export default function ProspectSequencePage() {
 
       if (emailsResponse.ok) {
         const emailsResult = await emailsResponse.json();
-        setSentEmails(emailsResult.data || []);
+        emailsData = emailsResult.data || [];
+        setSentEmails(emailsData);
         
         // Initialiser les commentaires depuis les emails
         const comments = new Map<string, string>();
-        (emailsResult.data || []).forEach((email: ProspectEmail) => {
+        emailsData.forEach((email: ProspectEmail) => {
           if (email.comment) {
             comments.set(email.id, email.comment);
           }
@@ -162,15 +214,33 @@ export default function ProspectSequencePage() {
 
       if (scheduledResponse.ok) {
         const scheduledResult = await scheduledResponse.json();
-        setScheduledEmails(scheduledResult.data || []);
+        scheduledData = scheduledResult.data || [];
+        setScheduledEmails(scheduledData);
         
         // Initialiser les commentaires depuis les emails programmés
-        (scheduledResult.data || []).forEach((email: ScheduledEmail) => {
+        scheduledData.forEach((email: ScheduledEmail) => {
           if (email.comment) {
             setEmailComments(prev => new Map(prev).set(email.id, email.comment!));
           }
         });
       }
+
+      // Récupérer les emails reçus (réponses du prospect)
+      const receivedResponse = await fetch(`${config.API_URL}/api/prospects/${sequenceId}/emails-received`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (receivedResponse.ok) {
+        const receivedResult = await receivedResponse.json();
+        receivedData = receivedResult.data || [];
+        setReceivedEmails(receivedData);
+      }
+
+      // Construire la conversation (emails envoyés + réponses reçues)
+      buildConversation(emailsData, receivedData, scheduledData);
 
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
@@ -178,6 +248,74 @@ export default function ProspectSequencePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const buildConversation = (
+    sent: ProspectEmail[],
+    received: ReceivedEmail[],
+    scheduled: ScheduledEmail[]
+  ) => {
+    const items: ConversationItem[] = [];
+
+    // Ajouter les emails envoyés
+    sent.forEach(email => {
+      items.push({
+        id: email.id,
+        type: 'sent',
+        date: email.sent_at!,
+        subject: email.subject,
+        body: email.body,
+        step: email.step,
+        opened: email.opened,
+        opened_at: email.opened_at,
+        replied: email.replied,
+        replied_at: email.replied_at,
+        clicked: email.clicked,
+        bounced: email.bounced,
+        unsubscribed: email.unsubscribed,
+        comment: email.comment,
+        prospect_id: email.prospect_id,
+        raw: email
+      });
+    });
+
+    // Ajouter les emails reçus (réponses)
+    received.forEach(email => {
+      items.push({
+        id: email.id,
+        type: 'received',
+        date: email.received_at,
+        subject: email.subject,
+        snippet: email.snippet || undefined,
+        body: email.body_text || email.body_html || undefined,
+        from_email: email.from_email,
+        from_name: email.from_name || undefined,
+        prospect_id: email.prospect_id,
+        raw: email
+      });
+    });
+
+    // Ajouter les emails programmés
+    scheduled.forEach(email => {
+      items.push({
+        id: email.id,
+        type: 'scheduled',
+        date: email.scheduled_for,
+        subject: email.subject,
+        body: email.body,
+        step: email.step,
+        status: email.status,
+        scheduled_for: email.scheduled_for,
+        comment: email.comment,
+        prospect_id: email.prospect_id,
+        raw: email
+      });
+    });
+
+    // Trier par date (plus récent en dernier pour affichage chronologique)
+    items.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    setConversation(items);
   };
 
   const saveComment = async (emailId: string, isScheduled: boolean) => {
@@ -279,229 +417,299 @@ export default function ProspectSequencePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Colonne principale - Séquence d'emails */}
+        {/* Colonne principale - Conversation (emails envoyés + réponses) */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Emails envoyés */}
-          {sentEmails.length > 0 && (
+          {/* Résumé de la conversation */}
+          <Card className="bg-gradient-to-r from-blue-50 to-purple-50">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">{sentEmails.length}</div>
+                    <div className="text-xs text-gray-600">Envoyés</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{receivedEmails.length}</div>
+                    <div className="text-xs text-gray-600">Réponses</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-600">{scheduledEmails.length}</div>
+                    <div className="text-xs text-gray-600">Programmés</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Timeline de la conversation */}
+          {conversation.length > 0 ? (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  Emails envoyés ({sentEmails.length})
+                  <MessageSquare className="h-5 w-5 text-blue-600" />
+                  Conversation ({conversation.length})
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {sentEmails.map((email) => (
-                  <div key={email.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="text-xs">
-                            Étape {email.step}
-                          </Badge>
-                          {getEmailStatusBadge(
-                            email.replied ? 'replied' :
-                            email.bounced ? 'bounced' :
-                            email.unsubscribed ? 'unsubscribed' :
-                            email.clicked ? 'clicked' :
-                            email.opened ? 'opened' :
-                            'sent'
+                {conversation.map((item, index) => (
+                  <div key={item.id} className="relative">
+                    {/* Ligne de connexion */}
+                    {index < conversation.length - 1 && (
+                      <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-gray-200 -z-10" />
+                    )}
+
+                    {/* Email envoyé */}
+                    {item.type === 'sent' && (
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                          <Mail className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1 border rounded-lg p-4 bg-blue-50/50">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline" className="text-xs bg-white">
+                                  Étape {item.step}
+                                </Badge>
+                                {getEmailStatusBadge(
+                                  item.replied ? 'replied' :
+                                  item.bounced ? 'bounced' :
+                                  item.unsubscribed ? 'unsubscribed' :
+                                  item.clicked ? 'clicked' :
+                                  item.opened ? 'opened' :
+                                  'sent'
+                                )}
+                              </div>
+                              <div className="font-medium text-sm">{item.subject}</div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                <Clock className="h-3 w-3 inline mr-1" />
+                                {new Date(item.date).toLocaleString('fr-FR', {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short'
+                                })}
+                              </div>
+                              {item.opened_at && (
+                                <div className="text-xs text-purple-600 mt-1">
+                                  👁️ Ouvert le {new Date(item.opened_at).toLocaleString('fr-FR', {
+                                    dateStyle: 'short',
+                                    timeStyle: 'short'
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Commentaire */}
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <Label className="text-xs font-medium flex items-center gap-1 text-gray-600">
+                                <MessageSquare className="h-3 w-3" />
+                                Note de pilotage
+                              </Label>
+                              {editingCommentId !== item.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setEditingCommentId(item.id)}
+                                  className="h-6 text-xs"
+                                >
+                                  <Edit2 className="h-3 w-3 mr-1" />
+                                  {emailComments.get(item.id) ? 'Modifier' : 'Ajouter'}
+                                </Button>
+                              )}
+                            </div>
+                            
+                            {editingCommentId === item.id ? (
+                              <div className="space-y-2">
+                                <Textarea
+                                  value={emailComments.get(item.id) || ''}
+                                  onChange={(e) => updateComment(item.id, e.target.value)}
+                                  placeholder="Ajoutez une note de pilotage..."
+                                  className="text-sm min-h-[60px] bg-white"
+                                />
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => saveComment(item.id, false)}
+                                    disabled={savingComment}
+                                    className="h-7 text-xs"
+                                  >
+                                    <Save className="h-3 w-3 mr-1" />
+                                    Sauvegarder
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEditingCommentId(null)}
+                                    className="h-7 text-xs"
+                                  >
+                                    Annuler
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-600 bg-white rounded p-2 min-h-[40px]">
+                                {emailComments.get(item.id) || <span className="text-gray-400 italic">Aucune note</span>}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Réponse reçue */}
+                    {item.type === 'received' && (
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                          <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div className="flex-1 border-2 border-green-200 rounded-lg p-4 bg-green-50/50">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge className="bg-green-600 text-white text-xs">
+                                  ✉️ Réponse du prospect
+                                </Badge>
+                              </div>
+                              <div className="font-medium text-sm">{item.subject}</div>
+                              <div className="text-xs text-gray-600 mt-1">
+                                De: {item.from_name || item.from_email}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                <Clock className="h-3 w-3 inline mr-1" />
+                                {new Date(item.date).toLocaleString('fr-FR', {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short'
+                                })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Aperçu du contenu */}
+                          {item.snippet && (
+                            <div className="mt-3 pt-3 border-t border-green-200">
+                              <div className="text-sm text-gray-700 bg-white rounded p-3 italic">
+                                "{item.snippet}"
+                              </div>
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="mt-2 h-6 text-xs text-green-700"
+                                onClick={() => {
+                                  // TODO: Ouvrir modal avec le contenu complet
+                                  window.open(`/admin/prospection/email-reply/${item.prospect_id}/${item.id}`, '_blank');
+                                }}
+                              >
+                                Voir le message complet →
+                              </Button>
+                            </div>
                           )}
                         </div>
-                        <div className="font-medium mb-1">{email.subject}</div>
-                        <div className="text-xs text-gray-500">
-                          <Clock className="h-3 w-3 inline mr-1" />
-                          Envoyé le {new Date(email.sent_at!).toLocaleString('fr-FR', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short'
-                          })}
-                        </div>
-                        {email.opened_at && (
-                          <div className="text-xs text-purple-600 mt-1">
-                            👁️ Ouvert le {new Date(email.opened_at).toLocaleString('fr-FR', {
-                              dateStyle: 'medium',
-                              timeStyle: 'short'
-                            })}
-                          </div>
-                        )}
-                        {email.replied_at && (
-                          <div className="text-xs text-green-600 mt-1">
-                            ✅ Répondu le {new Date(email.replied_at).toLocaleString('fr-FR', {
-                              dateStyle: 'medium',
-                              timeStyle: 'short'
-                            })}
-                          </div>
-                        )}
                       </div>
-                    </div>
+                    )}
 
-                    {/* Section commentaire */}
-                    <div className="mt-3 pt-3 border-t">
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-xs font-medium flex items-center gap-1">
-                          <MessageSquare className="h-3 w-3" />
-                          Commentaire
-                        </Label>
-                        {editingCommentId !== email.id && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingCommentId(email.id)}
-                            className="h-6 text-xs"
-                          >
-                            <Edit2 className="h-3 w-3 mr-1" />
-                            {emailComments.get(email.id) ? 'Modifier' : 'Ajouter'}
-                          </Button>
-                        )}
-                      </div>
-                      
-                      {editingCommentId === email.id ? (
-                        <div className="space-y-2">
-                          <Textarea
-                            value={emailComments.get(email.id) || ''}
-                            onChange={(e) => updateComment(email.id, e.target.value)}
-                            placeholder="Ajoutez un commentaire sur cet email..."
-                            className="text-sm min-h-[80px]"
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => saveComment(email.id, false)}
-                              disabled={savingComment}
-                              className="h-7 text-xs"
-                            >
-                              <Save className="h-3 w-3 mr-1" />
-                              Sauvegarder
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setEditingCommentId(null)}
-                              className="h-7 text-xs"
-                            >
-                              Annuler
-                            </Button>
+                    {/* Email programmé */}
+                    {item.type === 'scheduled' && (
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                          <Calendar className="h-5 w-5 text-orange-600" />
+                        </div>
+                        <div className="flex-1 border border-dashed border-orange-300 rounded-lg p-4 bg-orange-50/30">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline" className="text-xs bg-white">
+                                  Étape {item.step}
+                                </Badge>
+                                <Badge className={
+                                  item.status === 'scheduled' ? 'bg-orange-100 text-orange-800' :
+                                  item.status === 'sent' ? 'bg-green-100 text-green-800' :
+                                  'bg-red-100 text-red-800'
+                                }>
+                                  {item.status === 'scheduled' ? '📅 Programmé' :
+                                   item.status === 'sent' ? '✅ Envoyé' :
+                                   '❌ Annulé'}
+                                </Badge>
+                              </div>
+                              <div className="font-medium text-sm">{item.subject}</div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                <Calendar className="h-3 w-3 inline mr-1" />
+                                Prévu le {new Date(item.scheduled_for!).toLocaleString('fr-FR', {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short'
+                                })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Commentaire */}
+                          <div className="mt-3 pt-3 border-t border-orange-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <Label className="text-xs font-medium flex items-center gap-1 text-gray-600">
+                                <MessageSquare className="h-3 w-3" />
+                                Note de pilotage
+                              </Label>
+                              {editingCommentId !== item.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setEditingCommentId(item.id)}
+                                  className="h-6 text-xs"
+                                >
+                                  <Edit2 className="h-3 w-3 mr-1" />
+                                  {emailComments.get(item.id) ? 'Modifier' : 'Ajouter'}
+                                </Button>
+                              )}
+                            </div>
+                            
+                            {editingCommentId === item.id ? (
+                              <div className="space-y-2">
+                                <Textarea
+                                  value={emailComments.get(item.id) || ''}
+                                  onChange={(e) => updateComment(item.id, e.target.value)}
+                                  placeholder="Ajoutez une note de pilotage..."
+                                  className="text-sm min-h-[60px] bg-white"
+                                />
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => saveComment(item.id, true)}
+                                    disabled={savingComment}
+                                    className="h-7 text-xs"
+                                  >
+                                    <Save className="h-3 w-3 mr-1" />
+                                    Sauvegarder
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEditingCommentId(null)}
+                                    className="h-7 text-xs"
+                                  >
+                                    Annuler
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-600 bg-white rounded p-2 min-h-[40px]">
+                                {emailComments.get(item.id) || <span className="text-gray-400 italic">Aucune note</span>}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      ) : (
-                        <div className="text-sm text-gray-600 bg-gray-50 rounded p-2 min-h-[40px]">
-                          {emailComments.get(email.id) || <span className="text-gray-400 italic">Aucun commentaire</span>}
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </CardContent>
             </Card>
-          )}
-
-          {/* Emails programmés */}
-          {scheduledEmails.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-600" />
-                  Emails programmés ({scheduledEmails.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {scheduledEmails.map((email) => (
-                  <div key={email.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="text-xs">
-                            Étape {email.step}
-                          </Badge>
-                          <Badge className={
-                            email.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                            email.status === 'sent' ? 'bg-green-100 text-green-800' :
-                            'bg-red-100 text-red-800'
-                          }>
-                            {email.status === 'scheduled' ? '📅 Programmé' :
-                             email.status === 'sent' ? '✅ Envoyé' :
-                             '❌ Annulé'}
-                          </Badge>
-                        </div>
-                        <div className="font-medium mb-1">{email.subject}</div>
-                        <div className="text-xs text-gray-500">
-                          <Calendar className="h-3 w-3 inline mr-1" />
-                          Programmé pour le {new Date(email.scheduled_for).toLocaleString('fr-FR', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short'
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Section commentaire */}
-                    <div className="mt-3 pt-3 border-t">
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-xs font-medium flex items-center gap-1">
-                          <MessageSquare className="h-3 w-3" />
-                          Commentaire
-                        </Label>
-                        {editingCommentId !== email.id && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingCommentId(email.id)}
-                            className="h-6 text-xs"
-                          >
-                            <Edit2 className="h-3 w-3 mr-1" />
-                            {emailComments.get(email.id) ? 'Modifier' : 'Ajouter'}
-                          </Button>
-                        )}
-                      </div>
-                      
-                      {editingCommentId === email.id ? (
-                        <div className="space-y-2">
-                          <Textarea
-                            value={emailComments.get(email.id) || ''}
-                            onChange={(e) => updateComment(email.id, e.target.value)}
-                            placeholder="Ajoutez un commentaire sur cet email..."
-                            className="text-sm min-h-[80px]"
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => saveComment(email.id, true)}
-                              disabled={savingComment}
-                              className="h-7 text-xs"
-                            >
-                              <Save className="h-3 w-3 mr-1" />
-                              Sauvegarder
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setEditingCommentId(null)}
-                              className="h-7 text-xs"
-                            >
-                              Annuler
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-600 bg-gray-50 rounded p-2 min-h-[40px]">
-                          {emailComments.get(email.id) || <span className="text-gray-400 italic">Aucun commentaire</span>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Message si aucune séquence */}
-          {sentEmails.length === 0 && scheduledEmails.length === 0 && (
+          ) : (
             <Card>
               <CardContent className="py-12 text-center">
                 <Mail className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-500 mb-2">Aucune séquence programmée</p>
+                <p className="text-gray-500 mb-2">Aucune conversation</p>
                 <p className="text-sm text-gray-400">
-                  Ce prospect n'a pas encore de séquence d'emails programmée
+                  Ce prospect n'a pas encore d'emails envoyés ou programmés
                 </p>
               </CardContent>
             </Card>
