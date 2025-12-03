@@ -111,18 +111,36 @@ function transformCalendarEventToRDV(eventData: any): any {
           duration_minutes = Math.round((endDateObj.getTime() - startDateObj.getTime()) / 60000);
         }
       } else {
-        // Fallback : utiliser Date si format ISO avec fuseau horaire
+        // Fallback : utiliser Date si format ISO avec fuseau horaire pour end_date
         const startDate = new Date(startStr);
-        scheduled_date = startDate.toISOString().split('T')[0];
-        scheduled_time = startDate.toISOString().split('T')[1].substring(0, 5);
+        
+        // Utiliser les méthodes locales pour préserver le fuseau horaire de l'utilisateur
+        const year = startDate.getFullYear();
+        const month = String(startDate.getMonth() + 1).padStart(2, '0');
+        const day = String(startDate.getDate()).padStart(2, '0');
+        const hours = String(startDate.getHours()).padStart(2, '0');
+        const minutes = String(startDate.getMinutes()).padStart(2, '0');
+        
+        scheduled_date = `${year}-${month}-${day}`;
+        scheduled_time = `${hours}:${minutes}`;
+        
         const endDate = new Date(eventData.end_date);
         duration_minutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
       }
     } else {
-      // Format ISO avec fuseau horaire : utiliser Date normalement
+      // Format ISO avec fuseau horaire : extraire les composants en heure locale
       const startDate = new Date(startStr);
-      scheduled_date = startDate.toISOString().split('T')[0];
-      scheduled_time = startDate.toISOString().split('T')[1].substring(0, 5);
+      
+      // Utiliser les méthodes locales pour préserver le fuseau horaire de l'utilisateur
+      const year = startDate.getFullYear();
+      const month = String(startDate.getMonth() + 1).padStart(2, '0');
+      const day = String(startDate.getDate()).padStart(2, '0');
+      const hours = String(startDate.getHours()).padStart(2, '0');
+      const minutes = String(startDate.getMinutes()).padStart(2, '0');
+      
+      scheduled_date = `${year}-${month}-${day}`;
+      scheduled_time = `${hours}:${minutes}`;
+      
       const endDate = new Date(eventData.end_date);
       duration_minutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
     }

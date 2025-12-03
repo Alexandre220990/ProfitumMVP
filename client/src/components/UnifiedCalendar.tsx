@@ -1673,7 +1673,23 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
   const convertLocalDateTimeToISO = (localDateTime: string): string => {
     // datetime-local retourne "YYYY-MM-DDTHH:mm" sans fuseau horaire
     // On doit l'interpréter comme étant dans le fuseau horaire local
-    const date = new Date(localDateTime);
+    
+    // Parser manuellement pour éviter que JavaScript interprète comme UTC
+    const parts = localDateTime.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!parts) {
+      throw new Error('Format de date invalide');
+    }
+    
+    const [, yearStr, monthStr, dayStr, hoursStr, minutesStr] = parts;
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10) - 1; // Les mois commencent à 0 en JavaScript
+    const day = parseInt(dayStr, 10);
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+    
+    // Créer la date en heure locale (pas UTC)
+    const date = new Date(year, month, day, hours, minutes, 0);
+    
     // Obtenir l'offset du fuseau horaire en minutes
     const offset = -date.getTimezoneOffset();
     const offsetHours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
@@ -1681,14 +1697,13 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
     const offsetSign = offset >= 0 ? '+' : '-';
     
     // Formater la date avec l'offset
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const monthFormatted = String(date.getMonth() + 1).padStart(2, '0');
+    const dayFormatted = String(date.getDate()).padStart(2, '0');
+    const hoursFormatted = String(date.getHours()).padStart(2, '0');
+    const minutesFormatted = String(date.getMinutes()).padStart(2, '0');
     const seconds = String(date.getSeconds()).padStart(2, '0');
     
-    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${offsetHours}:${offsetMinutes}`;
+    return `${date.getFullYear()}-${monthFormatted}-${dayFormatted}T${hoursFormatted}:${minutesFormatted}:${seconds}${offsetSign}${offsetHours}:${offsetMinutes}`;
   };
   
   // Fonction pour obtenir l'heure de fin par défaut (30 minutes après)
