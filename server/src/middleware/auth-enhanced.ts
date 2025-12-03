@@ -223,35 +223,37 @@ export const enhancedAuthMiddleware = async (
       });
     }
 
-    // 2. Validation du token (JWT personnalisé en priorité)
+    // 2. Validation du token avec Supabase (source de vérité unique)
     let user;
     let authError = null;
-    let jwtUserData = null;
     
     try {
-      // Décoder le token JWT personnalisé
-      const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(token, jwtConfig.secret);
+      // 🔥 VÉRIFICATION AVEC SUPABASE (pas de JWT personnalisé)
+      const { data: { user: supabaseUser }, error } = await supabase.auth.getUser(token);
+      
+      if (error || !supabaseUser) {
+        throw new Error(error?.message || 'Token invalide');
+      }
+      
+      // Utiliser les données Supabase directement
       user = {
-        id: decoded.id,
-        email: decoded.email,
-        type: decoded.type,
-        database_id: decoded.database_id || decoded.id, // ID pour les requêtes DB
-        user_metadata: {
-          type: decoded.type
-        },
-        app_metadata: {},
-        aud: 'authenticated',
-        created_at: new Date().toISOString()
+        id: supabaseUser.id, // ID Supabase Auth
+        email: supabaseUser.email || '',
+        type: supabaseUser.user_metadata?.type || 'client', // Type depuis user_metadata
+        database_id: supabaseUser.id, // Par défaut, on utilisera l'ID Supabase
+        user_metadata: supabaseUser.user_metadata || { type: 'client' },
+        app_metadata: supabaseUser.app_metadata || {},
+        aud: supabaseUser.aud || 'authenticated',
+        created_at: supabaseUser.created_at || new Date().toISOString()
       };
-      jwtUserData = decoded; // Stocker les données décodées pour plus tard
-      if (DEBUG_AUTH) console.log('✅ Auth JWT:', decoded.email, decoded.type);
+      
+      if (DEBUG_AUTH) console.log('✅ Auth Supabase:', user.email, user.type);
       
       // ASSIGNER L'UTILISATEUR À LA REQUÊTE
       (req as any).user = user;
-    } catch (jwtError) {
-      authError = jwtError;
-      console.error('❌ Erreur JWT:', jwtError instanceof Error ? jwtError.message : 'Erreur JWT');
+    } catch (supabaseError) {
+      authError = supabaseError;
+      console.error('❌ Erreur validation token Supabase:', supabaseError instanceof Error ? supabaseError.message : 'Erreur Supabase');
     }
     
     if (authError || !user) {
@@ -276,23 +278,15 @@ export const enhancedAuthMiddleware = async (
       });
     }
 
-    // 3. Recherche de l'utilisateur dans les tables métier
+    // 3. Recherche de l'utilisateur dans les tables métier par email
     let userData: any;
     let userType: 'client' | 'expert' | 'admin' | 'apporteur';
 
-    // Si on a des données JWT avec database_id, utiliser directement cet ID
-    if (jwtUserData && jwtUserData.database_id && jwtUserData.type) {
-      // Utiliser directement le type du JWT
-      userType = jwtUserData.type as 'client' | 'expert' | 'admin' | 'apporteur';
-      userData = {
-        id: jwtUserData.database_id,
-        email: jwtUserData.email
-      };
-    } else {
-      // Fallback: recherche par email dans les tables
-      if (DEBUG_AUTH) console.log('🔍 Fallback recherche email...');
+    // Utiliser le type depuis user_metadata Supabase comme indicateur
+    const typeFromMetadata = user.user_metadata?.type;
+    if (DEBUG_AUTH) console.log('🔍 Type depuis metadata:', typeFromMetadata, '- Recherche par email:', user.email);
 
-      // Pour les routes admin, chercher d'abord dans la table Admin
+    // Pour les routes admin, chercher d'abord dans la table Admin
     if (req.path.startsWith('/api/admin')) {
       
       // Chercher d'abord dans Admin
@@ -448,9 +442,7 @@ export const enhancedAuthMiddleware = async (
           }
         }
       }
-    } // Fin du if/else interne (admin vs autres routes)
-    
-    } // Fin du bloc else (fallback: recherche par email)
+    } // Fin du if/else (admin vs autres routes)
 
     // 4. Attribution des permissions
     const permissions = USER_PERMISSIONS[userType] || [];

@@ -47,6 +47,21 @@ export const loginClient = async (credentials: LoginCredentials): Promise<AuthRe
       };
     }
 
+    // ✅ Stocker la session Supabase côté client
+    if (data.data?.supabase_session) {
+      const { supabase } = await import('./supabase');
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.data.supabase_session.access_token,
+        refresh_token: data.data.supabase_session.refresh_token
+      });
+      
+      if (sessionError) {
+        console.error('❌ Erreur stockage session Supabase:', sessionError);
+      } else {
+        console.log('✅ Session Supabase établie côté client');
+      }
+    }
+
     return data;
   } catch (error) {
     return {
@@ -81,6 +96,21 @@ export const loginExpert = async (credentials: LoginCredentials): Promise<AuthRe
         success: false,
         message: data.message || 'Erreur de connexion'
       };
+    }
+
+    // ✅ Stocker la session Supabase côté client
+    if (data.data?.supabase_session) {
+      const { supabase } = await import('./supabase');
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.data.supabase_session.access_token,
+        refresh_token: data.data.supabase_session.refresh_token
+      });
+      
+      if (sessionError) {
+        console.error('❌ Erreur stockage session Supabase:', sessionError);
+      } else {
+        console.log('✅ Session Supabase établie côté client');
+      }
     }
 
     return data;
@@ -119,6 +149,21 @@ export const loginApporteur = async (credentials: LoginCredentials): Promise<Aut
       };
     }
 
+    // ✅ Stocker la session Supabase côté client
+    if (data.data?.supabase_session) {
+      const { supabase } = await import('./supabase');
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.data.supabase_session.access_token,
+        refresh_token: data.data.supabase_session.refresh_token
+      });
+      
+      if (sessionError) {
+        console.error('❌ Erreur stockage session Supabase:', sessionError);
+      } else {
+        console.log('✅ Session Supabase établie côté client');
+      }
+    }
+
     return data;
   } catch (error) {
     return {
@@ -153,6 +198,21 @@ export const loginAdmin = async (credentials: LoginCredentials): Promise<AuthRes
         success: false,
         message: data.message || 'Erreur de connexion'
       };
+    }
+
+    // ✅ Stocker la session Supabase côté client
+    if (data.data?.supabase_session) {
+      const { supabase } = await import('./supabase');
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.data.supabase_session.access_token,
+        refresh_token: data.data.supabase_session.refresh_token
+      });
+      
+      if (sessionError) {
+        console.error('❌ Erreur stockage session Supabase:', sessionError);
+      } else {
+        console.log('✅ Session Supabase établie côté client');
+      }
     }
 
     return data;

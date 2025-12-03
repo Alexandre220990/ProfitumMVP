@@ -30,12 +30,12 @@ const api = axios.create({ baseURL: BASE_URL, headers: {
 // Intercepteur pour ajouter le token d'authentification
 api.interceptors.request.use(async (config) => { 
   try {
-    // Récupérer UNIQUEMENT depuis Supabase (source de vérité unique)
+    // ✅ Utiliser UNIQUEMENT le token Supabase (source de vérité unique)
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session?.access_token) {
       config.headers.Authorization = `Bearer ${session.access_token}`;
-      console.log('🔐 Token ajouté aux headers');
+      console.log('🔐 Token Supabase ajouté aux headers');
     } else { 
       console.log('⚠️ Aucune session active');
     }
@@ -61,6 +61,7 @@ api.interceptors.response.use(
       }
       
       try {
+        // ✅ Rafraîchir la session Supabase automatiquement
         const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
         
         if (session?.access_token && !refreshError) {

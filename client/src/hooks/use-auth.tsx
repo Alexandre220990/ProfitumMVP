@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { user } = response.data;
 
-      // Supabase gère automatiquement le stockage du token
+      // ✅ Supabase gère automatiquement le stockage du token (session persistante)
       
       // Convertir AuthUser vers UserType
       const userData: UserType = {
@@ -184,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { user } = response.data;
 
-      // Supabase gère automatiquement le stockage du token
+      // ✅ Supabase gère automatiquement le stockage du token (session persistante)
       
       // Convertir AuthUser vers UserType
       const userData: UserType = {
@@ -222,7 +222,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await logoutFromSupabase();
-      // Supabase gère automatiquement le nettoyage de session
+      // ✅ Supabase gère automatiquement le nettoyage de session et des tokens
+      
       setUser(null);
       navigate("/");
       toast.success("Déconnexion réussie ! Vous avez été déconnecté");
