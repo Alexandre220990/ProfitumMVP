@@ -238,23 +238,26 @@ export default function ScheduleSequenceModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-[90vw] lg:max-w-5xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-purple-600" />
-            Programmer une séquence pour {prospectName}
+          <DialogTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-base sm:text-lg">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 flex-shrink-0" />
+              <span className="line-clamp-2">Programmer une séquence pour {prospectName}</span>
+            </div>
           </DialogTitle>
-          <DialogDescription>
-            {companyName && `${companyName} • `}{prospectEmail}
+          <DialogDescription className="text-xs sm:text-sm break-all">
+            {companyName && <span className="block sm:inline">{companyName} {prospectEmail && '• '}</span>}
+            <span className="block sm:inline">{prospectEmail}</span>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Contexte IA */}
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
-            <Label className="text-sm font-semibold text-purple-900 mb-2 flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Instructions pour l'IA (optionnel)
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-3 sm:p-4">
+            <Label className="text-xs sm:text-sm font-semibold text-purple-900 mb-2 flex items-center gap-2">
+              <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span>Instructions pour l'IA (optionnel)</span>
             </Label>
             <Textarea
               value={aiContext}
@@ -262,32 +265,33 @@ export default function ScheduleSequenceModal({
               placeholder="Ex: Séquence de prospection pour présenter nos solutions d'optimisation fiscale et sociale, avec un ton professionnel mais chaleureux..."
               rows={3}
               disabled={isGenerating || isScheduling}
-              className="bg-white"
+              className="bg-white text-xs sm:text-sm"
             />
-            <div className="flex items-center justify-between mt-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 sm:justify-between mt-3">
               <Button
                 onClick={addStep}
                 variant="outline"
                 size="sm"
                 disabled={isGenerating || isScheduling || steps.length >= 5}
+                className="w-full sm:w-auto text-xs sm:text-sm"
               >
-                <Plus className="h-3 w-3 mr-1" />
-                Ajouter un email
+                <Plus className="h-3 w-3 mr-1 flex-shrink-0" />
+                <span className="truncate">Ajouter un email</span>
               </Button>
               <Button
                 onClick={generateWithAI}
                 disabled={isGenerating || isScheduling || steps.length === 0}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-xs sm:text-sm"
               >
                 {isGenerating ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Génération en cours...
+                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2 animate-spin flex-shrink-0" />
+                    <span className="truncate">Génération en cours...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Générer la séquence avec l'IA
+                    <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">Générer la séquence avec l'IA</span>
                   </>
                 )}
               </Button>
@@ -295,29 +299,29 @@ export default function ScheduleSequenceModal({
           </div>
 
           {/* Étapes de la séquence */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-semibold">Emails de la séquence ({steps.length})</Label>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
+              <Label className="text-sm sm:text-base font-semibold">Emails de la séquence ({steps.length})</Label>
               {steps.length < 5 && (
                 <p className="text-xs text-gray-500">Maximum 5 emails</p>
               )}
             </div>
 
             {steps.map((step) => (
-              <div key={step.id} className="border rounded-lg p-4 bg-white shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-purple-50">
+              <div key={step.id} className="border rounded-lg p-3 sm:p-4 bg-white shadow-sm">
+                <div className="flex items-start justify-between mb-3 sm:mb-4">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                    <Badge variant="outline" className="bg-purple-50 text-xs flex-shrink-0">
                       <Mail className="h-3 w-3 mr-1" />
                       Email {step.stepNumber}
                     </Badge>
                     {step.stepNumber === 1 && (
-                      <Badge className="bg-green-100 text-green-800 text-xs">
+                      <Badge className="bg-green-100 text-green-800 text-xs flex-shrink-0">
                         Premier contact
                       </Badge>
                     )}
                     {step.stepNumber > 1 && (
-                      <Badge className="bg-blue-100 text-blue-800 text-xs">
+                      <Badge className="bg-blue-100 text-blue-800 text-xs flex-shrink-0">
                         Relance
                       </Badge>
                     )}
@@ -327,7 +331,7 @@ export default function ScheduleSequenceModal({
                       onClick={() => removeStep(step.id)}
                       variant="ghost"
                       size="sm"
-                      className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="h-7 w-7 sm:w-auto text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0 ml-2"
                       disabled={isGenerating || isScheduling}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -336,8 +340,8 @@ export default function ScheduleSequenceModal({
                 </div>
 
                 {step.stepNumber > 1 && (
-                  <div className="mb-4">
-                    <Label className="text-sm">Délai (jours après l'email précédent)</Label>
+                  <div className="mb-3 sm:mb-4">
+                    <Label className="text-xs sm:text-sm">Délai (jours après l'email précédent)</Label>
                     <Input
                       type="number"
                       min="1"
@@ -345,38 +349,38 @@ export default function ScheduleSequenceModal({
                       value={step.delayDays}
                       onChange={(e) => updateStep(step.id, 'delayDays', parseInt(e.target.value) || 1)}
                       disabled={isGenerating || isScheduling}
-                      className="w-32 mt-1"
+                      className="w-full sm:w-32 mt-1 text-xs sm:text-sm"
                     />
                   </div>
                 )}
 
                 {step.stepNumber === 1 && (
-                  <div className="mb-4 text-xs text-gray-600 bg-blue-50 rounded p-2">
+                  <div className="mb-3 sm:mb-4 text-xs text-gray-600 bg-blue-50 rounded p-2">
                     📅 Cet email sera envoyé immédiatement après la programmation
                   </div>
                 )}
 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <Label className="text-sm">Objet *</Label>
+                    <Label className="text-xs sm:text-sm">Objet *</Label>
                     <Input
                       value={step.subject}
                       onChange={(e) => updateStep(step.id, 'subject', e.target.value)}
                       placeholder="Objet de l'email"
                       disabled={isGenerating || isScheduling}
-                      className="mt-1"
+                      className="mt-1 text-xs sm:text-sm"
                     />
                   </div>
 
                   <div>
-                    <Label className="text-sm">Message *</Label>
+                    <Label className="text-xs sm:text-sm">Message *</Label>
                     <Textarea
                       value={step.body}
                       onChange={(e) => updateStep(step.id, 'body', e.target.value)}
                       placeholder="Contenu de l'email (HTML supporté)"
-                      rows={8}
+                      rows={6}
                       disabled={isGenerating || isScheduling}
-                      className="font-mono text-sm mt-1"
+                      className="font-mono text-xs sm:text-sm mt-1 leading-relaxed"
                     />
                   </div>
                 </div>
@@ -385,19 +389,24 @@ export default function ScheduleSequenceModal({
           </div>
 
           {/* Résumé */}
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm font-semibold text-blue-900 mb-2">📋 Résumé de la séquence</p>
-            <ul className="text-xs text-blue-800 space-y-1">
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+            <p className="text-xs sm:text-sm font-semibold text-blue-900 mb-2 flex items-center gap-1">
+              <span>📋</span>
+              <span>Résumé de la séquence</span>
+            </p>
+            <ul className="text-xs text-blue-800 space-y-1 sm:space-y-1.5">
               {steps.map((step, index) => {
                 const cumulativeDays = steps.slice(0, index + 1).reduce((sum, s) => sum + s.delayDays, 0);
                 const scheduledDate = new Date();
                 scheduledDate.setDate(scheduledDate.getDate() + cumulativeDays);
                 
                 return (
-                  <li key={step.id}>
-                    <strong>Email {step.stepNumber}</strong> : {step.subject || '(à définir)'} — 
+                  <li key={step.id} className="break-words">
+                    <strong className="font-semibold">Email {step.stepNumber}</strong> : 
+                    <span className="inline-block ml-1">{step.subject || '(à définir)'}</span>
+                    <span className="block sm:inline sm:ml-1">— 
                     {cumulativeDays === 0 ? ' Envoi immédiat' : ` Dans ${cumulativeDays} jour${cumulativeDays > 1 ? 's' : ''}`}
-                    {' '}({scheduledDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })})
+                    {' '}({scheduledDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })})</span>
                   </li>
                 );
               })}
@@ -405,28 +414,29 @@ export default function ScheduleSequenceModal({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 justify-end pt-4 border-t">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-end pt-3 sm:pt-4 border-t">
             <Button
               onClick={handleClose}
               variant="outline"
               disabled={isGenerating || isScheduling}
+              className="w-full sm:w-auto text-xs sm:text-sm"
             >
               Annuler
             </Button>
             <Button
               onClick={scheduleSequence}
               disabled={isGenerating || isScheduling}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-xs sm:text-sm"
             >
               {isScheduling ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Programmation en cours...
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2 animate-spin flex-shrink-0" />
+                  <span className="truncate">Programmation en cours...</span>
                 </>
               ) : (
                 <>
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Programmer la séquence ({steps.length} email{steps.length > 1 ? 's' : ''})
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">Programmer la séquence ({steps.length} email{steps.length > 1 ? 's' : ''})</span>
                 </>
               )}
             </Button>

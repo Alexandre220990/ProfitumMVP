@@ -182,6 +182,113 @@ const AuditRow = memo<{
 
 AuditRow.displayName = 'AuditRow';
 
+// Composant mémorisé pour la carte d'audit (Mobile/Tablette)
+const AuditRowCard = memo<{
+  dossier: Audit;
+  activeTab: "opportunities" | "pending" | "completed";
+  onViewDossier: (id: string, auditType?: string) => void;
+}>(({ dossier, activeTab, onViewDossier }) => {
+  const handleCardClick = useCallback(() => {
+    onViewDossier(dossier.id.toString(), dossier.audit_type);
+  }, [dossier.id, dossier.audit_type, onViewDossier]);
+
+  const statusConfig = STATUS_CONFIG[dossier.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG['non_démarré'];
+  const reliabilityPercentage = dossier.obtained_gain ? Math.round((dossier.obtained_gain / dossier.potential_gain) * 100) : 0;
+  const reliabilityColor = (dossier.obtained_gain || 0) / dossier.potential_gain >= 1 ? '#10B981' : '#3B82F6';
+
+  return (
+    <div
+      onClick={handleCardClick}
+      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer"
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-1 truncate">
+            {dossier.audit_type}
+          </h3>
+          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusConfig.className}`}>
+            {statusConfig.label}
+          </span>
+        </div>
+        {dossier.expert && (
+          <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-blue-600 text-xs font-medium">
+                {dossier.expert.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2 mb-3">
+        <div className="flex items-center justify-between text-xs sm:text-sm">
+          <span className="text-gray-600">Étape</span>
+          <span className="font-medium">{dossier.step_display || `${dossier.current_step || 0}/${dossier.total_steps || 10}`}</span>
+        </div>
+        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
+            style={{ 
+              width: `${Math.min(100, dossier.progress || 0)}%` 
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <p className="text-xs text-gray-600 mb-1">Gains Potentiels</p>
+          <p className="text-sm sm:text-base font-semibold text-red-600">
+            {dossier.potential_gain.toLocaleString()} €
+          </p>
+        </div>
+        {activeTab === "completed" && dossier.obtained_gain && (
+          <div>
+            <p className="text-xs text-gray-600 mb-1">Gains Obtenus</p>
+            <p className="text-sm sm:text-base font-semibold text-green-600">
+              {dossier.obtained_gain.toLocaleString()} €
+            </p>
+          </div>
+        )}
+      </div>
+
+      {activeTab === "completed" && (
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs text-gray-600">Fiabilité</span>
+          <div className="w-12 h-12">
+            <CircularProgressbar
+              value={reliabilityPercentage}
+              text={`${reliabilityPercentage}%`}
+              styles={buildStyles({
+                textSize: '16px',
+                pathColor: reliabilityColor,
+                textColor: '#1E293B',
+                trailColor: '#E5E7EB'
+              })}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <span className="text-xs text-gray-500">
+          {new Date(dossier.updated_at).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          })}
+        </span>
+        {!dossier.expert && (
+          <span className="text-xs text-gray-400 italic">En attente</span>
+        )}
+      </div>
+    </div>
+  );
+});
+
+AuditRowCard.displayName = 'AuditRowCard';
+
 // Fonction de tri optimisée
 const sortData = (a: Audit, b: Audit, field: SortableField, order: 'asc' | 'desc'): number => {
   const multiplier = order === 'asc' ? 1 : -1;
@@ -253,55 +360,72 @@ export const AuditTable = memo<AuditTableProps>(({
   return (
     <div className="overflow-x-auto">
       {dossiers.length > 0 ? (
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-50 text-gray-700 text-sm font-medium border-b">
-              <SortableHeader field="audit_type" currentSort={sortConfig} onSort={handleSort}>
-                Nom du dossier
-              </SortableHeader>
-              <SortableHeader field="status" currentSort={sortConfig} onSort={handleSort}>
-                Statut
-              </SortableHeader>
-              <SortableHeader field="current_step" currentSort={sortConfig} onSort={handleSort}>
-                Étape
-              </SortableHeader>
-              <SortableHeader field="potential_gain" currentSort={sortConfig} onSort={handleSort}>
-                Gains Potentiels
-              </SortableHeader>
-              {activeTab === "completed" && (
-                <>
-                  <SortableHeader field="obtained_gain" currentSort={sortConfig} onSort={handleSort}>
-                    Gains Obtenus
+        <>
+          {/* Tableau Desktop */}
+          <div className="hidden lg:block">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-50 text-gray-700 text-sm font-medium border-b">
+                  <SortableHeader field="audit_type" currentSort={sortConfig} onSort={handleSort}>
+                    Nom du dossier
                   </SortableHeader>
-                  <SortableHeader field="reliability" currentSort={sortConfig} onSort={handleSort}>
-                    Fiabilité
+                  <SortableHeader field="status" currentSort={sortConfig} onSort={handleSort}>
+                    Statut
                   </SortableHeader>
-                </>
-              )}
-              <SortableHeader field="updated_at" currentSort={sortConfig} onSort={handleSort}>
-                Dernière activité
-              </SortableHeader>
-              <th className="p-2 text-left text-xs">Expert assigné</th>
-            </tr>
-          </thead>
-          <tbody>
+                  <SortableHeader field="current_step" currentSort={sortConfig} onSort={handleSort}>
+                    Étape
+                  </SortableHeader>
+                  <SortableHeader field="potential_gain" currentSort={sortConfig} onSort={handleSort}>
+                    Gains Potentiels
+                  </SortableHeader>
+                  {activeTab === "completed" && (
+                    <>
+                      <SortableHeader field="obtained_gain" currentSort={sortConfig} onSort={handleSort}>
+                        Gains Obtenus
+                      </SortableHeader>
+                      <SortableHeader field="reliability" currentSort={sortConfig} onSort={handleSort}>
+                        Fiabilité
+                      </SortableHeader>
+                    </>
+                  )}
+                  <SortableHeader field="updated_at" currentSort={sortConfig} onSort={handleSort}>
+                    Dernière activité
+                  </SortableHeader>
+                  <th className="p-2 text-left text-xs">Expert assigné</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dossiers.map((dossier) => (
+                  <AuditRow
+                    key={dossier.id}
+                    dossier={dossier}
+                    activeTab={activeTab}
+                    onViewDossier={handleViewDossier}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Cartes Mobile/Tablette */}
+          <div className="lg:hidden space-y-3">
             {dossiers.map((dossier) => (
-              <AuditRow
+              <AuditRowCard
                 key={dossier.id}
                 dossier={dossier}
                 activeTab={activeTab}
                 onViewDossier={handleViewDossier}
               />
             ))}
-          </tbody>
-        </table>
+          </div>
+        </>
       ) : (
-        <div className="text-center py-8">
-          <p className="text-gray-500 mb-4">Aucun dossier disponible.</p>
+        <div className="text-center py-6 sm:py-8">
+          <p className="text-sm sm:text-base text-gray-500 mb-4">Aucun dossier disponible.</p>
           <Button 
             variant="default" 
             onClick={onNewSimulation}
-            className="mx-auto"
+            className="mx-auto text-sm sm:text-base"
           >
             Démarrer une simulation pour découvrir vos opportunités
           </Button>

@@ -307,55 +307,55 @@ export const UnifiedSimulator: React.FC = () => {
 
   if (showResults) { 
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <Card className="mb-8">
-            <CardHeader className="text-center">
-              <div className="flex justify-center mb-4">
-                <div className="bg-green-100 p-3 rounded-full">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
+      <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+        <div className="container mx-auto px-3 sm:px-4 max-w-4xl">
+          <Card className="mb-4 sm:mb-8">
+            <CardHeader className="text-center p-4 sm:p-6">
+              <div className="flex justify-center mb-3 sm:mb-4">
+                <div className="bg-green-100 p-2 sm:p-3 rounded-full">
+                  <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
                 </div>
               </div>
-              <CardTitle className="text-2xl font-bold text-gray-900">
+              <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900">
                 Simulation Terminée !
               </CardTitle>
-              <p className="text-gray-600">
+              <p className="text-sm sm:text-base text-gray-600 mt-2">
                 Voici les produits éligibles pour votre entreprise
               </p>
             </CardHeader>
           </Card>
 
           {/* Résultats */}
-          <div className="grid gap-6 mb-8">
+          <div className="grid gap-3 sm:gap-6 mb-4 sm:mb-8">
             {eligibleProducts.map((product: ClientProduitEligible) => (
               <Card key={product.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-2 leading-tight">
                         {product.produit.nom}
                       </h3>
-                      <p className="text-gray-600 mb-4">
+                      <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
                         {product.produit.description}
                       </p>
                       
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-3 gap-2 sm:gap-4">
                         <div className="text-center">
-                          <div className="flex items-center justify-center mb-2">
-                            <TrendingUp className="w-5 h-5 text-blue-500 mr-2" />
-                            <span className="text-sm text-gray-500">Score</span>
+                          <div className="flex flex-col sm:flex-row items-center justify-center mb-1 sm:mb-2 gap-1">
+                            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" />
+                            <span className="text-xs sm:text-sm text-gray-500">Score</span>
                           </div>
-                          <p className="text-lg font-semibold text-blue-600">
+                          <p className="text-sm sm:text-lg font-semibold text-blue-600">
                             {product.tauxFinal ? `${(product.tauxFinal * 100).toFixed(0)}%` : 'N/A'}
                           </p>
                         </div>
                         
                         <div className="text-center">
-                          <div className="flex items-center justify-center mb-2">
-                            <Euro className="w-5 h-5 text-green-500 mr-2" />
-                            <span className="text-sm text-gray-500">Économies</span>
+                          <div className="flex flex-col sm:flex-row items-center justify-center mb-1 sm:mb-2 gap-1">
+                            <Euro className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                            <span className="text-xs sm:text-sm text-gray-500">Économies</span>
                           </div>
-                          <p className="text-lg font-semibold text-green-600">
+                          <p className="text-sm sm:text-lg font-semibold text-green-600 break-all">
                             {product.montantFinal && product.montantFinal > 0 
                               ? `${product.montantFinal.toLocaleString('fr-FR')}€` 
                               : 'À estimer'}
@@ -363,18 +363,18 @@ export const UnifiedSimulator: React.FC = () => {
                         </div>
                         
                         <div className="text-center">
-                          <div className="flex items-center justify-center mb-2">
-                            <Clock className="w-5 h-5 text-purple-500 mr-2" />
-                            <span className="text-sm text-gray-500">Durée</span>
+                          <div className="flex flex-col sm:flex-row items-center justify-center mb-1 sm:mb-2 gap-1">
+                            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 flex-shrink-0" />
+                            <span className="text-xs sm:text-sm text-gray-500">Durée</span>
                           </div>
-                          <p className="text-lg font-semibold text-purple-600">
+                          <p className="text-sm sm:text-lg font-semibold text-purple-600">
                             {product.dureeFinale || 12} mois
                           </p>
                         </div>
                       </div>
                     </div>
                     
-                    <Badge variant={product.statut === 'eligible' ? 'default' : 'secondary'}>
+                    <Badge variant={product.statut === 'eligible' ? 'default' : 'secondary'} className="text-xs sm:text-sm w-fit">
                       {product.statut === 'eligible' ? 'Éligible' : 'En attente'}
                     </Badge>
                   </div>
@@ -415,28 +415,28 @@ export const UnifiedSimulator: React.FC = () => {
   const hasAnswer = currentQuestion && answers[currentQuestion.id]?.length > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4 max-w-2xl">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="container mx-auto px-3 sm:px-4 max-w-2xl">
         {/* Header */}
-        <Card className="mb-8">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="bg-blue-100 p-3 rounded-full">
-                <Calculator className="w-8 h-8 text-blue-600" />
+        <Card className="mb-4 sm:mb-8">
+          <CardHeader className="text-center p-4 sm:p-6">
+            <div className="flex justify-center mb-3 sm:mb-4">
+              <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
+                <Calculator className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">
+            <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900">
               Simulateur d'Éligibilité
             </CardTitle>
-            <p className="text-gray-600">
+            <p className="text-sm sm:text-base text-gray-600 mt-2">
               Répondez à quelques questions pour découvrir vos économies potentielles
             </p>
           </CardHeader>
         </Card>
 
         {/* Progression */}
-        <div className="mb-6">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex justify-between text-xs sm:text-sm text-gray-600 mb-2">
             <span>Question {currentStep + 1} sur {questions.length}</span>
             <span>{Math.round(progress)}%</span>
           </div>
@@ -445,26 +445,26 @@ export const UnifiedSimulator: React.FC = () => {
 
         {/* Question */}
         <Card ref={scrollRef}>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             {currentQuestion && (
               <>
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                <h2 className="text-base sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 leading-tight">
                   {currentQuestion.question_text}
                 </h2>
                 
                 {currentQuestion.description && (
-                  <p className="text-gray-600 mb-6">{currentQuestion.description}</p>
+                  <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">{currentQuestion.description}</p>
                 )}
 
                 {/* Réponses selon le type */}
                 {currentQuestion.question_type === 'choix_unique' && currentQuestion.options.choix && (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {currentQuestion.options.choix.map((choice: string) => (
                       <Button
                         key={choice}
                         variant={answers[currentQuestion.id]?.includes(choice) ? "default" : "outline"}
                         onClick={() => handleAnswer(choice)}
-                        className="w-full justify-start h-auto p-4"
+                        className="w-full justify-start h-auto p-3 sm:p-4 text-sm sm:text-base text-left"
                       >
                         {choice}
                       </Button>
@@ -473,13 +473,13 @@ export const UnifiedSimulator: React.FC = () => {
                 )}
 
                 {currentQuestion.question_type === 'choix_multiple' && currentQuestion.options.choix && (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {currentQuestion.options.choix.map((choice: string) => (
                       <Button
                         key={choice}
                         variant={answers[currentQuestion.id]?.includes(choice) ? "default" : "outline"}
                         onClick={() => handleAnswer(choice)}
-                        className="w-full justify-start h-auto p-4"
+                        className="w-full justify-start h-auto p-3 sm:p-4 text-sm sm:text-base text-left"
                       >
                         {choice}
                       </Button>
@@ -488,20 +488,20 @@ export const UnifiedSimulator: React.FC = () => {
                 )}
 
                 {currentQuestion.question_type === 'nombre' && (
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     <Input
                       type="number"
                       value={currentInput}
                       onChange={(e) => handleNumberInput(e.target.value)}
                       placeholder={`Entrez un nombre${currentQuestion.options.unite ? ` en ${currentQuestion.options.unite}` : ''}`}
+                      className="text-base sm:text-lg"
                       min={currentQuestion.options.min}
                       max={currentQuestion.options.max}
-                      className="text-lg"
                     />
                     <Button 
                       onClick={handleNumberSubmit}
                       disabled={!currentInput.trim()}
-                      className="w-full"
+                      className="w-full text-sm sm:text-base"
                     >
                       Valider
                     </Button>
@@ -509,18 +509,18 @@ export const UnifiedSimulator: React.FC = () => {
                 )}
 
                 {currentQuestion.question_type === 'texte' && (
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     <Input
                       type="text"
                       value={currentInput}
                       onChange={(e) => handleNumberInput(e.target.value)}
                       placeholder="Entrez votre réponse"
-                      className="text-lg"
+                      className="text-base sm:text-lg"
                     />
                     <Button 
                       onClick={handleNumberSubmit}
                       disabled={!currentInput.trim()}
-                      className="w-full"
+                      className="w-full text-sm sm:text-base"
                     >
                       Valider
                     </Button>
@@ -528,11 +528,12 @@ export const UnifiedSimulator: React.FC = () => {
                 )}
 
                 {/* Navigation */}
-                <div className="flex justify-between mt-8">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-between mt-6 sm:mt-8">
                   <Button
                     variant="outline"
                     onClick={prevStep}
                     disabled={currentStep === 0}
+                    className="w-full sm:w-auto text-sm sm:text-base"
                   >
                     Précédent
                   </Button>
@@ -541,11 +542,11 @@ export const UnifiedSimulator: React.FC = () => {
                     <Button
                       onClick={handleSubmit}
                       disabled={!hasAnswer || isSubmitting}
-                      className="bg-green-600 hover:bg-green-700"
+                      className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-sm sm:text-base"
                     >
                       {isSubmitting ? (
                         <>
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-2 animate-spin flex-shrink-0" />
                           Traitement...
                         </>
                       ) : (

@@ -322,19 +322,19 @@ export const ExpertDashboardOptimized = () => {
 
           <TabsContent value="dashboard" className="space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard Expert</h1>
-            <p className="text-gray-600">Pilotez votre activité commerciale</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard Expert</h1>
+            <p className="text-sm sm:text-base text-gray-600">Pilotez votre activité commerciale</p>
           </div>
-          <Button onClick={handleRefresh} variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualiser
+          <Button onClick={handleRefresh} variant="outline" className="w-full sm:w-auto text-sm">
+            <RefreshCw className="h-4 w-4 mr-2 flex-shrink-0" />
+            <span>Actualiser</span>
           </Button>
         </div>
 
         {/* KPIs Cliquables - 6 KPIs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
           {/* KPI 1 : MES ALERTES */}
           <Card 
             className={`bg-gradient-to-br from-red-500 to-red-600 text-white cursor-pointer hover:shadow-lg transition-all ${alerts.length > 0 ? 'ring-4 ring-red-300 animate-pulse' : ''}`} 
@@ -345,19 +345,19 @@ export const ExpertDashboardOptimized = () => {
               }
             }}
           >
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-red-100 text-sm font-medium mb-1">Mes alertes</p>
-                  <p className="text-3xl font-bold">{alerts.length}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-red-100 text-xs sm:text-sm font-medium mb-1 truncate">Mes alertes</p>
+                  <p className="text-2xl sm:text-3xl font-bold">{alerts.length}</p>
                   {alerts.length > 0 && (
-                    <p className="text-xs text-red-200 mt-1">Actions requises</p>
+                    <p className="text-xs text-red-200 mt-1 truncate">Actions requises</p>
                   )}
                 </div>
-                <div className="relative">
-                  <Bell className="h-10 w-10 text-red-200" />
+                <div className="relative flex-shrink-0 ml-2">
+                  <Bell className="h-8 w-8 sm:h-10 sm:w-10 text-red-200" />
                   {alerts.length > 0 && (
-                    <Badge className="absolute -top-2 -right-2 bg-red-700 text-white border-2 border-white">
+                    <Badge className="absolute -top-2 -right-2 bg-red-700 text-white border-2 border-white text-xs">
                       {alerts.length}
                     </Badge>
                   )}
@@ -371,13 +371,13 @@ export const ExpertDashboardOptimized = () => {
             className={`bg-gradient-to-br from-red-500 to-red-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'urgences' ? 'ring-4 ring-red-300' : ''}`} 
             onClick={() => setActiveTable(activeTable === 'urgences' ? null : 'urgences')}
           >
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-red-100 text-sm font-medium mb-1">Urgences</p>
-                  <p className="text-3xl font-bold">{prioritizedDossiers.length}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-red-100 text-xs sm:text-sm font-medium mb-1 truncate">Urgences</p>
+                  <p className="text-2xl sm:text-3xl font-bold">{prioritizedDossiers.length}</p>
                 </div>
-                <Zap className="h-10 w-10 text-red-200" />
+                <Zap className="h-8 w-8 sm:h-10 sm:w-10 text-red-200 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
@@ -387,26 +387,26 @@ export const ExpertDashboardOptimized = () => {
             className={`bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'clients' ? 'ring-4 ring-blue-300' : ''}`} 
             onClick={() => setActiveTable(activeTable === 'clients' ? null : 'clients')}
           >
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm font-medium mb-1">Clients actifs</p>
-                  <p className="text-3xl font-bold">{kpis?.clientsActifs || 0}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-blue-100 text-xs sm:text-sm font-medium mb-1 truncate">Clients actifs</p>
+                  <p className="text-2xl sm:text-3xl font-bold">{kpis?.clientsActifs || 0}</p>
                 </div>
-                <Users className="h-10 w-10 text-blue-200" />
+                <Users className="h-8 w-8 sm:h-10 sm:w-10 text-blue-200 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
 
           {/* KPI 4 : RDV CETTE SEMAINE */}
           <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => navigate('/expert/agenda')}>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm font-medium mb-1">RDV cette semaine</p>
-                  <p className="text-3xl font-bold">{kpis?.rdvCetteSemaine || 0}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-purple-100 text-xs sm:text-sm font-medium mb-1 truncate">RDV cette semaine</p>
+                  <p className="text-2xl sm:text-3xl font-bold">{kpis?.rdvCetteSemaine || 0}</p>
                 </div>
-                <Calendar className="h-10 w-10 text-purple-200" />
+                <Calendar className="h-8 w-8 sm:h-10 sm:w-10 text-purple-200 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
@@ -416,13 +416,13 @@ export const ExpertDashboardOptimized = () => {
             className={`bg-gradient-to-br from-orange-500 to-orange-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'dossiers' ? 'ring-4 ring-orange-300' : ''}`} 
             onClick={() => setActiveTable(activeTable === 'dossiers' ? null : 'dossiers')}
           >
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-100 text-sm font-medium mb-1">Mes dossiers</p>
-                  <p className="text-3xl font-bold">{kpis?.dossiersEnCours || 0}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-orange-100 text-xs sm:text-sm font-medium mb-1 truncate">Mes dossiers</p>
+                  <p className="text-2xl sm:text-3xl font-bold">{kpis?.dossiersEnCours || 0}</p>
                 </div>
-                <Briefcase className="h-10 w-10 text-orange-200" />
+                <Briefcase className="h-8 w-8 sm:h-10 sm:w-10 text-orange-200 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
@@ -432,13 +432,13 @@ export const ExpertDashboardOptimized = () => {
             className={`bg-gradient-to-br from-green-500 to-green-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'apporteurs' ? 'ring-4 ring-green-300' : ''}`} 
             onClick={() => setActiveTable(activeTable === 'apporteurs' ? null : 'apporteurs')}
           >
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm font-medium mb-1">Apporteurs actifs</p>
-                  <p className="text-3xl font-bold">{kpis?.apporteursActifs || 0}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-green-100 text-xs sm:text-sm font-medium mb-1 truncate">Apporteurs actifs</p>
+                  <p className="text-2xl sm:text-3xl font-bold">{kpis?.apporteursActifs || 0}</p>
                 </div>
-                <Target className="h-10 w-10 text-green-200" />
+                <Target className="h-8 w-8 sm:h-10 sm:w-10 text-green-200 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
@@ -446,14 +446,14 @@ export const ExpertDashboardOptimized = () => {
 
         {/* 🔴 DOSSIERS REFUSÉS PAR LE CLIENT */}
         {rejectedAudits.length > 0 && !activeTable && (
-          <Card className="mb-8 border-red-200 bg-gradient-to-r from-red-50 to-pink-50">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+          <Card className="mb-6 sm:mb-8 border-red-200 bg-gradient-to-r from-red-50 to-pink-50">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                 <div className="flex items-center gap-2">
-                  <XCircle className="h-5 w-5 text-red-600" />
-                  <span className="text-red-900">Audits Refusés ({rejectedAudits.length})</span>
+                  <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 flex-shrink-0" />
+                  <span className="text-base sm:text-lg text-red-900 truncate">Audits Refusés ({rejectedAudits.length})</span>
                 </div>
-                <Badge className="bg-red-600 text-white">Action requise</Badge>
+                <Badge className="bg-red-600 text-white text-xs w-fit">Action requise</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -610,20 +610,20 @@ export const ExpertDashboardOptimized = () => {
 
         {/* TABLEAU URGENCES : Dossiers en cours */}
         {activeTable === 'urgences' && (
-          <Card className="mb-8">
-            <CardHeader>
+          <Card className="mb-6 sm:mb-8">
+            <CardHeader className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-red-600" />
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 flex-shrink-0" />
                   <span>Dossiers en cours</span>
                 </CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6">
               {prioritizedDossiers.length === 0 ? (
-                <div className="text-center py-12">
-                  <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600">Aucun dossier à traiter</p>
+                <div className="text-center py-8 sm:py-12">
+                  <CheckCircle className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm sm:text-base text-gray-600">Aucun dossier à traiter</p>
                 </div>
               ) : (
                 [...prioritizedDossiers]
@@ -661,13 +661,13 @@ export const ExpertDashboardOptimized = () => {
                   return (
                     <div
                       key={dossier.id}
-                      className={`p-5 border-2 rounded-2xl hover:shadow-md transition-all cursor-pointer ${getTileBorderColor()}`}
+                      className={`p-3 sm:p-5 border-2 rounded-xl sm:rounded-2xl hover:shadow-md transition-all cursor-pointer ${getTileBorderColor()}`}
                       onClick={() => navigate(`/expert/dossier/${dossier.id}`)}
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
+                      <div className="flex items-start justify-between gap-2 sm:gap-4">
+                        <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
                           <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                            className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-sm sm:text-base flex-shrink-0 ${
                               index === 0
                                 ? 'bg-red-100 text-red-700'
                                 : index === 1
@@ -679,19 +679,19 @@ export const ExpertDashboardOptimized = () => {
                           >
                             {index + 1}
                           </div>
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-base font-semibold text-gray-900">{dossier.clientName}</h3>
-                              <Badge variant="outline">{dossier.productName}</Badge>
-                              <Badge variant={statutVariant}>{statutLabel}</Badge>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                              <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">{dossier.clientName}</h3>
+                              <Badge variant="outline" className="text-xs">{dossier.productName}</Badge>
+                              <Badge variant={statutVariant} className="text-xs">{statutLabel}</Badge>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-gray-500 mt-1 truncate">
                               {dossier.apporteurName} • Dernier contact il y a {dossier.daysSinceLastContact} jour(s)
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-emerald-600 leading-tight">
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-base sm:text-xl font-bold text-emerald-600 leading-tight whitespace-nowrap">
                             {dossier.montantFinal.toLocaleString()}€
                           </p>
                         </div>
@@ -699,11 +699,11 @@ export const ExpertDashboardOptimized = () => {
 
                       {/* Alerte documents en attente de validation (PRIORITÉ 1) */}
                       {dossier.hasPendingDocuments && dossier.pendingDocumentsCount && (
-                        <div className="mt-3 p-3 rounded-lg border-2 bg-orange-50 border-orange-400">
+                        <div className="mt-2 sm:mt-3 p-2 sm:p-3 rounded-lg border-2 bg-orange-50 border-orange-400">
                           <div className="flex items-start gap-2">
-                            <AlertTriangle className="h-5 w-5 mt-0.5 text-orange-600" />
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold text-orange-800">
+                            <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 mt-0.5 text-orange-600 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs sm:text-sm font-semibold text-orange-800">
                                 📋 Documents reçus, vérification à effectuer
                               </p>
                               <p className="text-xs mt-1 text-orange-700">
@@ -716,7 +716,7 @@ export const ExpertDashboardOptimized = () => {
 
                       {/* Alerte documents demandés (PRIORITÉ 2) - Relances système */}
                       {!dossier.hasPendingDocuments && dossier.hasDocumentRequest && dossier.daysWaitingDocuments !== undefined && (
-                        <div className={`mt-3 p-3 rounded-lg border-2 ${
+                        <div className={`mt-2 sm:mt-3 p-2 sm:p-3 rounded-lg border-2 ${
                           dossier.daysWaitingDocuments >= 15
                             ? 'bg-purple-50 border-purple-300'
                             : dossier.daysWaitingDocuments >= 10
@@ -726,7 +726,7 @@ export const ExpertDashboardOptimized = () => {
                             : 'bg-slate-50 border-slate-300'
                         }`}>
                           <div className="flex items-start gap-2">
-                            <AlertTriangle className={`h-5 w-5 mt-0.5 ${
+                            <AlertTriangle className={`h-4 w-4 sm:h-5 sm:w-5 mt-0.5 flex-shrink-0 ${
                               dossier.daysWaitingDocuments >= 15
                                 ? 'text-purple-600'
                                 : dossier.daysWaitingDocuments >= 10

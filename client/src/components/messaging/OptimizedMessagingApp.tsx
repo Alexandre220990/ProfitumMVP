@@ -522,20 +522,36 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   // ========================================
 
   return (
-    <div className={`h-full flex bg-white ${className}`}>
-      {/* Sidebar des conversations - Design moderne */}
+    <div className={`h-full flex bg-white relative ${className}`}>
+      {/* Overlay pour mobile */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar des conversations - Design moderne et responsive */}
       <motion.div 
-        className={`${isSidebarOpen ? 'w-80' : 'w-20'} bg-slate-50 border-r border-slate-200 transition-all duration-300 ease-in-out flex-shrink-0`}
+        className={`
+          ${isSidebarOpen ? 'w-full sm:w-80' : 'w-0 sm:w-20'} 
+          bg-slate-50 border-r border-slate-200 
+          transition-all duration-300 ease-in-out 
+          flex-shrink-0
+          fixed lg:relative inset-y-0 left-0 z-50
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'}
+          lg:translate-x-0
+        `}
         initial={{ x: -300 }}
         animate={{ x: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
       >
         <div className="h-full flex flex-col">
           {/* Header de la sidebar */}
-          <div className="p-4 border-b border-slate-200 bg-white">
-            <div className="flex items-center justify-between mb-4">
+          <div className="p-3 sm:p-4 border-b border-slate-200 bg-white">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
               <motion.h2 
-                className="text-lg font-bold text-slate-900"
+                className="text-base sm:text-lg font-bold text-slate-900"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
@@ -547,7 +563,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 flex-shrink-0"
               >
                 {isSidebarOpen ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
               </Button>
@@ -567,16 +583,16 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                     placeholder="Rechercher..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-slate-100 border-0 focus:bg-white focus:border-slate-300"
+                    className="pl-10 bg-slate-100 border-0 focus:bg-white focus:border-slate-300 text-sm"
                   />
                 </div>
                 <Button 
                   onClick={() => setShowContactsModal(true)}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-sm"
                   size="sm"
                 >
-                  <Users className="w-4 h-4 mr-2" />
-                  Contacts
+                  <Users className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span>Contacts</span>
                 </Button>
               </motion.div>
             )}

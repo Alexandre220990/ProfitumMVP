@@ -7,10 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { 
-  Loader2, 
   RefreshCw, 
   AlertCircle, 
-  Rocket,
   FolderOpen,
   TrendingUp,
   CheckCircle,
@@ -55,17 +53,17 @@ interface StatCardProps {
 }
 
 const StatCard = ({ title, value, icon, className = "", trend }: StatCardProps) => (
-  <Card className={`p-6 ${className} hover:shadow-lg transition-all duration-300`}>
+  <Card className={`p-4 sm:p-6 ${className} hover:shadow-lg transition-all duration-300`}>
     <CardContent className="p-0">
       <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mb-1">{value}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1 truncate">{title}</p>
+          <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 truncate">{value}</p>
           {trend && (
-            <p className="text-xs text-green-600 font-medium">{trend}</p>
+            <p className="text-[10px] sm:text-xs text-green-600 font-medium truncate">{trend}</p>
           )}
         </div>
-        <div className="text-blue-600 p-3 bg-blue-50 rounded-full">
+        <div className="text-blue-600 p-2 sm:p-3 bg-blue-50 rounded-full flex-shrink-0 ml-2">
           {icon}
         </div>
       </div>
@@ -803,36 +801,36 @@ export default function DashboardClient() {
         onNavigate={handleNotificationNavigate}
       />
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         
         {/* Header moderne et compact */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="relative">
             {/* Titre principal avec bouton à gauche */}
-            <div className="flex items-center justify-center mb-4">
-              <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
+            <div className="flex items-center justify-center mb-3 sm:mb-4">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
                 Tableau de bord
               </h1>
             </div>
             
             {/* Sous-titre avec style moderne */}
-            <p className="text-base md:text-lg text-gray-600 font-light max-w-3xl mx-auto text-center">
+            <p className="text-sm sm:text-base md:text-lg text-gray-600 font-light max-w-3xl mx-auto text-center px-2">
               Vue d'ensemble de vos <span className="font-semibold text-blue-600">optimisations fiscales</span>
             </p>
             
             {/* Ligne décorative moderne */}
-            <div className="flex justify-center mt-4">
-              <div className="w-16 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
+            <div className="flex justify-center mt-3 sm:mt-4">
+              <div className="w-12 sm:w-16 h-0.5 sm:h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
             </div>
           </div>
         </div>
 
         {/* KPIs compacts */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
           <StatCard
             title="Dossiers en cours"
             value={kpiData.dossiersEnCours.toString()}
-            icon={<FolderOpen className="w-6 h-6" />}
+            icon={<FolderOpen className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200"
             trend="+2 ce mois"
           />
@@ -840,7 +838,7 @@ export default function DashboardClient() {
           <StatCard
             title="Gains potentiels"
             value={kpiData.gainsPotentiels}
-            icon={<TrendingUp className="w-6 h-6" />}
+            icon={<TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200"
             trend="+15% vs mois dernier"
           />
@@ -848,7 +846,7 @@ export default function DashboardClient() {
           <StatCard
             title="Gains obtenus"
             value={kpiData.gainsObtenus}
-            icon={<CheckCircle className="w-6 h-6" />}
+            icon={<CheckCircle className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200"
             trend="+8% ce trimestre"
           />
@@ -856,7 +854,7 @@ export default function DashboardClient() {
           <StatCard
             title="Progression"
             value={kpiData.progression}
-            icon={<Clock className="w-6 h-6" />}
+            icon={<Clock className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200"
             trend="En progression"
           />
