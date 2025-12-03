@@ -91,6 +91,26 @@
     {
       "source": "/contact",
       "destination": "/index.html"
+    },
+    {
+      "source": "/notification-center",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/notification-preferences",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/connexion-expert",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/connexion-client",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/index.html"
     }
   ]
 } 
