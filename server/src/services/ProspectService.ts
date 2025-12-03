@@ -682,6 +682,20 @@ export class ProspectService {
     startDate?: string
   ): Promise<ApiResponse<{ scheduled_count: number }>> {
     try {
+      // ✅ PROTECTION ANTI-DOUBLON : Vérifier si la séquence est déjà programmée
+      const { isSequenceAlreadyScheduled } = await import('../utils/email-duplicate-checker');
+      
+      const sequenceCheck = await isSequenceAlreadyScheduled(prospectId, sequenceId);
+      if (sequenceCheck.isScheduled) {
+        console.warn(`⚠️ [ANTI-DOUBLON] Séquence ${sequenceId} déjà programmée pour prospect ${prospectId}`);
+        console.warn(`   ${sequenceCheck.emailCount} email(s) existant(s) - Status: ${sequenceCheck.statuses?.join(', ')}`);
+        
+        return {
+          success: false,
+          error: `Cette séquence est déjà programmée pour ce prospect (${sequenceCheck.emailCount} email(s) existant(s)). Annulez d'abord les emails existants si vous voulez reprogrammer.`
+        };
+      }
+
       // Récupérer la séquence et ses étapes
       const { data: sequence, error: seqError } = await supabase
         .from('prospect_email_sequences')
@@ -710,6 +724,7 @@ export class ProspectService {
 
       // Calculer les dates d'envoi avec randomisation pour éviter blacklistage
       const { addRandomizationToScheduledDate } = await import('../utils/email-sending-utils');
+      const { generateEmailContentHash } = await import('../utils/email-duplicate-checker');
       
       const start = startDate ? new Date(startDate) : new Date();
       const scheduledEmails = [];
@@ -732,15 +747,44 @@ export class ProspectService {
           scheduledDate = addRandomizationToScheduledDate(currentDate, 2);
         }
 
+        // ✅ Calculer le hash du contenu
+        const contentHash = generateEmailContentHash(step.subject, step.body);
+
         scheduledEmails.push({
           prospect_id: prospectId,
           sequence_id: sequenceId,
           step_number: step.step_number,
           subject: step.subject,
           body: step.body,
+          content_hash: contentHash, // ✅ Stocker le hash
           scheduled_for: scheduledDate.toISOString(),
           status: 'scheduled'
         });
+      }
+
+      // ✅ DOUBLE VÉRIFICATION : Aucun de ces contenus n'a déjà été envoyé ?
+      const { areEmailsAlreadyScheduledOrSent } = await import('../utils/email-duplicate-checker');
+      
+      const bulkCheck = await areEmailsAlreadyScheduledOrSent(
+        prospectId,
+        scheduledEmails.map(e => ({ subject: e.subject, body: e.body }))
+      );
+
+      if (bulkCheck.hasDuplicates && bulkCheck.duplicates.length > 0) {
+        console.warn(`⚠️ [ANTI-DOUBLON] ${bulkCheck.duplicates.length} email(s) de cette séquence déjà envoyé(s) ou programmé(s)`);
+        bulkCheck.duplicates.forEach((dup, idx) => {
+          console.warn(`   ${idx + 1}. "${dup.subject}" - Status: ${dup.status}`);
+        });
+        
+        // Construire message détaillé avec la liste des doublons
+        const duplicatesList = bulkCheck.duplicates
+          .map((dup, idx) => `${idx + 1}. "${dup.subject}" (${dup.status}${dup.sent_at ? ` - envoyé le ${new Date(dup.sent_at).toLocaleDateString('fr-FR')}` : ''})`)
+          .join('\n');
+        
+        return {
+          success: false,
+          error: `${bulkCheck.duplicates.length} email(s) de cette séquence ont déjà été envoyés ou sont déjà programmés pour ce prospect:\n\n${duplicatesList}\n\nVérifiez les emails existants avant de reprogrammer.`
+        };
       }
 
       // Insérer tous les emails programmés
@@ -750,11 +794,21 @@ export class ProspectService {
         .select();
 
       if (error) {
+        // Si erreur de contrainte unique sur content_hash, message explicite
+        if (error.code === '23505' && error.message.includes('content_hash')) {
+          return {
+            success: false,
+            error: 'Un ou plusieurs emails de cette séquence ont déjà été programmés (doublon détecté par contrainte unique).'
+          };
+        }
+        
         return {
           success: false,
           error: `Erreur programmation séquence: ${error.message}`
         };
       }
+
+      console.log(`✅ Séquence ${sequenceId} programmée avec succès pour prospect ${prospectId} - ${data?.length || 0} email(s)`);
 
       return {
         success: true,
@@ -1262,21 +1316,49 @@ export class ProspectService {
 
       // Préparer les emails programmés avec randomisation pour éviter blacklistage
       const { addRandomizationToScheduledDate } = await import('../utils/email-sending-utils');
+      const { generateEmailContentHash, areEmailsAlreadyScheduledOrSent } = await import('../utils/email-duplicate-checker');
       
       const emailsToInsert = scheduledEmails.map(email => {
         // Ajouter randomisation (0-2h) et ajuster aux heures de travail
         const baseDate = new Date(email.scheduled_for);
         const randomizedDate = addRandomizationToScheduledDate(baseDate, 2);
         
+        // ✅ Calculer le hash du contenu
+        const contentHash = generateEmailContentHash(email.subject, email.body);
+        
         return {
           prospect_id: prospectId,
           step_number: email.step_number,
           subject: email.subject,
           body: email.body,
+          content_hash: contentHash, // ✅ Stocker le hash
           scheduled_for: randomizedDate.toISOString(),
           status: email.status || 'scheduled'
         };
       });
+
+      // ✅ VÉRIFICATION ANTI-DOUBLON : Aucun de ces contenus n'a déjà été envoyé ?
+      const bulkCheck = await areEmailsAlreadyScheduledOrSent(
+        prospectId,
+        emailsToInsert.map(e => ({ subject: e.subject, body: e.body }))
+      );
+
+      if (bulkCheck.hasDuplicates && bulkCheck.duplicates.length > 0) {
+        console.warn(`⚠️ [ANTI-DOUBLON] ${bulkCheck.duplicates.length} email(s) personnalisé(s) déjà envoyé(s) ou programmé(s)`);
+        bulkCheck.duplicates.forEach((dup, idx) => {
+          console.warn(`   ${idx + 1}. "${dup.subject}" - Status: ${dup.status}`);
+        });
+        
+        // Construire message détaillé avec la liste des doublons
+        const duplicatesList = bulkCheck.duplicates
+          .map((dup, idx) => `${idx + 1}. "${dup.subject}" (${dup.status}${dup.sent_at ? ` - envoyé le ${new Date(dup.sent_at).toLocaleDateString('fr-FR')}` : ''})`)
+          .join('\n');
+        
+        return {
+          success: false,
+          error: `${bulkCheck.duplicates.length} email(s) de cette séquence personnalisée ont déjà été envoyés ou sont déjà programmés pour ce prospect:\n\n${duplicatesList}`
+        };
+      }
 
       // Insérer tous les emails programmés
       const { data, error } = await supabase

@@ -10,6 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 import { EmailService } from './EmailService';
 import { SecureLinkService } from './secure-link-service';
 import { NotificationPreferencesChecker } from './notification-preferences-checker';
+import crypto from 'crypto';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -1019,6 +1020,30 @@ export class MorningReportService {
     try {
       console.log(`📧 Génération et envoi du rapport matinal pour ${adminEmail}`);
 
+      // ✅ VERROU ANTI-DOUBLON : Vérifier si un rapport a déjà été envoyé aujourd'hui
+      const reportDate = date || new Date();
+      const startOfDay = new Date(reportDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(reportDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const { data: existingReport, error: checkError } = await supabase
+        .from('EmailTracking')
+        .select('id, sent_at')
+        .eq('recipient', adminEmail)
+        .eq('template_name', 'morning_report')
+        .gte('sent_at', startOfDay.toISOString())
+        .lte('sent_at', endOfDay.toISOString())
+        .maybeSingle();
+
+      if (checkError) {
+        console.error(`⚠️ Erreur vérification doublon rapport pour ${adminEmail}:`, checkError);
+        // Continuer quand même en cas d'erreur de vérification
+      } else if (existingReport) {
+        console.log(`🔒 Rapport matinal déjà envoyé aujourd'hui à ${adminEmail} (${existingReport.sent_at}) - envoi ignoré pour éviter doublon`);
+        return true; // Retourner true car le rapport a bien été envoyé (juste pas maintenant)
+      }
+
       // Vérifier les préférences avant d'envoyer
       if (adminId) {
         const shouldSendEmail = await NotificationPreferencesChecker.shouldSendEmail(
@@ -1085,6 +1110,29 @@ ${reportData.escalatedNotifications.map(n => `- ${n.title} : ${n.message} (Nivea
 
       if (success) {
         console.log(`✅ Rapport matinal envoyé avec succès à ${adminEmail}`);
+        
+        // ✅ Enregistrer dans EmailTracking pour le verrou anti-doublon
+        try {
+          await supabase
+            .from('EmailTracking')
+            .insert({
+              email_id: crypto.randomUUID(),
+              recipient: adminEmail,
+              subject: subject,
+              template_name: 'morning_report',
+              sent_at: new Date().toISOString(),
+              status: 'sent',
+              metadata: {
+                admin_id: adminId || null,
+                admin_type: adminType || 'admin',
+                report_date: reportData.reportDate
+              }
+            });
+          console.log(`📝 Tracking créé pour rapport matinal envoyé à ${adminEmail}`);
+        } catch (trackError) {
+          console.error(`⚠️ Erreur création tracking (non bloquant):`, trackError);
+          // Ne pas faire échouer l'envoi si le tracking échoue
+        }
       } else {
         console.error(`❌ Échec envoi rapport matinal à ${adminEmail}`);
       }

@@ -17,6 +17,7 @@ export interface SendProspectEmailInput {
   body: string;
   step?: number;
   scheduled_email_id?: string; // Si c'est un email programmé
+  content_hash?: string; // Hash du contenu pour détecter les doublons
   thread_info?: {
     in_reply_to?: string; // Message-ID de l'email auquel on répond
     references?: string[]; // Liste des Message-IDs du thread
@@ -114,6 +115,38 @@ export class ProspectEmailService {
         };
       }
 
+      // ✅ PROTECTION ANTI-DOUBLON : Vérifier si ce contenu a déjà été envoyé
+      const { isEmailContentAlreadySent, generateEmailContentHash } = await import('../utils/email-duplicate-checker');
+      
+      const duplicateCheck = await isEmailContentAlreadySent(
+        input.prospect_id,
+        input.subject,
+        input.body
+      );
+
+      if (duplicateCheck.isDuplicate && duplicateCheck.existingEmail) {
+        console.log(`🔒 [ANTI-DOUBLON] Email déjà envoyé à prospect ${input.prospect_id}`);
+        console.log(`   Sujet: "${duplicateCheck.existingEmail.subject}"`);
+        console.log(`   Date envoi précédent: ${duplicateCheck.existingEmail.sent_at}`);
+        
+        // Si c'est un email programmé, l'annuler automatiquement
+        if (input.scheduled_email_id) {
+          const { cancelScheduledEmailAsDuplicate } = await import('../utils/email-duplicate-checker');
+          await cancelScheduledEmailAsDuplicate(
+            input.scheduled_email_id,
+            duplicateCheck.existingEmail.id
+          );
+        }
+        
+        return {
+          success: false,
+          error: `Email en doublon détecté. Ce contenu a déjà été envoyé à ce prospect le ${new Date(duplicateCheck.existingEmail.sent_at).toLocaleString('fr-FR')}`
+        };
+      }
+
+      // Calculer le hash du contenu si non fourni
+      const contentHash = input.content_hash || generateEmailContentHash(input.subject, input.body);
+
       // Envoyer l'email via SMTP
       let info: any;
       try {
@@ -173,6 +206,7 @@ export class ProspectEmailService {
           step: input.step || 1,
           subject: input.subject,
           body: input.body,
+          content_hash: contentHash, // ✅ Stocker le hash pour détecter futurs doublons
           sent_at: new Date().toISOString(),
           opened: false,
           clicked: false,
@@ -387,6 +421,27 @@ export class ProspectEmailService {
 
       // Envoyer chaque email avec rate limiting et délais aléatoires
       for (const scheduledEmail of emailsToSend) {
+        // ✅ PROTECTION ANTI-DOUBLON : Vérifier avant d'envoyer
+        const { isEmailContentAlreadySent, generateEmailContentHash, cancelScheduledEmailAsDuplicate } = await import('../utils/email-duplicate-checker');
+        
+        const duplicateCheck = await isEmailContentAlreadySent(
+          scheduledEmail.prospect_id,
+          scheduledEmail.subject,
+          scheduledEmail.body
+        );
+
+        if (duplicateCheck.isDuplicate && duplicateCheck.existingEmail) {
+          console.log(`🔒 [ANTI-DOUBLON] Email programmé ${scheduledEmail.id} ignoré - déjà envoyé`);
+          console.log(`   Prospect: ${scheduledEmail.prospect_id}`);
+          console.log(`   Sujet: "${duplicateCheck.existingEmail.subject}"`);
+          console.log(`   Envoyé le: ${duplicateCheck.existingEmail.sent_at}`);
+          
+          // Annuler cet email programmé
+          await cancelScheduledEmailAsDuplicate(scheduledEmail.id, duplicateCheck.existingEmail.id);
+          
+          continue; // Passer au suivant
+        }
+
         // Vérifier le rate limiting
         if (!canSendEmail(emailsSentInLastHour + results.sent, MAX_EMAILS_PER_HOUR)) {
           console.log(`⏸️  Rate limit atteint (${emailsSentInLastHour + results.sent}/${MAX_EMAILS_PER_HOUR} emails/heure). Report des emails restants.`);
@@ -401,12 +456,16 @@ export class ProspectEmailService {
           continue;
         }
 
+        // Calculer le hash pour l'envoi
+        const contentHash = generateEmailContentHash(scheduledEmail.subject, scheduledEmail.body);
+
         const result = await this.sendProspectEmail({
           prospect_id: scheduledEmail.prospect_id,
           subject: scheduledEmail.subject,
           body: scheduledEmail.body,
           step: scheduledEmail.step_number,
-          scheduled_email_id: scheduledEmail.id
+          scheduled_email_id: scheduledEmail.id,
+          content_hash: contentHash // ✅ Passer le hash
         });
 
         if (result.success) {

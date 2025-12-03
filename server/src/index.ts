@@ -108,6 +108,7 @@ import { startDailyActivityReportCron } from './cron/daily-activity-report';
 import { startMorningReportCron } from './cron/morning-report';
 import { startNotificationEscalationCron } from './cron/notification-escalation';
 import { startRDVSlaRemindersCron } from './cron/rdv-sla-reminders';
+import { startDocumentValidationRemindersCron } from './cron/document-validation-reminders';
 import { startProspectNotificationsCron } from './cron/prospect-notifications';
 import { startProspectEmailSequencesCron } from './cron/prospect-email-sequences';
 import { startGmailCheckerJob } from './jobs/gmail-checker';
@@ -872,6 +873,14 @@ server.listen(PORT, HOST, () => {
     // Rappels automatiques pour les RDV non traités selon les SLA (24h, 48h, 120h)
   } catch (error) {
     console.error('❌ Erreur démarrage cron job rappels SLA RDV:', error);
+  }
+
+  // Démarrer le cron job pour les rappels SLA des documents à valider
+  try {
+    startDocumentValidationRemindersCron();
+    // Rappels automatiques pour les documents en attente de validation selon les SLA (24h, 48h, 120h)
+  } catch (error) {
+    console.error('❌ Erreur démarrage cron job rappels SLA documents:', error);
   }
 
   // Démarrer le cron job pour les notifications prospects

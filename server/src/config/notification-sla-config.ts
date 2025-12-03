@@ -150,6 +150,15 @@ export const NOTIFICATION_SLA_CONFIG: Record<string, NotificationSLA> = {
     description: 'Validation des documents sous 24h'
   },
 
+  /** Documents en attente de validation - Rappel SLA */
+  documents_pending_validation_reminder: {
+    targetHours: 24,      // 24h pour valider
+    acceptableHours: 48,  // 48h acceptable
+    criticalHours: 120,   // 120h (5j) critique
+    defaultPriority: 'high',
+    description: 'Validation des documents sous 24h - Rappel SLA automatique'
+  },
+
   // ============================================
   // NOUVEAUX TYPES POUR LES RAPPELS SLA
   // ============================================
