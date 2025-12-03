@@ -168,55 +168,55 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
+      <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] md:max-h-[80vh] flex flex-col p-0 w-[95vw] sm:w-full">
+        <DialogHeader className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
+            <Users className="h-4 w-4 sm:h-5 sm:w-5" />
             Contacts
           </DialogTitle>
         </DialogHeader>
 
         {/* Recherche */}
-        <div className="px-6 py-3 border-b bg-gray-50">
+        <div className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 border-b bg-gray-50">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
             <Input
               type="text"
-              placeholder="Rechercher par nom, email, entreprise..."
+              placeholder="Rechercher..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-9 sm:pl-10 text-sm sm:text-base h-9 sm:h-10"
             />
           </div>
         </div>
 
         {/* Liste des contacts */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Chargement des contacts...</span>
+            <div className="flex flex-col sm:flex-row items-center justify-center py-8 sm:py-12 gap-2 sm:gap-3">
+              <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
+              <span className="text-sm sm:text-base text-gray-600">Chargement...</span>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {groups.map((group) => (
                 <div key={group.key} className="border rounded-lg overflow-hidden">
                   {/* Header du groupe */}
                   <button
                     onClick={() => toggleGroup(group.key)}
-                    className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
                   >
-                    <div className="flex items-center gap-3">
-                      <group.icon className="h-5 w-5 text-gray-600" />
-                      <span className="font-semibold text-gray-900">{group.label}</span>
-                      <Badge variant="secondary" className="text-xs">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <group.icon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 flex-shrink-0" />
+                      <span className="font-semibold text-sm sm:text-base text-gray-900 truncate">{group.label}</span>
+                      <Badge variant="secondary" className="text-[10px] sm:text-xs flex-shrink-0">
                         {group.contacts.length}
                       </Badge>
                     </div>
                     {collapsedGroups[group.key] ? (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
+                      <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
                     ) : (
-                      <ChevronUp className="h-5 w-5 text-gray-400" />
+                      <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
                     )}
                   </button>
 
@@ -231,44 +231,44 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
                         className="overflow-hidden"
                       >
                         {group.contacts.length === 0 ? (
-                          <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                            Aucun contact dans cette catégorie
+                          <div className="px-3 sm:px-4 py-4 sm:py-6 text-center text-gray-500 text-xs sm:text-sm">
+                            Aucun contact
                           </div>
                         ) : (
                           <div className="divide-y">
                             {group.contacts.map((contact) => (
                               <div
                                 key={contact.id}
-                                className="px-4 py-3 hover:bg-gray-50 transition-colors"
+                                className="px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-gray-50 transition-colors"
                               >
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 sm:gap-3">
                                   {/* Avatar */}
-                                  <Avatar className="w-10 h-10">
-                                    <AvatarFallback className={`${getUserTypeColor(contact.type)} text-white`}>
+                                  <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                                    <AvatarFallback className={`${getUserTypeColor(contact.type)} text-white text-xs sm:text-sm`}>
                                       {contact.full_name?.charAt(0) || '?'}
                                     </AvatarFallback>
                                   </Avatar>
 
                                   {/* Info */}
                                   <div className="flex-1 min-w-0">
-                                    <h4 className="font-medium text-sm truncate">{contact.full_name}</h4>
-                                    <p className="text-xs text-gray-500 truncate">{contact.email}</p>
+                                    <h4 className="font-medium text-xs sm:text-sm truncate">{contact.full_name}</h4>
+                                    <p className="text-[10px] sm:text-xs text-gray-500 truncate">{contact.email}</p>
                                     {contact.company_name && (
-                                      <p className="text-xs text-gray-400 truncate">{contact.company_name}</p>
+                                      <p className="text-[10px] sm:text-xs text-gray-400 truncate hidden sm:block">{contact.company_name}</p>
                                     )}
                                   </div>
 
                                   {/* Actions */}
-                                  <div className="flex gap-2">
+                                  <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                                     {onViewProfile && (
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         onClick={() => onViewProfile(contact)}
-                                        className="h-8 px-2"
+                                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 hidden sm:flex"
                                         disabled={creatingConversation}
                                       >
-                                        <Eye className="h-4 w-4" />
+                                        <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                       </Button>
                                     )}
                                     <Button
@@ -287,17 +287,17 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
                                         }
                                       }}
                                       disabled={creatingConversation}
-                                      className="h-8 px-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                                      className="h-7 px-2 sm:h-8 sm:px-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-xs sm:text-sm"
                                     >
                                       {creatingConversation ? (
                                         <>
-                                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
-                                          Ouverture...
+                                          <div className="animate-spin rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 border-b-2 border-white mr-0.5 sm:mr-1"></div>
+                                          <span className="hidden sm:inline">Ouverture...</span>
                                         </>
                                       ) : (
                                         <>
-                                          <MessageSquare className="h-4 w-4 mr-1" />
-                                          Message
+                                          <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                                          <span className="hidden sm:inline">Message</span>
                                         </>
                                       )}
                                     </Button>
@@ -315,9 +315,9 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
 
               {/* Message si aucun résultat */}
               {searchQuery && groups.every(g => g.contacts.length === 0) && (
-                <div className="text-center py-12">
-                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-500">Aucun contact trouvé pour "{searchQuery}"</p>
+                <div className="text-center py-8 sm:py-12 px-4">
+                  <Search className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-2 sm:mb-3" />
+                  <p className="text-xs sm:text-sm text-gray-500">Aucun contact trouvé</p>
                 </div>
               )}
             </div>
@@ -325,11 +325,11 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t bg-gray-50 flex justify-between items-center">
-          <p className="text-sm text-gray-600">
-            {contacts.clients.length + contacts.experts.length + contacts.apporteurs.length + contacts.admins.length} contact(s) au total
+        <div className="px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 border-t bg-gray-50 flex flex-col sm:flex-row gap-2 sm:gap-0 justify-between items-center">
+          <p className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
+            {contacts.clients.length + contacts.experts.length + contacts.apporteurs.length + contacts.admins.length} contact(s)
           </p>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto text-sm">
             Fermer
           </Button>
         </div>

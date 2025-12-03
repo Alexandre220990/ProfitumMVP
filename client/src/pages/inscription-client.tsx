@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -61,7 +61,7 @@ const InscriptionClient = () => {
       console.log('🔍 Tentative d\'inscription client directe:', data);
 
       // 1. Créer le compte utilisateur dans Supabase Auth
-      const authResponse = await fetch(`${config.apiUrl}/auth/register-client`, {
+      const authResponse = await fetch(`${config.API_URL}/auth/register-client`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +91,7 @@ const InscriptionClient = () => {
       console.log('✅ Compte utilisateur créé:', authData);
 
       // 2. Créer le profil client dans la base de données
-      const clientResponse = await fetch(`${config.apiUrl}/client/create-profile`, {
+      const clientResponse = await fetch(`${config.API_URL}/client/create-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,50 +142,50 @@ const InscriptionClient = () => {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Branding */}
-      <div className="hidden md:flex w-1/2 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-12 flex-col justify-center">
-        <h1 className="text-4xl font-extrabold">Rejoignez Profitum</h1>
-        <p className="mt-4 text-lg opacity-90">
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-8 md:p-12 flex-col justify-center">
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold">Rejoignez Profitum</h1>
+        <p className="mt-3 md:mt-4 text-base md:text-lg opacity-90">
           Créez votre compte client et accédez à nos services d'optimisation fiscale
         </p>
-        <div className="mt-8 space-y-4">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-green-400" />
-            <span>Simulation gratuite et personnalisée</span>
+        <div className="mt-6 md:mt-8 space-y-3 md:space-y-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-400 flex-shrink-0" />
+            <span className="text-sm md:text-base">Simulation gratuite</span>
           </div>
-          <div className="flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-green-400" />
-            <span>Optimisations fiscales sur mesure</span>
+          <div className="flex items-center gap-2 md:gap-3">
+            <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-400 flex-shrink-0" />
+            <span className="text-sm md:text-base">Optimisations sur mesure</span>
           </div>
-          <div className="flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-green-400" />
-            <span>Accompagnement expert dédié</span>
+          <div className="flex items-center gap-2 md:gap-3">
+            <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-400 flex-shrink-0" />
+            <span className="text-sm md:text-base">Accompagnement expert</span>
           </div>
         </div>
       </div>
 
       {/* Formulaire */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8">
         <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Inscription Client</CardTitle>
-            <p className="text-gray-600">Créez votre compte en quelques étapes</p>
+          <CardHeader className="text-center p-4 sm:p-5 md:p-6">
+            <CardTitle className="text-lg sm:text-xl md:text-2xl font-bold">Inscription Client</CardTitle>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2">Créez votre compte en quelques étapes</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-5 md:p-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
                 <FormField
                   control={form.control}
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nom d'utilisateur</FormLabel>
+                      <FormLabel className="text-xs sm:text-sm">Nom d'utilisateur</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                          <Input {...field} className="pl-10" placeholder="Votre nom d'utilisateur" />
+                          <User className="absolute left-2.5 sm:left-3 top-2.5 sm:top-3 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
+                          <Input {...field} className="pl-8 sm:pl-10 h-9 sm:h-10 text-sm sm:text-base" placeholder="Nom d'utilisateur" />
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-xs sm:text-sm" />
                     </FormItem>
                   )}
                 />
@@ -330,16 +330,18 @@ const InscriptionClient = () => {
                   placeholder="123456789"
                 />
 
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full h-10 sm:h-11 text-sm sm:text-base" disabled={isLoading}>
                   {isLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Création en cours...
+                      <Loader2 className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                      <span className="hidden sm:inline">Création en cours...</span>
+                      <span className="sm:hidden">Création...</span>
                     </>
                   ) : (
                     <>
-                      Créer mon compte
-                      <ArrowRight className="ml-2 h-4 w-4" />
+                      <span className="hidden sm:inline">Créer mon compte</span>
+                      <span className="sm:hidden">Créer</span>
+                      <ArrowRight className="ml-1.5 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </>
                   )}
                 </Button>

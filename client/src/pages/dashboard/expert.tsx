@@ -80,12 +80,12 @@ const ExpertDashboard = () => {
   // États de chargement et d'erreur
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center">
-        <Card className="p-8 text-center">
-          <CardContent>
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-            <CardTitle className="text-xl mb-2">Chargement de votre tableau de bord...</CardTitle>
-            <p className="text-gray-600">Nous préparons vos données personnalisées</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center p-4">
+        <Card className="p-4 sm:p-6 md:p-8 text-center w-full max-w-md">
+          <CardContent className="p-0">
+            <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 animate-spin text-blue-600 mx-auto mb-3 sm:mb-4" />
+            <CardTitle className="text-base sm:text-lg md:text-xl mb-1 sm:mb-2">Chargement...</CardTitle>
+            <p className="text-xs sm:text-sm text-gray-600">Préparation de vos données</p>
           </CardContent>
         </Card>
       </div>
@@ -94,17 +94,17 @@ const ExpertDashboard = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center p-4">
         <Card className="max-w-md w-full">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Authentification requise</CardTitle>
-            <p className="text-gray-600">Vous devez être connecté pour accéder à cette page.</p>
+          <CardHeader className="text-center p-4 sm:p-6">
+            <CardTitle className="text-lg sm:text-xl md:text-2xl">Authentification requise</CardTitle>
+            <p className="text-xs sm:text-sm text-gray-600 mt-2">Vous devez être connecté pour accéder à cette page.</p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Button onClick={() => navigate("/connexion-expert")} className="w-full">
+          <CardContent className="space-y-2 sm:space-y-3 p-4 sm:p-6">
+            <Button onClick={() => navigate("/connexion-expert")} className="w-full text-sm sm:text-base">
               Se connecter
             </Button>
-            <Button variant="secondary" onClick={() => navigate("/")} className="w-full">
+            <Button variant="secondary" onClick={() => navigate("/")} className="w-full text-sm sm:text-base">
               Retour à l'accueil
             </Button>
           </CardContent>
@@ -115,37 +115,36 @@ const ExpertDashboard = () => {
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-10">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl text-red-600">Problème de chargement des données</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-2 text-red-600 mb-4">
-                <AlertCircle className="h-5 w-5" />
-                <span>{error}</span>
-              </div>
-              <Button onClick={() => window.location.reload()}>
-                Réessayer
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-10">
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-lg sm:text-xl md:text-2xl text-red-600">Problème de chargement</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center space-x-2 text-red-600 mb-3 sm:mb-4 text-sm sm:text-base">
+              <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+            <Button onClick={() => window.location.reload()} className="text-sm sm:text-base">
+              Réessayer
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
-        <div className="mt-16"></div>
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 md:py-10">
+        <div className="mt-12 sm:mt-14 md:mt-16"></div>
         
         {/* En-tête de la page */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="mb-4 sm:mb-6 md:mb-8">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
             Tableau de bord Expert
           </h1>
-          <p className="text-gray-600">
-            Gérez vos missions, suivez vos performances et planifiez votre agenda
+          <p className="text-xs sm:text-sm md:text-base text-gray-600">
+            Gérez vos missions, suivez vos performances
           </p>
         </div>
 
@@ -153,11 +152,11 @@ const ExpertDashboard = () => {
         <ExpertMetrics 
           analytics={analytics} 
           businessData={businessData} 
-          className="mb-8" 
+          className="mb-4 sm:mb-6 md:mb-8" 
         />
 
         {/* Section principale avec tableau d'assignations et agenda */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {/* Tableau d'assignations */}
           <div className="lg:col-span-2">
             <ExpertAssignmentsTable 
@@ -176,43 +175,42 @@ const ExpertDashboard = () => {
         </div>
 
         {/* Actions rapides */}
-        <div className="mt-8">
+        <div className="mt-4 sm:mt-6 md:mt-8">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Actions rapides</CardTitle>
+            <CardHeader className="p-3 sm:p-4 md:p-6">
+              <CardTitle className="text-base sm:text-lg md:text-xl">Actions rapides</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <CardContent className="p-3 sm:p-4 md:p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
                 <Button 
                   onClick={() => navigate('/expert/agenda')}
-                  className="h-20 flex flex-col items-center justify-center space-y-2"
+                  className="h-16 sm:h-18 md:h-20 flex flex-col items-center justify-center space-y-1 sm:space-y-2 text-xs sm:text-sm"
                 >
-                  <Calendar className="h-6 w-6" />
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
                   <span>Gérer l'agenda</span>
                 </Button>
                 
                 <Button 
                   onClick={() => navigate('/expert/messagerie')}
                   variant="outline"
-                  className="h-20 flex flex-col items-center justify-center space-y-2"
+                  className="h-16 sm:h-18 md:h-20 flex flex-col items-center justify-center space-y-1 sm:space-y-2 text-xs sm:text-sm"
                 >
-                  <MessageCircle className="h-6 w-6" />
+                  <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
                   <span>Messagerie</span>
                 </Button>
                 
                 <Button 
                   onClick={() => navigate('/expert/mes-affaires')}
                   variant="outline"
-                  className="h-20 flex flex-col items-center justify-center space-y-2"
+                  className="h-16 sm:h-18 md:h-20 flex flex-col items-center justify-center space-y-1 sm:space-y-2 text-xs sm:text-sm sm:col-span-2 md:col-span-1"
                 >
-                  <Briefcase className="h-6 w-6" />
+                  <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
                   <span>Mes affaires</span>
                 </Button>
               </div>
             </CardContent>
           </Card>
         </div>
-      </div>
     </div>
   );
 };

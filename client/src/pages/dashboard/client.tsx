@@ -39,8 +39,6 @@ import { useDossierNotifications } from '@/hooks/useDossierNotifications';
 import { NotificationBanner } from '@/components/client/NotificationBanner';
 import { SectionTitle } from "@/components/dashboard/SectionTitle";
 import { EmptyEligibleProductsState } from "@/components/empty-eligible-products-state";
-import { toast } from 'sonner';
-import { config } from '@/config/env';
 import LoadingScreen from '@/components/LoadingScreen';
 
 // Composant StatCard pour les KPIs
@@ -558,40 +556,6 @@ export default function DashboardClient() {
       navigate('/simulateur-client');
     }
   }, [loadingProducts, hasProducts, productsError, navigate]);
-
-  const handleSimulation = useCallback(async () => {
-    try {
-      // Récupérer le token d'authentification
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
-      
-      // Vérifier si l'utilisateur peut faire une nouvelle simulation
-      const response = await fetch(`${config.API_URL}/api/client/simulation/status`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data.canRunNewSimulation) {
-          // Rediriger vers le simulateur client (protégé)
-          navigate('/simulateur-client');
-        } else {
-          // Afficher un message d'information
-          toast.info("Une simulation est déjà en cours. Veuillez attendre qu'elle se termine.");
-        }
-      } else {
-        // En cas d'erreur, rediriger vers le simulateur client
-        navigate('/simulateur-client');
-      }
-    } catch (error) {
-      console.error('Erreur vérification statut simulation:', error);
-      // En cas d'erreur, rediriger vers le simulateur client
-      navigate('/simulateur-client');
-    }
-  }, [navigate]);
 
   const handleNavigation = useCallback((path: string) => {
     navigate(path);

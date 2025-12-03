@@ -413,18 +413,18 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto w-[98vw] sm:w-[95vw] md:w-full p-3 sm:p-4 md:p-6">
         <DialogHeader>
-          <DialogTitle className="text-2xl">
-            {editMode ? '✏️ Modifier le RDV' : '📅 Nouveau Rendez-vous'}
+          <DialogTitle className="text-lg sm:text-xl md:text-2xl">
+            {editMode ? '✏️ Modifier le RDV' : '📅 Nouveau RDV'}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 md:space-y-6">
           {/* Section Type d'événement */}
-          <div className="space-y-4">
-            <Label>Type d'événement</Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="space-y-3 sm:space-y-4">
+            <Label className="text-sm sm:text-base">Type d'événement</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               {EVENT_CATEGORIES.map(category => {
                 const isSelected = formData.category === category.value;
                 return (
@@ -432,21 +432,21 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
                     key={category.value}
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, category: category.value }))}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-all ${
                       isSelected
                         ? 'border-blue-600 bg-blue-50 shadow-sm'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-base font-semibold text-gray-900">
+                    <div className="flex items-center justify-between mb-1 sm:mb-2">
+                      <p className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 truncate">
                         {category.label}
                       </p>
-                      <Badge variant={isSelected ? 'default' : 'outline'}>
+                      <Badge variant={isSelected ? 'default' : 'outline'} className="text-[10px] sm:text-xs flex-shrink-0 ml-1">
                         {category.badge}
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-600">{category.description}</p>
+                    <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 line-clamp-2">{category.description}</p>
                   </button>
                 );
               })}
@@ -454,35 +454,36 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
           </div>
 
           {/* Section Participants */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Users className="w-5 h-5" />
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
               Participants
             </h3>
 
             {/* Client (Obligatoire) */}
             <div>
-              <Label className="mb-2 flex items-center gap-2">
+              <Label className="mb-2 flex items-center gap-2 text-sm sm:text-base">
                 Client <span className="text-red-500">*</span>
               </Label>
               {selectedParticipants.client ? (
-                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback className="bg-blue-600 text-white">
+                <div className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                    <AvatarFallback className="bg-blue-600 text-white text-xs sm:text-sm">
                       {selectedParticipants.client.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <p className="font-semibold">{selectedParticipants.client.name}</p>
-                    <p className="text-sm text-gray-600">{selectedParticipants.client.email}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm sm:text-base truncate">{selectedParticipants.client.name}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">{selectedParticipants.client.email}</p>
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => removeParticipant('client')}
+                    className="flex-shrink-0 h-7 w-7 sm:h-8 sm:w-8 p-0"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </Button>
                 </div>
               ) : (
@@ -490,12 +491,12 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
                   const client = contacts.find(c => c.id === value);
                   if (client) addParticipant(client, 'client');
                 }}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base">
                     <SelectValue placeholder="Sélectionner un client" />
                   </SelectTrigger>
                   <SelectContent>
                     {getContactsByType('client').map(contact => (
-                      <SelectItem key={contact.id} value={contact.id}>
+                      <SelectItem key={contact.id} value={contact.id} className="text-sm sm:text-base">
                         {contact.name} - {contact.company_name || contact.email}
                       </SelectItem>
                     ))}
@@ -506,27 +507,28 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
 
             {/* Expert (Obligatoire) */}
             <div>
-              <Label className="mb-2 flex items-center gap-2">
+              <Label className="mb-2 flex items-center gap-2 text-sm sm:text-base">
                 Expert <span className="text-red-500">*</span>
               </Label>
               {selectedParticipants.expert ? (
-                <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback className="bg-green-600 text-white">
+                <div className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-green-50 rounded-lg border border-green-200">
+                  <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                    <AvatarFallback className="bg-green-600 text-white text-xs sm:text-sm">
                       {selectedParticipants.expert.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <p className="font-semibold">{selectedParticipants.expert.name}</p>
-                    <p className="text-sm text-gray-600">{selectedParticipants.expert.email}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm sm:text-base truncate">{selectedParticipants.expert.name}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">{selectedParticipants.expert.email}</p>
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => removeParticipant('expert')}
+                    className="flex-shrink-0 h-7 w-7 sm:h-8 sm:w-8 p-0"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </Button>
                 </div>
               ) : (
@@ -534,12 +536,12 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
                   const expert = contacts.find(c => c.id === value);
                   if (expert) addParticipant(expert, 'expert');
                 }}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base">
                     <SelectValue placeholder="Sélectionner un expert" />
                   </SelectTrigger>
                   <SelectContent>
                     {getContactsByType('expert').map(contact => (
-                      <SelectItem key={contact.id} value={contact.id}>
+                      <SelectItem key={contact.id} value={contact.id} className="text-sm sm:text-base">
                         {contact.name}
                       </SelectItem>
                     ))}
@@ -550,25 +552,26 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
 
             {/* Apporteur (Optionnel) */}
             <div>
-              <Label className="mb-2">Apporteur (optionnel)</Label>
+              <Label className="mb-2 text-sm sm:text-base">Apporteur (optionnel)</Label>
               {selectedParticipants.apporteur ? (
-                <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback className="bg-purple-600 text-white">
+                <div className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-purple-50 rounded-lg border border-purple-200">
+                  <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                    <AvatarFallback className="bg-purple-600 text-white text-xs sm:text-sm">
                       {selectedParticipants.apporteur.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <p className="font-semibold">{selectedParticipants.apporteur.name}</p>
-                    <p className="text-sm text-gray-600">{selectedParticipants.apporteur.email}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm sm:text-base truncate">{selectedParticipants.apporteur.name}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">{selectedParticipants.apporteur.email}</p>
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => removeParticipant('apporteur')}
+                    className="flex-shrink-0 h-7 w-7 sm:h-8 sm:w-8 p-0"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </Button>
                 </div>
               ) : (
@@ -576,13 +579,13 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
                   const apporteur = contacts.find(c => c.id === value);
                   if (apporteur) addParticipant(apporteur, 'apporteur');
                 }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un apporteur (optionnel)" />
+                  <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base">
+                    <SelectValue placeholder="Sélectionner (optionnel)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Aucun</SelectItem>
+                    <SelectItem value="none" className="text-sm sm:text-base">Aucun</SelectItem>
                     {getContactsByType('apporteur').map(contact => (
-                      <SelectItem key={contact.id} value={contact.id}>
+                      <SelectItem key={contact.id} value={contact.id} className="text-sm sm:text-base">
                         {contact.name}
                       </SelectItem>
                     ))}
@@ -648,16 +651,16 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
           </div>
 
           {/* Section Planning */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5" />
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               Planning
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {/* Date */}
               <div>
-                <Label htmlFor="date">Date <span className="text-red-500">*</span></Label>
+                <Label htmlFor="date" className="text-sm sm:text-base">Date <span className="text-red-500">*</span></Label>
                 <Input
                   id="date"
                   type="date"
@@ -665,27 +668,28 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
                   onChange={(e) => setFormData(prev => ({ ...prev, scheduled_date: e.target.value }))}
                   min={new Date().toISOString().split('T')[0]}
                   required
+                  className="h-9 sm:h-10 text-sm sm:text-base"
                 />
               </div>
 
               {/* Heure (Slots 30min) */}
               <div>
-                <Label htmlFor="time">
+                <Label htmlFor="time" className="text-sm sm:text-base">
                   Heure <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-500 ml-2">(Créneaux de 30min)</span>
+                  <span className="text-[10px] sm:text-xs text-gray-500 ml-1 sm:ml-2">(30min)</span>
                 </Label>
                 <Select
                   value={formData.scheduled_time}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, scheduled_time: value }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
                     {TIME_SLOTS.map(slot => (
-                      <SelectItem key={slot} value={slot}>
+                      <SelectItem key={slot} value={slot} className="text-sm sm:text-base">
                         <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
+                          <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                           {slot}
                         </div>
                       </SelectItem>
@@ -697,29 +701,29 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
 
             {/* Durée */}
             <div>
-              <Label>Durée</Label>
+              <Label className="text-sm sm:text-base">Durée</Label>
               <Select
                 value={formData.duration_minutes.toString()}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, duration_minutes: parseInt(value) }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="30">30 minutes</SelectItem>
-                  <SelectItem value="60">1 heure</SelectItem>
-                  <SelectItem value="90">1h30</SelectItem>
-                  <SelectItem value="120">2 heures</SelectItem>
+                  <SelectItem value="30" className="text-sm sm:text-base">30 minutes</SelectItem>
+                  <SelectItem value="60" className="text-sm sm:text-base">1 heure</SelectItem>
+                  <SelectItem value="90" className="text-sm sm:text-base">1h30</SelectItem>
+                  <SelectItem value="120" className="text-sm sm:text-base">2 heures</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           {/* Section Type de RDV */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Type de Rendez-vous</h3>
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold">Type de RDV</h3>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {MEETING_TYPES.map(type => {
                 const Icon = type.icon;
                 const isSelected = formData.meeting_type === type.value;
@@ -728,14 +732,14 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
                     key={type.value}
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, meeting_type: type.value as any }))}
-                    className={`p-4 rounded-lg border-2 transition-all ${
+                    className={`p-2.5 sm:p-3 md:p-4 rounded-lg border-2 transition-all ${
                       isSelected
                         ? 'border-blue-600 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <Icon className={`w-6 h-6 mx-auto mb-2 ${isSelected ? 'text-blue-600' : 'text-gray-600'}`} />
-                    <p className={`text-sm font-medium ${isSelected ? 'text-blue-900' : 'text-gray-700'}`}>
+                    <Icon className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mx-auto mb-1 sm:mb-2 ${isSelected ? 'text-blue-600' : 'text-gray-600'}`} />
+                    <p className={`text-[10px] sm:text-xs md:text-sm font-medium ${isSelected ? 'text-blue-900' : 'text-gray-700'}`}>
                       {type.label}
                     </p>
                   </button>
@@ -746,76 +750,81 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
             {/* Champs conditionnels */}
             {formData.meeting_type === 'physical' && (
               <div>
-                <Label htmlFor="location">Adresse <span className="text-red-500">*</span></Label>
+                <Label htmlFor="location" className="text-sm sm:text-base">Adresse <span className="text-red-500">*</span></Label>
                 <Input
                   id="location"
                   value={formData.location}
                   onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                  placeholder="123 Rue de la Paix, 75001 Paris"
+                  placeholder="Adresse du RDV"
                   required
+                  className="h-9 sm:h-10 text-sm sm:text-base"
                 />
               </div>
             )}
 
             {formData.meeting_type === 'video' && (
               <div>
-                <Label htmlFor="meeting_url">Lien Visioconférence <span className="text-red-500">*</span></Label>
+                <Label htmlFor="meeting_url" className="text-sm sm:text-base">Lien Visio <span className="text-red-500">*</span></Label>
                 <Input
                   id="meeting_url"
                   type="url"
                   value={formData.meeting_url}
                   onChange={(e) => setFormData(prev => ({ ...prev, meeting_url: e.target.value }))}
-                  placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                  placeholder="https://meet.google.com/..."
                   required
+                  className="h-9 sm:h-10 text-sm sm:text-base"
                 />
               </div>
             )}
           </div>
 
           {/* Section Détails */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Détails</h3>
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold">Détails</h3>
 
             <div>
-              <Label htmlFor="title">Titre du RDV</Label>
+              <Label htmlFor="title" className="text-sm sm:text-base">Titre du RDV</Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="Ex: Audit fiscal TICPE"
+                className="h-9 sm:h-10 text-sm sm:text-base"
               />
             </div>
 
             <div>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" className="text-sm sm:text-base">Description</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Objectifs et points à aborder..."
                 rows={3}
+                className="text-sm sm:text-base"
               />
             </div>
 
             <div>
-              <Label htmlFor="notes">Notes internes</Label>
+              <Label htmlFor="notes" className="text-sm sm:text-base">Notes internes</Label>
               <Textarea
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Notes privées (non visibles par le client)"
+                placeholder="Notes privées"
                 rows={2}
+                className="text-sm sm:text-base"
               />
             </div>
 
             {/* Priorité */}
             <div>
-              <Label>Priorité</Label>
-              <div className="flex gap-2">
+              <Label className="text-sm sm:text-base">Priorité</Label>
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {PRIORITY_LEVELS.map(priority => (
                   <Badge
                     key={priority.value}
-                    className={`cursor-pointer ${
+                    className={`cursor-pointer text-[10px] sm:text-xs px-2 sm:px-3 py-1 ${
                       formData.priority === priority.value
                         ? priority.color
                         : 'bg-gray-100 text-gray-600 opacity-50'
@@ -829,11 +838,11 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
             </div>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading} className="w-full sm:w-auto text-sm">
               Annuler
             </Button>
-            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-sm">
               {loading ? 'Création...' : (editMode ? 'Modifier' : 'Créer le RDV')}
             </Button>
           </DialogFooter>

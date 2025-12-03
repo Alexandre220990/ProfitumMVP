@@ -116,18 +116,18 @@ const TICPEProductPage = () => {
   if (error || !clientProduit) {
     return (
       <div>
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="text-center">
-                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <AlertCircle className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 text-red-500 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1 sm:mb-2">
                   Erreur de chargement
                 </h3>
-                <p className="text-gray-500 mb-4">
+                <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
                   {error || 'Impossible de charger le dossier TICPE'}
                 </p>
-                <Button onClick={() => navigate('/dashboard')}>
+                <Button onClick={() => navigate('/dashboard')} className="text-sm sm:text-base">
                   Retour au dashboard
                 </Button>
               </div>
@@ -140,14 +140,14 @@ const TICPEProductPage = () => {
 
   return (
     <div>
-      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         
         {/* Badge "Via Apporteur" */}
         {isFromApporteur && (
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg shadow-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <Badge className="bg-blue-600 text-white flex items-center gap-1">
-                <UserCheck className="h-3 w-3" />
+          <div className="p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg shadow-sm">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+              <Badge className="bg-blue-600 text-white flex items-center gap-1 text-[10px] sm:text-xs">
+                <UserCheck className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 Recommandé par votre conseiller
               </Badge>
               {isHighPriority && (
