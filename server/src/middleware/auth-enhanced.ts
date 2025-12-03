@@ -521,7 +521,6 @@ export const enhancedAuthMiddleware = async (
     const duration = Date.now() - startTime;
     logger.info(`🔐 Auth réussie - ${userType} ${userData.email} - ${req.method} ${req.path} - ${duration}ms`);
 
-    } // Fermeture du bloc else (fallback: recherche par email)
     return next();
     
   } catch (error) {
