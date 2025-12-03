@@ -448,6 +448,8 @@ export const enhancedAuthMiddleware = async (
           }
         }
       }
+    } // Fin du if/else interne (admin vs autres routes)
+    
     } // Fin du bloc else (fallback: recherche par email)
 
     // 4. Attribution des permissions
