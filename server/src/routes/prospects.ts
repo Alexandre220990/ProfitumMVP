@@ -1932,8 +1932,23 @@ Réponds UNIQUEMENT au format JSON suivant (sans texte avant ou après) :
       throw new Error('Pas de réponse de l\'IA');
     }
 
+    // Nettoyer le contenu : enlever les backticks markdown si présents
+    let cleanedContent = content.trim();
+    
+    // Si le contenu commence par ```json ou ``` et se termine par ```, extraire le JSON
+    if (cleanedContent.startsWith('```')) {
+      // Trouver le premier saut de ligne après les backticks d'ouverture
+      const firstNewline = cleanedContent.indexOf('\n');
+      // Trouver les backticks de fermeture
+      const lastBackticks = cleanedContent.lastIndexOf('```');
+      
+      if (firstNewline !== -1 && lastBackticks > firstNewline) {
+        cleanedContent = cleanedContent.substring(firstNewline + 1, lastBackticks).trim();
+      }
+    }
+
     // Parser le JSON
-    const result = JSON.parse(content);
+    const result = JSON.parse(cleanedContent);
 
     return res.json({
       success: true,

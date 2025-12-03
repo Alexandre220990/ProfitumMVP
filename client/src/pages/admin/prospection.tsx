@@ -331,8 +331,16 @@ export default function ProspectionAdmin() {
     }
   };
 
-  const updateImportBatchName = async (batchId: string, newName: string) => {
+  const updateImportBatchName = async (batchId: string | null, newName: string) => {
     try {
+      // Vérifier que le batchId est valide
+      if (!batchId || batchId === 'null' || batchId === 'manual') {
+        toast.error('Impossible de modifier le nom de cette liste');
+        setEditingBatchId(null);
+        setEditingBatchName('');
+        return;
+      }
+
       const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
       
       const response = await fetch(`${config.API_URL}/api/prospects/import-batches/${batchId}`, {
@@ -2882,7 +2890,7 @@ export default function ProspectionAdmin() {
                           <ChevronUp className="h-5 w-5 text-gray-600 flex-shrink-0" />
                         )}
                         <div className="text-left flex-1">
-                          {editingBatchId === batch.id ? (
+                          {editingBatchId === batch.id && batch.id ? (
                             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                               <Input
                                 value={editingBatchName}
