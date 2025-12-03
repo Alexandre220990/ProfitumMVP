@@ -2625,7 +2625,7 @@ export default function ProspectionAdmin() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.enriched_count}</div>
               <div className="text-xs text-gray-500">
-                {stats.total_prospects > 0 ? Math.round((stats.enriched_count / stats.total_prospects) * 100) : 0}%
+                {stats.total_prospects > 0 ? ((stats.enriched_count / stats.total_prospects) * 100).toFixed(1) : 0}%
               </div>
             </CardContent>
           </Card>
@@ -2636,7 +2636,7 @@ export default function ProspectionAdmin() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.ai_processed_count}</div>
               <div className="text-xs text-gray-500">
-                {stats.enriched_count > 0 ? Math.round((stats.ai_processed_count / stats.enriched_count) * 100) : 0}%
+                {stats.enriched_count > 0 ? ((stats.ai_processed_count / stats.enriched_count) * 100).toFixed(1) : 0}%
               </div>
             </CardContent>
           </Card>
