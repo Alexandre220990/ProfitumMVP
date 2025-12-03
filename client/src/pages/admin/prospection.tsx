@@ -4240,6 +4240,9 @@ export default function ProspectionAdmin() {
                                     placeholder="Corps de l'email"
                                     className="mt-1 min-h-[150px]"
                                   />
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    💡 Les sauts de ligne sont automatiquement préservés dans l'email envoyé
+                                  </p>
                                 </div>
                               </CardContent>
                             </Card>

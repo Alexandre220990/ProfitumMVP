@@ -35,6 +35,37 @@ export class ProspectEmailService {
   private static emailTransporter: nodemailer.Transporter | null = null;
 
   /**
+   * Convertir les sauts de ligne en HTML
+   * Préserve les balises HTML existantes et convertit uniquement les \n en <br>
+   */
+  private static convertLineBreaksToHTML(text: string): string {
+    // Si le texte contient déjà des balises HTML significatives, ne pas toucher
+    const hasHTMLTags = /<(p|div|br|h1|h2|h3|h4|h5|h6|ul|ol|li|table|tr|td|th)[>\s]/i.test(text);
+    
+    if (hasHTMLTags) {
+      // Déjà du HTML, ne pas modifier
+      return text;
+    }
+    
+    // Texte brut : convertir les sauts de ligne en <br> et wrapper dans des paragraphes
+    // 1. Remplacer les doubles sauts de ligne par des séparateurs de paragraphe
+    // 2. Remplacer les sauts de ligne simples par <br>
+    const paragraphs = text
+      .split(/\n\s*\n/)  // Séparer par double saut de ligne
+      .map(para => {
+        // Pour chaque paragraphe, remplacer les sauts de ligne simples par <br>
+        const withBreaks = para
+          .trim()
+          .replace(/\n/g, '<br>');
+        return withBreaks ? `<p style="margin: 0 0 1em 0;">${withBreaks}</p>` : '';
+      })
+      .filter(p => p)
+      .join('');
+    
+    return paragraphs || text;
+  }
+
+  /**
    * Initialiser le transporteur email
    */
   private static initializeTransporter(): nodemailer.Transporter {
@@ -87,14 +118,17 @@ export class ProspectEmailService {
       let info: any;
       try {
         const transporter = this.initializeTransporter();
-        const textVersion = input.body.replace(/<[^>]*>/g, '');
+        
+        // ✅ Convertir les sauts de ligne en HTML si nécessaire
+        const htmlBody = this.convertLineBreaksToHTML(input.body);
+        const textVersion = htmlBody.replace(/<[^>]*>/g, '');
 
         // ✅ Construire les headers pour threads Gmail (conversations groupées)
         const mailOptions: any = {
           from: process.env.SMTP_FROM || process.env.SMTP_USER || 'Profitum <profitum.app@gmail.com>',
           to: prospect.email,
           subject: input.subject,
-          html: input.body,
+          html: htmlBody,
           text: textVersion
         };
 
