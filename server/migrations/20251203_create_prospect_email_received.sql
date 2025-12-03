@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS prospect_email_received (
   
   -- Threading (pour suivre les conversations)
   in_reply_to TEXT, -- Message-ID de l'email auquel celui-ci répond
-  references TEXT[], -- Liste des Message-IDs du thread
+  "references" TEXT[], -- Liste des Message-IDs du thread
   
   -- Métadonnées Gmail
   headers JSONB, -- Tous les headers de l'email
@@ -79,20 +79,14 @@ ALTER TABLE prospect_email_received ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Admins can do everything on prospect_email_received"
   ON prospect_email_received
   FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public."user"
-      WHERE id = auth.uid()
-      AND role IN ('admin', 'super_admin')
-    )
-  );
+  USING (auth.jwt() ->> 'user_type' = 'admin');
 
 -- Commentaires
 COMMENT ON TABLE prospect_email_received IS 'Emails reçus des prospects (réponses aux emails de prospection et nouveaux contacts)';
 COMMENT ON COLUMN prospect_email_received.gmail_message_id IS 'ID unique du message dans Gmail';
 COMMENT ON COLUMN prospect_email_received.gmail_thread_id IS 'ID du thread Gmail pour regrouper les conversations';
 COMMENT ON COLUMN prospect_email_received.in_reply_to IS 'Message-ID de l''email auquel celui-ci répond (header In-Reply-To)';
-COMMENT ON COLUMN prospect_email_received.references IS 'Liste des Message-IDs du thread (header References)';
+COMMENT ON COLUMN prospect_email_received."references" IS 'Liste des Message-IDs du thread (header References)';
 COMMENT ON COLUMN prospect_email_received.is_read IS 'Indique si l''email a été lu par un admin';
 COMMENT ON COLUMN prospect_email_received.is_replied IS 'Indique si un admin a répondu à cet email';
 
