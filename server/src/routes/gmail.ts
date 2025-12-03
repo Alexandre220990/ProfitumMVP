@@ -55,6 +55,11 @@ router.get('/auth-url', async (req, res) => {
   try {
     const authUrl = GmailService.generateAuthUrl();
     
+    // Si le paramètre ?redirect=true est présent, rediriger directement vers Google
+    if (req.query.redirect === 'true') {
+      return res.redirect(authUrl);
+    }
+    
     return res.json({
       success: true,
       data: {
