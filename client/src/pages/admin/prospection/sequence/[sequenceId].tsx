@@ -6,12 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { config } from "@/config/env";
 import { toast } from "sonner";
 import {
   ArrowLeft,
   Mail,
+  Send,
   User,
   Building2,
   Calendar,
@@ -22,10 +24,25 @@ import {
   Edit2,
   FileText,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ExternalLink,
+  Reply,
+  Brain,
+  MapPin,
+  Briefcase,
+  Phone,
+  Globe,
+  Linkedin,
+  Hash,
+  Users,
+  TrendingUp,
+  Loader2,
+  Sparkles
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import ProspectEnrichmentView from "@/components/ProspectEnrichmentView";
+import SendEmailModal from "@/components/SendEmailModal";
+import ScheduleSequenceModal from "@/components/ScheduleSequenceModal";
 import { ProspectEnrichmentData } from "@/types/prospects";
 
 interface Prospect {
@@ -157,6 +174,20 @@ export default function ProspectSequencePage() {
   const [emailComments, setEmailComments] = useState<Map<string, string>>(new Map());
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [savingComment, setSavingComment] = useState(false);
+  
+  // États pour gérer l'expansion des snippets et corps d'emails
+  const [expandedSnippets, setExpandedSnippets] = useState<Set<string>>(new Set());
+  const [expandedBodies, setExpandedBodies] = useState<Set<string>>(new Set());
+  
+  // États pour les modals
+  const [showSendEmailModal, setShowSendEmailModal] = useState(false);
+  const [showScheduleSequenceModal, setShowScheduleSequenceModal] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
+  
+  // États pour l'édition des informations
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, any>>({});
+  const [isSavingField, setIsSavingField] = useState(false);
 
   useEffect(() => {
     if (user && sequenceId) {
@@ -367,6 +398,129 @@ export default function ProspectSequencePage() {
     });
   };
 
+  const toggleSnippet = (emailId: string) => {
+    setExpandedSnippets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(emailId)) {
+        newSet.delete(emailId);
+      } else {
+        newSet.add(emailId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleBody = (emailId: string) => {
+    setExpandedBodies(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(emailId)) {
+        newSet.delete(emailId);
+      } else {
+        newSet.add(emailId);
+      }
+      return newSet;
+    });
+  };
+
+  const enrichWithAI = async () => {
+    if (!prospect) return;
+
+    try {
+      setIsEnriching(true);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+
+      // Préparer les informations du prospect
+      const prospectInfo = {
+        id: prospect.id,
+        company_name: prospect.company_name,
+        siren: prospect.siren,
+        firstname: prospect.firstname,
+        lastname: prospect.lastname,
+        email: prospect.email,
+        naf_code: prospect.naf_code,
+        naf_label: prospect.naf_label,
+        enrichment_status: prospect.enrichment_status,
+        enrichment_data: prospect.enrichment_data
+      };
+
+      // Appeler l'API d'enrichissement
+      const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-sequence-v2`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prospectInfo,
+          steps: [{ stepNumber: 1, delayDays: 0 }], // Minimal pour déclencher l'enrichissement
+          context: '',
+          forceReenrichment: true // Force le ré-enrichissement
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur lors de l\'enrichissement');
+      }
+
+      toast.success('Profil enrichi avec succès !');
+      await fetchData(); // Recharger les données
+    } catch (error: any) {
+      console.error('Erreur enrichissement IA:', error);
+      toast.error(error.message || 'Erreur lors de l\'enrichissement');
+    } finally {
+      setIsEnriching(false);
+    }
+  };
+
+  const startEditing = (field: string, currentValue: any) => {
+    setEditingField(field);
+    setEditValues({ [field]: currentValue });
+  };
+
+  const cancelEditing = () => {
+    setEditingField(null);
+    setEditValues({});
+  };
+
+  const saveField = async (field: string, customData?: any) => {
+    if (!prospect) return;
+
+    try {
+      setIsSavingField(true);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+
+      // Préparer les données à sauvegarder
+      let dataToSave = customData || { [field]: editValues[field] };
+
+      const response = await fetch(`${config.API_URL}/api/prospects/${prospect.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(dataToSave)
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur lors de la sauvegarde');
+      }
+
+      toast.success('Modification enregistrée !');
+      await fetchData(); // Recharger les données
+      setEditingField(null);
+      setEditValues({});
+    } catch (error: any) {
+      console.error('Erreur sauvegarde:', error);
+      toast.error(error.message || 'Erreur lors de la sauvegarde');
+    } finally {
+      setIsSavingField(false);
+    }
+  };
+
   if (loading) {
     return <LoadingScreen />;
   }
@@ -409,8 +563,8 @@ export default function ProspectSequencePage() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      {/* En-tête */}
-      <div className="flex items-center justify-between">
+      {/* En-tête avec statuts */}
+      <div className="space-y-4">
         <div className="flex items-center gap-4">
           <Button
             onClick={() => navigate('/admin/prospection')}
@@ -420,59 +574,220 @@ export default function ProspectSequencePage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour
           </Button>
-          <h1 className="text-2xl font-bold">Synthèse de la séquence</h1>
+        </div>
+
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          {/* Titre + Statuts */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Fiche prospect</h1>
+            
+            {/* Statuts compacts */}
+            {prospect && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs ${
+                    prospect.enrichment_status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
+                    prospect.enrichment_status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                    prospect.enrichment_status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' :
+                    'bg-gray-50 text-gray-700 border-gray-200'
+                  }`}
+                >
+                  <Brain className="h-3 w-3 mr-1" />
+                  {prospect.enrichment_status === 'completed' ? '✓ Enrichi' :
+                   prospect.enrichment_status === 'in_progress' ? '⏳ Enrichissement...' :
+                   prospect.enrichment_status === 'failed' ? '✗ Échec' :
+                   '○ Non enrichi'}
+                </Badge>
+                
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs ${
+                    prospect.ai_status === 'completed' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                    prospect.ai_status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                    prospect.ai_status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' :
+                    'bg-gray-50 text-gray-700 border-gray-200'
+                  }`}
+                >
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  {prospect.ai_status === 'completed' ? '✓ IA' :
+                   prospect.ai_status === 'in_progress' ? '⏳ IA...' :
+                   prospect.ai_status === 'failed' ? '✗ IA' :
+                   '○ IA'}
+                </Badge>
+                
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs ${
+                    prospect.emailing_status === 'replied' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                    prospect.emailing_status === 'opened' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                    prospect.emailing_status === 'sent' ? 'bg-green-50 text-green-700 border-green-200' :
+                    prospect.emailing_status === 'clicked' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                    prospect.emailing_status === 'bounced' ? 'bg-red-50 text-red-700 border-red-200' :
+                    'bg-gray-50 text-gray-700 border-gray-200'
+                  }`}
+                >
+                  <Mail className="h-3 w-3 mr-1" />
+                  {prospect.emailing_status === 'replied' ? '✓ Répondu' :
+                   prospect.emailing_status === 'opened' ? '👁 Ouvert' :
+                   prospect.emailing_status === 'sent' ? '✓ Envoyé' :
+                   prospect.emailing_status === 'clicked' ? '🔗 Cliqué' :
+                   prospect.emailing_status === 'bounced' ? '✗ Rebondi' :
+                   '○ Email'}
+                </Badge>
+              </div>
+            )}
+          </div>
+          
+          {/* Boutons d'action */}
+          <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+            <Button
+              onClick={enrichWithAI}
+              disabled={isEnriching}
+              className="flex-1 sm:flex-initial bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              size="sm"
+            >
+              {isEnriching ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <span className="hidden sm:inline">Enrichissement...</span>
+                  <span className="sm:hidden">...</span>
+                </>
+              ) : (
+                <>
+                  <Brain className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Enrichir avec l'IA</span>
+                  <span className="sm:hidden">Enrichir</span>
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={() => setShowSendEmailModal(true)}
+              className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700"
+              size="sm"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Envoyer un email</span>
+              <span className="sm:hidden">Email</span>
+            </Button>
+            <Button
+              onClick={() => setShowScheduleSequenceModal(true)}
+              className="flex-1 sm:flex-initial bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              size="sm"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Programmer une séquence</span>
+              <span className="sm:hidden">Séquence</span>
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
         {/* Colonne principale - Conversation (emails envoyés + réponses) */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="xl:col-span-2 space-y-4 lg:space-y-6">
           {/* Résumé de la conversation */}
-          <Card className="bg-gradient-to-r from-blue-50 to-purple-50">
-            <CardContent className="py-4">
+          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100">
+            <CardContent className="py-3 lg:py-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4 lg:gap-6">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{sentEmails.length}</div>
-                    <div className="text-xs text-gray-600">Envoyés</div>
+                    <div className="text-xl lg:text-2xl font-bold text-blue-600">{sentEmails.length}</div>
+                    <div className="text-[10px] lg:text-xs text-gray-600">Envoyés</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{receivedEmails.length}</div>
-                    <div className="text-xs text-gray-600">Réponses</div>
+                    <div className="text-xl lg:text-2xl font-bold text-emerald-600">{receivedEmails.length}</div>
+                    <div className="text-[10px] lg:text-xs text-gray-600">Réponses</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">{scheduledEmails.length}</div>
-                    <div className="text-xs text-gray-600">Programmés</div>
+                    <div className="text-xl lg:text-2xl font-bold text-orange-600">{scheduledEmails.length}</div>
+                    <div className="text-[10px] lg:text-xs text-gray-600">Programmés</div>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Bannière synthèse réponses multiples */}
+          {receivedEmails.length > 1 && (
+            <Card className="bg-gradient-to-r from-emerald-50 via-green-50 to-emerald-50 border-2 border-emerald-200 shadow-sm">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold text-lg">{receivedEmails.length}</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-emerald-900 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      {receivedEmails.length} réponses reçues du prospect
+                    </p>
+                    <p className="text-xs text-emerald-700 mt-0.5">
+                      Dernier échange : {new Date(receivedEmails[0].received_at).toLocaleString('fr-FR', {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                  <Badge className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-3 py-1.5 text-xs font-semibold shadow-sm">
+                    🎯 Prospect engagé
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {receivedEmails.length === 1 && (
+            <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200">
+              <CardContent className="py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-emerald-900">
+                      Le prospect a répondu !
+                    </p>
+                    <p className="text-[10px] text-emerald-700">
+                      {new Date(receivedEmails[0].received_at).toLocaleString('fr-FR', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Timeline de la conversation */}
           {conversation.length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-blue-600" />
-                  Conversation ({conversation.length})
+                <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
+                  <MessageSquare className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600" />
+                  <span className="hidden sm:inline">Conversation</span>
+                  <span className="sm:hidden">Conv.</span>
+                  <Badge variant="secondary" className="text-xs">{conversation.length}</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 lg:space-y-4 max-h-[calc(100vh-350px)] overflow-y-auto scroll-smooth">
                 {conversation.map((item, index) => (
                   <div key={item.id} className="relative">
-                    {/* Ligne de connexion */}
+                    {/* Ligne de connexion - cachée sur mobile */}
                     {index < conversation.length - 1 && (
-                      <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-gray-200 -z-10" />
+                      <div className="hidden lg:block absolute left-5 top-11 bottom-0 w-0.5 bg-gray-200 -z-10" />
                     )}
 
                     {/* Email envoyé */}
                     {item.type === 'sent' && (
-                      <div className="flex gap-4">
-                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                          <Mail className="h-5 w-5 text-blue-600" />
+                      <div className="flex gap-3 lg:gap-4">
+                        <div className="flex-shrink-0 w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                          <Mail className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600" />
                         </div>
-                        <div className="flex-1 border rounded-lg p-4 bg-blue-50/50">
+                        <div className="flex-1 border rounded-lg p-3 lg:p-4 bg-blue-50/50">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
@@ -561,68 +876,155 @@ export default function ProspectSequencePage() {
                               </div>
                             )}
                           </div>
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Réponse reçue */}
-                    {item.type === 'received' && (
-                      <div className="flex gap-4">
-                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                          <CheckCircle2 className="h-5 w-5 text-green-600" />
-                        </div>
-                        <div className="flex-1 border-2 border-green-200 rounded-lg p-4 bg-green-50/50">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge className="bg-green-600 text-white text-xs">
-                                  ✉️ Réponse du prospect
-                                </Badge>
-                              </div>
-                              <div className="font-medium text-sm">{item.subject}</div>
-                              <div className="text-xs text-gray-600 mt-1">
-                                De: {item.from_name || item.from_email}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                <Clock className="h-3 w-3 inline mr-1" />
-                                {new Date(item.date).toLocaleString('fr-FR', {
-                                  dateStyle: 'medium',
-                                  timeStyle: 'short'
-                                })}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Aperçu du contenu */}
-                          {item.snippet && (
-                            <div className="mt-3 pt-3 border-t border-green-200">
-                              <div className="text-sm text-gray-700 bg-white rounded p-3 italic">
-                                "{item.snippet}"
-                              </div>
+                          {/* Corps de l'email envoyé */}
+                          {item.body && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
                               <Button
-                                variant="link"
+                                variant="ghost"
                                 size="sm"
-                                className="mt-2 h-6 text-xs text-green-700"
-                                onClick={() => {
-                                  // TODO: Ouvrir modal avec le contenu complet
-                                  window.open(`/admin/prospection/email-reply/${item.prospect_id}/${item.id}`, '_blank');
-                                }}
+                                onClick={() => toggleBody(item.id)}
+                                className="text-xs text-blue-600 hover:text-blue-700 h-6 px-2"
                               >
-                                Voir le message complet →
+                                {expandedBodies.has(item.id) ? (
+                                  <>
+                                    <ChevronUp className="h-3 w-3 mr-1" />
+                                    Masquer le message
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown className="h-3 w-3 mr-1" />
+                                    Voir le message complet
+                                  </>
+                                )}
                               </Button>
+                              {expandedBodies.has(item.id) && (
+                                <div className="mt-2 bg-white rounded-lg p-4 border border-blue-200 animate-in slide-in-from-top-2 duration-200">
+                                  <div 
+                                    className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
+                                    dangerouslySetInnerHTML={{ __html: item.body }}
+                                  />
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                       </div>
                     )}
 
+                    {/* Réponse reçue - DESIGN COMPACT & HAUTE COUTURE */}
+                    {item.type === 'received' && (
+                      <div className="flex gap-3 group">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-md">
+                          <Reply className="h-4 w-4 text-white" />
+                        </div>
+                        <div className="flex-1 border-l-4 border-emerald-500 rounded-r-lg bg-gradient-to-r from-emerald-50/80 to-green-50/30 hover:shadow-lg transition-all duration-200">
+                          <div className="p-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0 space-y-1">
+                                {/* En-tête compact */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge className="bg-gradient-to-r from-emerald-600 to-green-600 text-white text-[10px] px-2 py-0.5 h-auto font-medium shadow-sm">
+                                    <Reply className="h-2.5 w-2.5 mr-1 inline" />
+                                    Réponse
+                                  </Badge>
+                                  <span className="text-[11px] text-gray-500 font-medium">
+                                    <Clock className="h-2.5 w-2.5 inline mr-0.5" />
+                                    {new Date(item.date).toLocaleString('fr-FR', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
+                                
+                                {/* Sujet */}
+                                <div className="font-semibold text-sm text-gray-900 truncate" title={item.subject}>
+                                  {item.subject}
+                                </div>
+                                
+                                {/* Expéditeur */}
+                                <div className="text-xs text-emerald-700 font-medium truncate">
+                                  De : {item.from_name || item.from_email}
+                                </div>
+                              </div>
+                              
+                              {/* Actions compactes */}
+                              <div className="flex gap-1 ml-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 hover:bg-emerald-100 rounded-full"
+                                  onClick={() => toggleSnippet(item.id)}
+                                  title={expandedSnippets.has(item.id) ? "Masquer l'aperçu" : "Voir l'aperçu"}
+                                >
+                                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expandedSnippets.has(item.id) ? 'rotate-180' : ''}`} />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 hover:bg-emerald-100 rounded-full"
+                                  onClick={() => window.open(`/admin/prospection/email-reply/${item.prospect_id}/${item.id}`, '_blank')}
+                                  title="Ouvrir le message complet"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Snippet expansible */}
+                            {item.snippet && expandedSnippets.has(item.id) && (
+                              <div className="mt-3 pt-3 border-t border-emerald-200/50 animate-in slide-in-from-top-2 duration-200">
+                                <div className="text-xs text-gray-700 bg-white/80 backdrop-blur-sm rounded-md px-3 py-2 italic border border-emerald-100 leading-relaxed">
+                                  "{item.snippet}"
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Corps complet de l'email reçu */}
+                            {item.body && (
+                              <div className="mt-3 pt-3 border-t border-emerald-200/50">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleBody(item.id)}
+                                  className="text-xs text-emerald-700 hover:text-emerald-800 h-6 px-2"
+                                >
+                                  {expandedBodies.has(item.id) ? (
+                                    <>
+                                      <ChevronUp className="h-3 w-3 mr-1" />
+                                      Masquer le message complet
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ChevronDown className="h-3 w-3 mr-1" />
+                                      Voir le message complet
+                                    </>
+                                  )}
+                                </Button>
+                                {expandedBodies.has(item.id) && (
+                                  <div className="mt-2 bg-white rounded-lg p-4 border border-emerald-200 animate-in slide-in-from-top-2 duration-200">
+                                    <div 
+                                      className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
+                                      dangerouslySetInnerHTML={{ __html: item.body }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Email programmé */}
                     {item.type === 'scheduled' && (
-                      <div className="flex gap-4">
-                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
-                          <Calendar className="h-5 w-5 text-orange-600" />
+                      <div className="flex gap-3 lg:gap-4">
+                        <div className="flex-shrink-0 w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                          <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-orange-600" />
                         </div>
-                        <div className="flex-1 border border-dashed border-orange-300 rounded-lg p-4 bg-orange-50/30">
+                        <div className="flex-1 border border-dashed border-orange-300 rounded-lg p-3 lg:p-4 bg-orange-50/30">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
@@ -724,8 +1126,8 @@ export default function ProspectSequencePage() {
           )}
         </div>
 
-        {/* Colonne latérale - Informations du prospect */}
-        <div className="space-y-6">
+        {/* Colonne latérale - Informations du prospect - cachée sur mobile */}
+        <div className="space-y-4 lg:space-y-6 hidden xl:block">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -733,23 +1135,35 @@ export default function ProspectSequencePage() {
                 Informations du prospect
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 text-sm">
               {/* Entreprise */}
               {prospect.company_name && (
                 <div>
-                  <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-                    <Building2 className="h-4 w-4" />
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-1">
+                    <Building2 className="h-3.5 w-3.5" />
                     Entreprise
                   </div>
-                  <div className="font-medium">{prospect.company_name}</div>
+                  <div className="font-medium text-gray-900">{prospect.company_name}</div>
                   {prospect.company_website && (
                     <a
                       href={prospect.company_website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-0.5"
                     >
-                      {prospect.company_website}
+                      <Globe className="h-3 w-3" />
+                      {prospect.company_website.replace(/^https?:\/\//, '')}
+                    </a>
+                  )}
+                  {prospect.linkedin_company && (
+                    <a
+                      href={prospect.linkedin_company}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-0.5"
+                    >
+                      <Linkedin className="h-3 w-3" />
+                      LinkedIn entreprise
                     </a>
                   )}
                 </div>
@@ -759,90 +1173,447 @@ export default function ProspectSequencePage() {
 
               {/* Contact */}
               <div>
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-                  <User className="h-4 w-4" />
-                  Contact
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                    <User className="h-3.5 w-3.5" />
+                    Contact
+                  </div>
+                  {editingField !== 'contact' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEditing('contact', {
+                        firstname: prospect.firstname || '',
+                        lastname: prospect.lastname || ''
+                      })}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
-                <div>
-                  {prospect.firstname || prospect.lastname ? (
-                    <div className="font-medium">
-                      {prospect.firstname} {prospect.lastname}
+                {editingField === 'contact' ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={editValues.contact?.firstname || ''}
+                      onChange={(e) => setEditValues({
+                        contact: { ...editValues.contact, firstname: e.target.value }
+                      })}
+                      placeholder="Prénom"
+                      className="text-sm h-8"
+                      disabled={isSavingField}
+                    />
+                    <Input
+                      value={editValues.contact?.lastname || ''}
+                      onChange={(e) => setEditValues({
+                        contact: { ...editValues.contact, lastname: e.target.value }
+                      })}
+                      placeholder="Nom"
+                      className="text-sm h-8"
+                      disabled={isSavingField}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => saveField('contact', {
+                          firstname: editValues.contact?.firstname || null,
+                          lastname: editValues.contact?.lastname || null
+                        })}
+                        disabled={isSavingField}
+                        className="h-7 text-xs"
+                      >
+                        {isSavingField ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Save className="h-3 w-3 mr-1" />
+                        )}
+                        Enregistrer
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={cancelEditing}
+                        disabled={isSavingField}
+                        className="h-7 text-xs"
+                      >
+                        Annuler
+                      </Button>
                     </div>
-                  ) : (
-                    <div className="text-gray-400 text-sm">Non renseigné</div>
-                  )}
-                  {prospect.job_title && (
-                    <div className="text-sm text-gray-600">{prospect.job_title}</div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div>
+                    {prospect.firstname || prospect.lastname ? (
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {prospect.firstname} {prospect.lastname}
+                        </div>
+                        {prospect.job_title && (
+                          <div className="text-xs text-gray-600 mt-0.5">{prospect.job_title}</div>
+                        )}
+                        {prospect.linkedin_profile && (
+                          <a
+                            href={prospect.linkedin_profile}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-0.5"
+                          >
+                            <Linkedin className="h-3 w-3" />
+                            LinkedIn personnel
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-400">Non renseigné</div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <Separator />
 
               {/* Email */}
               <div>
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-                  <Mail className="h-4 w-4" />
-                  Email
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{prospect.email}</span>
-                  {prospect.email_validity && (
-                    <Badge
-                      variant="outline"
-                      className={
-                        prospect.email_validity === 'valid' ? 'bg-green-50 text-green-700 border-green-200' :
-                        prospect.email_validity === 'risky' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                        'bg-red-50 text-red-700 border-red-200'
-                      }
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                    <Mail className="h-3.5 w-3.5" />
+                    Email
+                  </div>
+                  {editingField !== 'email' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEditing('email', prospect.email)}
+                      className="h-6 w-6 p-0"
                     >
-                      {prospect.email_validity === 'valid' ? '✓ Valide' :
-                       prospect.email_validity === 'risky' ? '⚠ Risqué' :
-                       '✗ Invalide'}
-                    </Badge>
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
                   )}
                 </div>
+                {editingField === 'email' ? (
+                  <div className="space-y-2">
+                    <Input
+                      type="email"
+                      value={editValues.email || ''}
+                      onChange={(e) => setEditValues({ email: e.target.value })}
+                      placeholder="email@exemple.com"
+                      className="text-sm h-8"
+                      disabled={isSavingField}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => saveField('email')}
+                        disabled={isSavingField}
+                        className="h-7 text-xs"
+                      >
+                        {isSavingField ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Save className="h-3 w-3 mr-1" />
+                        )}
+                        Enregistrer
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={cancelEditing}
+                        disabled={isSavingField}
+                        className="h-7 text-xs"
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-gray-900 font-mono">{prospect.email}</span>
+                    {prospect.email_validity && (
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] px-1.5 py-0 h-auto ${
+                          prospect.email_validity === 'valid' ? 'bg-green-50 text-green-700 border-green-200' :
+                          prospect.email_validity === 'risky' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                          'bg-red-50 text-red-700 border-red-200'
+                        }`}
+                      >
+                        {prospect.email_validity === 'valid' ? '✓ Valide' :
+                         prospect.email_validity === 'risky' ? '⚠ Risqué' :
+                         '✗ Invalide'}
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Téléphone */}
-              {(prospect.phone_direct || prospect.phone_standard) && (
+              <Separator />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                    <Phone className="h-3.5 w-3.5" />
+                    Téléphone
+                  </div>
+                  {editingField !== 'phones' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEditing('phones', {
+                        phone_direct: prospect.phone_direct || '',
+                        phone_standard: prospect.phone_standard || ''
+                      })}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+                {editingField === 'phones' ? (
+                  <div className="space-y-2">
+                    <div>
+                      <Label className="text-xs text-gray-600">📱 Direct</Label>
+                      <Input
+                        type="tel"
+                        value={editValues.phones?.phone_direct || ''}
+                        onChange={(e) => setEditValues({
+                          phones: { ...editValues.phones, phone_direct: e.target.value }
+                        })}
+                        placeholder="06 12 34 56 78"
+                        className="text-sm h-8 mt-1"
+                        disabled={isSavingField}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-600">☎️ Standard</Label>
+                      <Input
+                        type="tel"
+                        value={editValues.phones?.phone_standard || ''}
+                        onChange={(e) => setEditValues({
+                          phones: { ...editValues.phones, phone_standard: e.target.value }
+                        })}
+                        placeholder="01 23 45 67 89"
+                        className="text-sm h-8 mt-1"
+                        disabled={isSavingField}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => saveField('phones', {
+                          phone_direct: editValues.phones?.phone_direct || null,
+                          phone_standard: editValues.phones?.phone_standard || null
+                        })}
+                        disabled={isSavingField}
+                        className="h-7 text-xs"
+                      >
+                        {isSavingField ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Save className="h-3 w-3 mr-1" />
+                        )}
+                        Enregistrer
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={cancelEditing}
+                        disabled={isSavingField}
+                        className="h-7 text-xs"
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    {prospect.phone_direct && (
+                      <div className="text-sm text-gray-900 font-mono">
+                        📱 {prospect.phone_direct}
+                      </div>
+                    )}
+                    {prospect.phone_standard && (
+                      <div className="text-sm text-gray-900 font-mono">
+                        ☎️ {prospect.phone_standard}
+                      </div>
+                    )}
+                    {!prospect.phone_direct && !prospect.phone_standard && (
+                      <div className="text-xs text-gray-400">Non renseigné</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Adresse */}
+              <Separator />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                    <MapPin className="h-3.5 w-3.5" />
+                    Adresse
+                  </div>
+                  {editingField !== 'address' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEditing('address', {
+                        adresse: prospect.adresse || '',
+                        postal_code: prospect.postal_code || '',
+                        city: prospect.city || ''
+                      })}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+                {editingField === 'address' ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={editValues.address?.adresse || ''}
+                      onChange={(e) => setEditValues({
+                        address: { ...editValues.address, adresse: e.target.value }
+                      })}
+                      placeholder="Rue, numéro..."
+                      className="text-sm h-8"
+                      disabled={isSavingField}
+                    />
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input
+                        value={editValues.address?.postal_code || ''}
+                        onChange={(e) => setEditValues({
+                          address: { ...editValues.address, postal_code: e.target.value }
+                        })}
+                        placeholder="75001"
+                        className="text-sm h-8 col-span-1"
+                        disabled={isSavingField}
+                      />
+                      <Input
+                        value={editValues.address?.city || ''}
+                        onChange={(e) => setEditValues({
+                          address: { ...editValues.address, city: e.target.value }
+                        })}
+                        placeholder="Paris"
+                        className="text-sm h-8 col-span-2"
+                        disabled={isSavingField}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => saveField('address', {
+                          adresse: editValues.address?.adresse || null,
+                          postal_code: editValues.address?.postal_code || null,
+                          city: editValues.address?.city || null
+                        })}
+                        disabled={isSavingField}
+                        className="h-7 text-xs"
+                      >
+                        {isSavingField ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Save className="h-3 w-3 mr-1" />
+                        )}
+                        Enregistrer
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={cancelEditing}
+                        disabled={isSavingField}
+                        className="h-7 text-xs"
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-900">
+                    {prospect.adresse && <div>{prospect.adresse}</div>}
+                    {(prospect.postal_code || prospect.city) && (
+                      <div>
+                        {prospect.postal_code} {prospect.city}
+                      </div>
+                    )}
+                    {!prospect.adresse && !prospect.postal_code && !prospect.city && (
+                      <div className="text-xs text-gray-400">Non renseignée</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Informations légales */}
+              {(prospect.siren || prospect.naf_code) && (
                 <>
                   <Separator />
                   <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">Téléphone</div>
-                    <div className="text-sm">
-                      {prospect.phone_direct || prospect.phone_standard}
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-1">
+                      <Hash className="h-3.5 w-3.5" />
+                      Informations légales
+                    </div>
+                    <div className="space-y-1">
+                      {prospect.siren && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-600 w-16">SIREN:</span>
+                          <span className="text-sm text-gray-900 font-mono">{prospect.siren}</span>
+                        </div>
+                      )}
+                      {prospect.naf_code && (
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs text-gray-600 w-16 shrink-0">NAF:</span>
+                          <div className="flex-1">
+                            <span className="text-sm text-gray-900 font-mono">{prospect.naf_code}</span>
+                            {prospect.naf_label && (
+                              <div className="text-xs text-gray-600 mt-0.5">{prospect.naf_label}</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>
               )}
 
-              {/* Statuts */}
-              <Separator />
-              <div>
-                <div className="text-sm font-medium text-gray-700 mb-2">Statuts</div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600">Enrichissement:</span>
-                    {getEmailStatusBadge(prospect.enrichment_status)}
+              {/* Effectif */}
+              {prospect.employee_range && (
+                <>
+                  <Separator />
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-1">
+                      <Users className="h-3.5 w-3.5" />
+                      Effectif
+                    </div>
+                    <div className="text-sm text-gray-900">{prospect.employee_range}</div>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600">IA:</span>
-                    {getEmailStatusBadge(prospect.ai_status)}
+                </>
+              )}
+
+              {/* Source */}
+              {prospect.source && (
+                <>
+                  <Separator />
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-1">
+                      <Briefcase className="h-3.5 w-3.5" />
+                      Source
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {prospect.source === 'google_maps' ? '📍 Google Maps' :
+                       prospect.source === 'import_csv' ? '📄 Import CSV' :
+                       prospect.source === 'linkedin' ? '💼 LinkedIn' :
+                       '✍️ Manuel'}
+                    </Badge>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600">Emailing:</span>
-                    {getEmailStatusBadge(prospect.emailing_status)}
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
 
               {/* Score de priorité */}
               {prospect.score_priority > 0 && (
                 <>
                   <Separator />
                   <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">Score de priorité</div>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-1">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      Score de priorité
+                    </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-gray-200 rounded-full h-2">
                         <div
@@ -850,11 +1621,27 @@ export default function ProspectSequencePage() {
                           style={{ width: `${Math.min(prospect.score_priority, 100)}%` }}
                         />
                       </div>
-                      <span className="text-sm font-medium">{prospect.score_priority}</span>
+                      <span className="text-sm font-medium text-gray-900">{prospect.score_priority}</span>
                     </div>
                   </div>
                 </>
               )}
+
+              {/* Date de création */}
+              <Separator />
+              <div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-1">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Ajouté le
+                </div>
+                <div className="text-sm text-gray-900">
+                  {new Date(prospect.created_at).toLocaleDateString('fr-FR', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </div>
+              </div>
 
               {/* Bouton pour afficher l'enrichissement */}
               {prospect.enrichment_data && (
@@ -920,6 +1707,42 @@ export default function ProspectSequencePage() {
           )}
         </div>
       </div>
+
+      {/* Modals */}
+      {prospect && (
+        <>
+          <SendEmailModal
+            prospectId={prospect.id}
+            prospectName={`${prospect.firstname || ''} ${prospect.lastname || ''}`.trim() || 'Prospect'}
+            prospectEmail={prospect.email}
+            companyName={prospect.company_name}
+            open={showSendEmailModal}
+            onClose={() => setShowSendEmailModal(false)}
+            onSuccess={() => {
+              fetchData(); // Recharger les données
+              toast.success('Email envoyé avec succès !');
+            }}
+          />
+
+          <ScheduleSequenceModal
+            prospectId={prospect.id}
+            prospectName={`${prospect.firstname || ''} ${prospect.lastname || ''}`.trim() || 'Prospect'}
+            prospectEmail={prospect.email}
+            companyName={prospect.company_name}
+            siren={prospect.siren}
+            nafCode={prospect.naf_code}
+            nafLabel={prospect.naf_label}
+            enrichmentStatus={prospect.enrichment_status}
+            enrichmentData={prospect.enrichment_data}
+            open={showScheduleSequenceModal}
+            onClose={() => setShowScheduleSequenceModal(false)}
+            onSuccess={() => {
+              fetchData(); // Recharger les données
+              toast.success('Séquence programmée avec succès !');
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }
