@@ -327,9 +327,20 @@ router.post('/client/login', loginRateLimiter, async (req, res) => {
       });
     }
     
+    // 4. ✅ Mettre à jour user_metadata avec le type pour persistance après refresh
+    await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+      user_metadata: {
+        type: 'client',
+        database_id: clientProfile.database_id,
+        email: userEmail || '',
+        company_name: clientProfile.data.company_name,
+        available_types: profiles.map(p => p.type)
+      }
+    });
+    
     console.log("✅ Client authentifié avec succès:", { email: userEmail, available_types: profiles.map(p => p.type) });
     
-    // 4. Réponse avec session Supabase
+    // 5. Réponse avec session Supabase
     return res.json({
       success: true,
       data: {
@@ -413,9 +424,20 @@ router.post('/expert/login', loginRateLimiter, async (req, res) => {
       });
     }
     
+    // 4. ✅ Mettre à jour user_metadata avec le type pour persistance après refresh
+    await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+      user_metadata: {
+        type: 'expert',
+        database_id: expertProfile.database_id,
+        email: userEmail || '',
+        name: expertProfile.data.name,
+        available_types: profiles.map(p => p.type)
+      }
+    });
+    
     console.log("✅ Expert authentifié avec succès:", { email: userEmail, available_types: profiles.map(p => p.type) });
     
-    // 4. Récupérer les infos cabinet si l'expert en a un
+    // 5. Récupérer les infos cabinet si l'expert en a un
     let cabinetInfo = null;
     try {
       const { CabinetService } = await import('../services/cabinetService');
@@ -425,7 +447,7 @@ router.post('/expert/login', loginRateLimiter, async (req, res) => {
       // Ne pas bloquer la connexion si erreur cabinet
     }
     
-    // 5. Réponse avec session Supabase
+    // 6. Réponse avec session Supabase
     return res.json({
       success: true,
       data: {
@@ -514,27 +536,30 @@ router.post('/apporteur/login', loginRateLimiter, async (req, res) => {
       });
     }
     
-    // 4. Créer le JWT avec tous les types disponibles
-    const token = jwt.sign(
-      {
-        id: authUserId,
-        email: userEmail,
+    // 4. ✅ Mettre à jour user_metadata avec le type pour persistance après refresh
+    await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+      user_metadata: {
         type: 'apporteur',
         database_id: apporteurProfile.database_id,
-        available_types: profiles.map(p => p.type),
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
-      },
-      jwtConfig.secret
-    );
+        email: userEmail || '',
+        company_name: apporteurProfile.data.company_name,
+        available_types: profiles.map(p => p.type)
+      }
+    });
     
     console.log("✅ Apporteur authentifié avec succès:", { email: userEmail, available_types: profiles.map(p => p.type) });
     
-    // 5. Réponse
+    // 5. Réponse avec session Supabase
     return res.json({
       success: true,
       data: {
-        token,
+        // ✅ Renvoyer les tokens Supabase pour créer la session côté client
+        supabase_session: {
+          access_token: authData.session?.access_token,
+          refresh_token: authData.session?.refresh_token,
+          expires_at: authData.session?.expires_at,
+          expires_in: authData.session?.expires_in
+        },
         user: {
           ...apporteurProfile.data,
           type: 'apporteur',
@@ -617,7 +642,17 @@ router.post('/admin/login', loginRateLimiter, async (req, res) => {
       });
     }
 
-    // 5. Retourner la session Supabase (pas de JWT personnalisé)
+    // 5. ✅ Mettre à jour user_metadata avec le type pour persistance après refresh
+    await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+      user_metadata: {
+        type: 'admin',
+        database_id: admin.id,
+        email: userEmail || '',
+        name: admin.name,
+        available_types: profiles.map(p => p.type)
+      }
+    });
+    
     console.log("✅ Admin authentifié avec succès:", { email: userEmail, adminId: admin.id });
 
     return res.json({
