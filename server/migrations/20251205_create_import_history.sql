@@ -153,3 +153,69 @@ COMMENT ON COLUMN import_history.status IS 'Statut de l''import : processing, co
 COMMENT ON COLUMN import_history.mapping_config IS 'Configuration de mapping utilisée pour l''import';
 COMMENT ON COLUMN import_history.results IS 'Résultats détaillés de l''import (erreurs, etc.)';
 
+-- ===================================================================
+-- MIGRATION DES ANCIENS PROSPECTS SANS BATCH_ID
+-- ===================================================================
+-- Créer des batches génériques pour les prospects existants sans import_batch_id
+-- et les regrouper par période de création
+
+DO $$ 
+DECLARE
+  v_batch_id UUID;
+  v_prospects_count INTEGER;
+  v_min_date TIMESTAMPTZ;
+  v_max_date TIMESTAMPTZ;
+BEGIN
+  -- Compter les prospects sans batch_id
+  SELECT COUNT(*), MIN(created_at), MAX(created_at)
+  INTO v_prospects_count, v_min_date, v_max_date
+  FROM prospects
+  WHERE import_batch_id IS NULL;
+
+  -- Si des prospects existent sans batch_id, créer un batch historique
+  IF v_prospects_count > 0 THEN
+    -- Créer un batch générique pour tous les anciens imports
+    INSERT INTO import_history (
+      entity_type,
+      file_name,
+      status,
+      total_rows,
+      success_count,
+      error_count,
+      skipped_count,
+      started_at,
+      completed_at,
+      created_at,
+      updated_at
+    ) VALUES (
+      'prospect',
+      'Import historique (avant migration)',
+      'completed',
+      v_prospects_count,
+      v_prospects_count,
+      0,
+      0,
+      v_min_date,
+      v_max_date,
+      v_min_date,
+      NOW()
+    )
+    RETURNING id INTO v_batch_id;
+
+    -- Attribuer ce batch_id à tous les prospects sans batch
+    UPDATE prospects
+    SET import_batch_id = v_batch_id
+    WHERE import_batch_id IS NULL;
+
+    -- Log du résultat
+    RAISE NOTICE 'Migration terminée : % prospects attribués au batch historique %', v_prospects_count, v_batch_id;
+  ELSE
+    RAISE NOTICE 'Aucun prospect à migrer : tous ont déjà un import_batch_id';
+  END IF;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Erreur lors de la migration des anciens prospects : %', SQLERRM;
+    -- On continue même en cas d'erreur pour ne pas bloquer la migration
+END $$;
+
