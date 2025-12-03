@@ -892,6 +892,14 @@ server.listen(PORT, HOST, () => {
 
   // Démarrer le job de vérification Gmail (si configuré)
   try {
+    // Debug: afficher les variables Gmail présentes
+    console.log('🔍 Debug variables Gmail:');
+    console.log(`   GMAIL_CLIENT_ID: ${process.env.GMAIL_CLIENT_ID ? '✅ Présent' : '❌ Absent'}`);
+    console.log(`   GMAIL_CLIENT_SECRET: ${process.env.GMAIL_CLIENT_SECRET ? '✅ Présent' : '❌ Absent'}`);
+    console.log(`   GMAIL_REFRESH_TOKEN: ${process.env.GMAIL_REFRESH_TOKEN ? '✅ Présent' : '❌ Absent'}`);
+    console.log(`   GMAIL_USER_EMAIL: ${process.env.GMAIL_USER_EMAIL ? '✅ Présent' : '❌ Absent'}`);
+    console.log(`   SERVER_URL: ${process.env.SERVER_URL ? '✅ Présent' : '❌ Absent'}`);
+    
     if (process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN) {
       startGmailCheckerJob();
     } else {
