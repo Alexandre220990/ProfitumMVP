@@ -265,6 +265,26 @@ router.patch('/import-batches/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/prospects/bulk-delete - Supprimer plusieurs prospects (DOIT être avant /:id)
+router.delete('/bulk-delete', async (req, res) => {
+  try {
+    const { prospect_ids } = req.body;
+    
+    if (!prospect_ids || !Array.isArray(prospect_ids) || prospect_ids.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'prospect_ids (array) est requis' 
+      });
+    }
+
+    const result = await ProspectService.bulkDeleteProspects(prospect_ids);
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/prospects/:id - Récupérer un prospect
 router.get('/:id', async (req, res) => {
   try {
@@ -1929,26 +1949,6 @@ Réponds UNIQUEMENT au format JSON suivant (sans texte avant ou après) :
       success: false,
       error: error.message || 'Erreur lors de la génération par IA'
     });
-  }
-});
-
-// DELETE /api/prospects/bulk-delete - Supprimer plusieurs prospects
-router.delete('/bulk-delete', async (req, res) => {
-  try {
-    const { prospect_ids } = req.body;
-    
-    if (!prospect_ids || !Array.isArray(prospect_ids) || prospect_ids.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'prospect_ids (array) est requis' 
-      });
-    }
-
-    const result = await ProspectService.bulkDeleteProspects(prospect_ids);
-
-    return res.json(result);
-  } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
