@@ -192,8 +192,17 @@ export const loginAdmin = async (credentials: LoginCredentials): Promise<AuthRes
     });
 
     const data = await response.json();
+    console.log('📦 Réponse backend admin:', { 
+      ok: response.ok, 
+      status: response.status,
+      hasData: !!data.data,
+      hasUser: !!data.data?.user,
+      userType: data.data?.user?.type,
+      hasSupabaseSession: !!data.data?.supabase_session
+    });
 
     if (!response.ok) {
+      console.error('❌ Réponse non-ok du backend:', data);
       return {
         success: false,
         message: data.message || 'Erreur de connexion'
@@ -202,6 +211,7 @@ export const loginAdmin = async (credentials: LoginCredentials): Promise<AuthRes
 
     // ✅ Stocker la session Supabase côté client
     if (data.data?.supabase_session) {
+      console.log('🔐 Tentative de stockage session Supabase...');
       const { supabase } = await import('./supabase');
       const { error: sessionError } = await supabase.auth.setSession({
         access_token: data.data.supabase_session.access_token,
@@ -213,10 +223,19 @@ export const loginAdmin = async (credentials: LoginCredentials): Promise<AuthRes
       } else {
         console.log('✅ Session Supabase établie côté client');
       }
+    } else {
+      console.warn('⚠️ Aucune session Supabase dans la réponse backend');
     }
 
+    console.log('✅ Retour de loginAdmin:', { 
+      success: data.success, 
+      hasUser: !!data.data?.user,
+      userEmail: data.data?.user?.email,
+      userType: data.data?.user?.type
+    });
     return data;
   } catch (error) {
+    console.error('❌ Erreur catch loginAdmin:', error);
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Erreur de connexion'

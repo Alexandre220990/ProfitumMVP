@@ -110,11 +110,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         response = await loginWithSupabase(credentials);
       }
       
+      console.log('📥 Réponse authentification reçue:', { 
+        success: response.success, 
+        hasData: !!response.data,
+        hasUser: !!response.data?.user
+      });
+
       if (!response.success || !response.data) {
+        console.error('❌ Échec authentification:', response);
         throw new Error(response.message || "Erreur de connexion");
       }
 
       const { user } = response.data;
+      console.log('👤 Données utilisateur:', { 
+        email: user?.email, 
+        type: user?.type,
+        id: user?.id,
+        database_id: user?.database_id
+      });
 
       // ✅ Supabase gère automatiquement le stockage du token (session persistante)
       
@@ -123,7 +136,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...user,
         experience: user.experience?.toString()
       };
+      
+      console.log('💾 Mise à jour du state user...');
       setUser(userData);
+      console.log('✅ State user mis à jour');
 
       toast.success(`Connexion réussie ! Bienvenue ${user.first_name || user.email}`);
 
