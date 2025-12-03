@@ -107,12 +107,12 @@ export function addRandomizationToScheduledDate(
 
 /**
  * Calcule le délai aléatoire entre deux envois d'emails
- * Pour un comportement plus humain : 30-120 secondes
+ * Pour un comportement plus humain : 5-60 secondes
  * @returns Délai en millisecondes
  */
 export function getRandomEmailDelay(): number {
-  // Entre 30 et 120 secondes (30000ms à 120000ms)
-  return randomDelay(30000, 120000);
+  // Entre 5 et 60 secondes (5000ms à 60000ms)
+  return randomDelay(5000, 60000);
 }
 
 /**

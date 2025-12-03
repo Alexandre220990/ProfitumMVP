@@ -265,7 +265,7 @@ export class ProspectEmailService {
         });
       }
 
-      // Délai aléatoire entre chaque envoi (30-120 secondes) pour comportement humain
+      // Délai aléatoire entre chaque envoi (5-60 secondes) pour comportement humain
       // Sauf pour le dernier email
       if (prospectId !== input.prospect_ids[input.prospect_ids.length - 1]) {
         const delay = getRandomEmailDelay();
@@ -386,7 +386,7 @@ export class ProspectEmailService {
           });
         }
 
-        // Délai aléatoire entre chaque envoi (30-120 secondes) pour comportement humain
+        // Délai aléatoire entre chaque envoi (5-60 secondes) pour comportement humain
         // Sauf pour le dernier email
         if (scheduledEmail !== emailsToSend[emailsToSend.length - 1]) {
           const delay = getRandomEmailDelay();

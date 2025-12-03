@@ -721,8 +721,16 @@ export class ProspectService {
           currentDate = new Date(currentDate.getTime() + (step.delay_days * 24 * 60 * 60 * 1000));
         }
 
-        // Ajouter randomisation (0-2h) et ajuster aux heures de travail
-        const randomizedDate = addRandomizationToScheduledDate(currentDate, 2);
+        let scheduledDate: Date;
+        
+        if (step.step_number === 1) {
+          // Premier email : immédiat (ajusté aux heures de travail)
+          const { adjustToBusinessHours } = await import('../utils/email-sending-utils');
+          scheduledDate = adjustToBusinessHours(new Date());
+        } else {
+          // Emails suivants : ajouter randomisation (0-2h) et ajuster aux heures de travail
+          scheduledDate = addRandomizationToScheduledDate(currentDate, 2);
+        }
 
         scheduledEmails.push({
           prospect_id: prospectId,
@@ -730,7 +738,7 @@ export class ProspectService {
           step_number: step.step_number,
           subject: step.subject,
           body: step.body,
-          scheduled_for: randomizedDate.toISOString(),
+          scheduled_for: scheduledDate.toISOString(),
           status: 'scheduled'
         });
       }
