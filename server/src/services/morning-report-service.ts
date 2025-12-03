@@ -55,6 +55,8 @@ interface NotificationData {
   created_at: string;
   is_read: boolean;
   action_url?: string;
+  is_parent?: boolean;
+  children_count?: number;
 }
 
 interface OverdueRDV {
@@ -170,14 +172,16 @@ export class MorningReportService {
 
     // 2. Récupérer les notifications urgentes et importantes du jour uniquement
     // On filtre pour avoir seulement : priorité high/urgent + créées dans les dernières 24h
+    // ⚠️ IMPORTANT : Filtrer hidden_in_list=false pour exclure les notifications enfants masquées
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
     
     const { data: unreadNotificationsRaw, error: unreadError } = await supabase
       .from('notification')
-      .select('id, title, message, notification_type, priority, created_at, is_read, action_url, action_data, metadata')
+      .select('id, title, message, notification_type, priority, created_at, is_read, action_url, action_data, metadata, is_parent, children_count')
       .eq('user_type', 'admin')
       .eq('is_read', false)
+      .eq('hidden_in_list', false)
       .neq('notification_type', 'rdv_reminder')
       .neq('notification_type', 'rdv_confirmed')
       .neq('notification_type', 'rdv_cancelled')
@@ -196,11 +200,13 @@ export class MorningReportService {
     const unreadNotifications = this.deduplicateNotifications(unreadNotificationsRaw || []);
 
     // 4. Récupérer les notifications lues récentes (dernières 24h seulement)
+    // ⚠️ IMPORTANT : Filtrer hidden_in_list=false pour exclure les notifications enfants masquées
     const { data: readNotificationsRaw, error: readError } = await supabase
       .from('notification')
-      .select('id, title, message, notification_type, priority, created_at, is_read, action_url, action_data, metadata')
+      .select('id, title, message, notification_type, priority, created_at, is_read, action_url, action_data, metadata, is_parent, children_count')
       .eq('user_type', 'admin')
       .eq('is_read', true)
+      .eq('hidden_in_list', false)
       .neq('notification_type', 'rdv_reminder')
       .neq('notification_type', 'rdv_confirmed')
       .neq('notification_type', 'rdv_cancelled')
@@ -240,7 +246,9 @@ export class MorningReportService {
         priority: n.priority || 'normal',
         created_at: n.created_at,
         is_read: n.is_read,
-        action_url: n.action_url || (n.action_data?.action_url || null)
+        action_url: n.action_url || (n.action_data?.action_url || null),
+        is_parent: n.is_parent || false,
+        children_count: n.children_count || 0
       })),
       readNotifications: readNotifications.map((n: any) => ({
         id: n.id,
@@ -250,7 +258,9 @@ export class MorningReportService {
         priority: n.priority || 'normal',
         created_at: n.created_at,
         is_read: n.is_read,
-        action_url: n.action_url || (n.action_data?.action_url || null)
+        action_url: n.action_url || (n.action_data?.action_url || null),
+        is_parent: n.is_parent || false,
+        children_count: n.children_count || 0
       })),
       overdueRDVs,
       pendingActions,
@@ -841,9 +851,14 @@ export class MorningReportService {
       </div>
       ${reportData.unreadNotifications.map(notif => {
         const priorityStyle = priorityColors[notif.priority as keyof typeof priorityColors] || priorityColors.medium;
+        const isParent = notif.is_parent || false;
+        const childrenCount = notif.children_count || 0;
         return `
           <div class="notification-item unread" style="border-left-color: ${priorityStyle.border};">
-            <div class="notification-header">${notif.title}</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <div class="notification-header" style="margin-bottom: 0;">${notif.title}</div>
+              ${isParent && childrenCount > 0 ? `<span style="display: inline-block; padding: 4px 12px; background: ${priorityStyle.border}; color: white; border-radius: 20px; font-size: 11px; font-weight: 600;">${childrenCount} dossier${childrenCount > 1 ? 's' : ''}</span>` : ''}
+            </div>
             <div class="notification-details">${notif.message}</div>
             <div class="notification-meta">${formatNotificationDate(notif.created_at)} • ${notif.notification_type}</div>
             ${notif.action_url ? `<a href="${SecureLinkService.generateSimpleLink(notif.action_url, adminId, adminType)}" style="color: #3b82f6; text-decoration: none; font-weight: 600; margin-top: 8px; display: inline-block;">Voir les détails →</a>` : ''}
@@ -864,9 +879,14 @@ export class MorningReportService {
       </div>
       ${reportData.readNotifications.map(notif => {
         const priorityStyle = priorityColors[notif.priority as keyof typeof priorityColors] || priorityColors.medium;
+        const isParent = notif.is_parent || false;
+        const childrenCount = notif.children_count || 0;
         return `
           <div class="notification-item" style="border-left-color: ${priorityStyle.border};">
-            <div class="notification-header">${notif.title}</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <div class="notification-header" style="margin-bottom: 0;">${notif.title}</div>
+              ${isParent && childrenCount > 0 ? `<span style="display: inline-block; padding: 4px 12px; background: ${priorityStyle.border}; color: white; border-radius: 20px; font-size: 11px; font-weight: 600;">${childrenCount} dossier${childrenCount > 1 ? 's' : ''}</span>` : ''}
+            </div>
             <div class="notification-details">${notif.message}</div>
             <div class="notification-meta">${formatNotificationDate(notif.created_at)} • ${notif.notification_type}</div>
             ${notif.action_url ? `<a href="${SecureLinkService.generateSimpleLink(notif.action_url, adminId, adminType)}" style="color: #3b82f6; text-decoration: none; font-weight: 600; margin-top: 8px; display: inline-block;">Voir les détails →</a>` : ''}

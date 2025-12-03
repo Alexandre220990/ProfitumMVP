@@ -149,7 +149,7 @@ export class DailyActivityReportServiceV2 {
   private static async getPendingActions(): Promise<PendingAction[]> {
     const actions: PendingAction[] = [];
 
-    // 1. Documents à valider
+    // 1. Documents à valider - GROUPÉS PAR CLIENT
     try {
       const { data: pendingDocs } = await supabase
         .from('ClientProduitEligible')
@@ -162,16 +162,48 @@ export class DailyActivityReportServiceV2 {
         .limit(20);
 
       if (pendingDocs) {
-        for (const dossier of pendingDocs) {
+        // Grouper les dossiers par client
+        const groupedByClient = pendingDocs.reduce((acc: any, dossier: any) => {
           const client = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+          const clientId = client?.id;
+          
+          if (!clientId) return acc;
+          
+          if (!acc[clientId]) {
+            acc[clientId] = {
+              client_id: clientId,
+              client_name: client.company_name || client.name,
+              dossiers: []
+            };
+          }
+          
           const produit = Array.isArray(dossier.ProduitEligible) ? dossier.ProduitEligible[0] : dossier.ProduitEligible;
+          acc[clientId].dossiers.push({
+            id: dossier.id,
+            nom: produit?.nom || 'Dossier'
+          });
+          return acc;
+        }, {});
+
+        // Créer une action groupée par client
+        for (const [clientId, data] of Object.entries(groupedByClient)) {
+          const clientData = data as any;
+          const dossiersNames = clientData.dossiers
+            .slice(0, 3)
+            .map((d: any) => d.nom)
+            .join(', ');
+          const moreCount = clientData.dossiers.length > 3 ? ` +${clientData.dossiers.length - 3}` : '';
           
           actions.push({
             type: 'document_validation',
-            title: `Documents à valider - ${produit?.nom || 'Dossier'}`,
-            description: `Dossier ${produit?.nom || 'N/A'} - Client ${client?.company_name || client?.name || 'N/A'}`,
+            title: `Documents à valider - ${clientData.client_name}`,
+            description: `${clientData.dossiers.length} dossier${clientData.dossiers.length > 1 ? 's' : ''} : ${dossiersNames}${moreCount}`,
             priority: 'high',
-            link: SecureLinkService.generateSimpleLink(`/admin/dossiers/${dossier.id}`)
+            link: SecureLinkService.generateSimpleLink(`/admin/clients/${clientId}`),
+            metadata: { 
+              client_id: clientId,
+              dossiers_count: clientData.dossiers.length 
+            }
           });
         }
       }
@@ -699,11 +731,13 @@ export class DailyActivityReportServiceV2 {
       </div>
       ${reportData.pendingActions.map(action => {
         const priorityStyle = priorityColors[action.priority];
+        const isGrouped = action.metadata?.dossiers_count > 1;
         return `
           <div class="action-item" style="border-left-color: ${priorityStyle.border}; background: ${priorityStyle.bg};">
             <div class="action-header">
               <div class="action-icon">${getActionIcon(action.type)}</div>
               <div class="action-title">${action.title}</div>
+              ${isGrouped ? `<span style="display: inline-block; padding: 4px 12px; background: ${priorityStyle.border}; color: white; border-radius: 20px; font-size: 11px; font-weight: 600; margin: 0 8px;">${action.metadata.dossiers_count} dossiers</span>` : ''}
               <div class="action-priority" style="background: ${priorityStyle.border}; color: white;">
                 ${action.priority}
               </div>
