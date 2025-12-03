@@ -63,6 +63,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { NotificationGroup } from '@/components/admin/NotificationGroup';
 import { ExpertNotificationGroup } from '@/components/expert/ExpertNotificationGroup';
 import { ClientNotificationGroup } from '@/components/client/ClientNotificationGroup';
+import { ApporteurNotificationGroup } from '@/components/apporteur/ApporteurNotificationGroup';
 
 interface UniversalNotificationCenterProps {
   /** Mode d'affichage : modal plein écran ou compact intégré */
@@ -1236,12 +1237,14 @@ export function UniversalNotificationCenter({
                     const isAdmin = userRole === 'admin';
                     const isExpert = userRole === 'expert';
                     const isClient = userRole === 'client';
+                    const isApporteur = userRole === 'apporteur';
                     
                     // Utiliser composant groupé pour les notifications parent
-                    if (isParent && (isAdmin || isExpert || isClient)) {
+                    if (isParent && (isAdmin || isExpert || isClient || isApporteur)) {
                       let GroupComponent = NotificationGroup;
                       if (isExpert) GroupComponent = ExpertNotificationGroup;
                       else if (isClient) GroupComponent = ClientNotificationGroup as any;
+                      else if (isApporteur) GroupComponent = ApporteurNotificationGroup as any;
                       
                       return (
                         <div key={notification.id} className="mb-2">
