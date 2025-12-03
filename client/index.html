@@ -72,8 +72,17 @@
           
           // Charger le manifest pour mettre à jour les métadonnées
           fetch(manifestUrl)
-            .then(response => response.json())
+            .then(response => {
+              if (!response.ok) {
+                // Si 404, utiliser silencieusement le manifest par défaut
+                manifestLink.setAttribute('href', '/manifest.json');
+                return null;
+              }
+              return response.json();
+            })
             .then(manifest => {
+              if (!manifest) return; // Ignorer si erreur 404
+              
               // Mettre à jour le theme-color
               const themeColorMeta = document.getElementById('pwa-theme-color');
               if (themeColorMeta && manifest.theme_color) {
@@ -86,8 +95,7 @@
               console.log('✅ Manifest chargé pour type:', userType, 'Nom:', manifest.name);
             })
             .catch(error => {
-              console.error('Erreur lors du chargement du manifest:', error);
-              // En cas d'erreur, utiliser le manifest par défaut
+              // Erreur silencieuse - utiliser le manifest par défaut
               manifestLink.setAttribute('href', '/manifest.json');
             });
         }
