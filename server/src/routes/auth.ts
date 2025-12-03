@@ -58,124 +58,11 @@ interface AuthResponse {
 }
 
 // ============================================================================
-// SYSTÈME MULTI-PROFILS - Fonctions Helper
+// SYSTÈME D'AUTHENTIFICATION SIMPLIFIÉ - UN EMAIL = UN TYPE
 // ============================================================================
-
-interface UserProfile {
-  type: 'client' | 'expert' | 'apporteur' | 'admin';
-  database_id: string;
-  data: any;
-}
-
-/**
- * Trouve tous les profils liés à un utilisateur via auth_user_id
- * @param authUserId - ID du compte Supabase Auth
- * @param email - Email de l'utilisateur (fallback)
- */
-async function findUserProfiles(authUserId: string, email: string): Promise<UserProfile[]> {
-  const profiles: UserProfile[] = [];
-  
-  // Rechercher dans Client
-  const { data: client } = await supabaseAdmin
-    .from('Client')
-    .select('id, email, company_name, is_active, created_at, auth_user_id')
-    .or(`auth_user_id.eq.${authUserId},email.eq.${email}`)
-    .maybeSingle();
-  
-  if (client && client.is_active !== false) {
-    profiles.push({
-      type: 'client',
-      database_id: client.id,
-      data: client
-    });
-  }
-  
-  // Rechercher dans Expert
-  const { data: expert, error: expertError } = await supabaseAdmin
-    .from('Expert')
-    .select('*')
-    .or(`auth_user_id.eq.${authUserId},email.eq.${email}`)
-    .maybeSingle();
-  
-  console.log('🔍 DEBUG Expert search:', { 
-    authUserId, 
-    email, 
-    found: !!expert,
-    expertError: expertError?.message,
-    expertData: expert ? {
-      id: expert.id,
-      email: expert.email,
-      auth_user_id: expert.auth_user_id,
-      is_active: expert.is_active,
-      status: expert.status,
-      approval_status: expert.approval_status
-    } : null
-  });
-  
-  if (expert && expert.is_active !== false && expert.approval_status === 'approved') {
-    profiles.push({
-      type: 'expert',
-      database_id: expert.id,
-      data: expert
-    });
-  }
-  
-  // Rechercher dans ApporteurAffaires
-  const { data: apporteur } = await supabaseAdmin
-    .from('ApporteurAffaires')
-    .select('id, email, first_name, last_name, company_name, is_active, created_at, auth_user_id, status')
-    .or(`auth_user_id.eq.${authUserId},email.eq.${email}`)
-    .maybeSingle();
-  
-  if (apporteur && apporteur.is_active !== false) {
-    profiles.push({
-      type: 'apporteur',
-      database_id: apporteur.id,
-      data: apporteur
-    });
-  }
-  
-  // Rechercher dans Admin
-  const { data: admin } = await supabaseAdmin
-    .from('Admin')
-    .select('id, email, name, role, is_active, created_at, auth_user_id')
-    .or(`auth_user_id.eq.${authUserId},email.eq.${email}`)
-    .maybeSingle();
-  
-  if (admin && admin.is_active !== false) {
-    profiles.push({
-      type: 'admin',
-      database_id: admin.id,
-      data: admin
-    });
-  }
-  
-  return profiles;
-}
-
-/**
- * Retourne l'URL de connexion selon le type
- */
-function getLoginUrl(type: string): string {
-  const urls: Record<string, string> = {
-    'client': '/connexion-client',
-    'expert': '/connexion-expert',
-    'apporteur': '/connexion-apporteur',
-    'admin': '/connect-admin'
-  };
-  return urls[type] || '/';
-}
-
-/**
- * Extrait le nom d'affichage d'un profil
- */
-function getTypeName(data: any): string {
-  if (data.first_name && data.last_name) {
-    return `${data.first_name} ${data.last_name}`;
-  }
-  if (data.company_name) return data.company_name;
-  return data.email || 'Utilisateur';
-}
+// Chaque route d'authentification recherche UNIQUEMENT dans sa table spécifique
+// Plus de multi-profils, plus de available_types
+// ============================================================================
 
 // Route de vérification d'authentification
 const checkAuth = async (req: Request, res: express.Response) => {
@@ -274,20 +161,20 @@ router.get('/check', checkAuth);
 // ROUTES D'AUTHENTIFICATION MULTI-PROFILS
 // ============================================================================
 
-// Route de connexion CLIENT avec support multi-profils
+// POST /api/auth/client/login - Connexion CLIENT (SIMPLIFIÉ)
 router.post('/client/login', loginRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log("🔑 Tentative de connexion CLIENT:", { email });
+    console.log("🔑 Connexion CLIENT:", { email });
 
-    // 1. ✅ Authentifier avec Supabase Auth (client ANON pour l'authentification)
+    // 1. ✅ Authentifier avec Supabase Auth
     const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email,
       password
     });
 
     if (authError || !authData?.user) {
-      console.error("❌ Erreur d'authentification:", authError);
+      console.error("❌ Auth échouée:", authError);
       return res.status(401).json({
         success: false,
         message: 'Email ou mot de passe incorrect'
@@ -295,56 +182,47 @@ router.post('/client/login', loginRateLimiter, async (req, res) => {
     }
 
     const authUserId = authData.user.id;
-    const userEmail = authData.user.email;
+    const userEmail = authData.user.email || '';
     
-    // 2. Trouver tous les profils liés à ce compte
-    const profiles = await findUserProfiles(authUserId, userEmail || '');
+    // 2. ✅ Recherche DIRECTE dans Client uniquement
+    const { data: client, error: clientError } = await supabaseAdmin
+      .from('Client')
+      .select('*')
+      .eq('auth_user_id', authUserId)
+      .maybeSingle();
     
-    if (profiles.length === 0) {
+    if (clientError || !client) {
+      console.error("❌ Client non trouvé:", clientError);
       return res.status(403).json({ 
         success: false, 
-        message: 'Aucun profil actif trouvé pour cet utilisateur' 
+        message: 'Aucun compte client trouvé pour cet utilisateur' 
       });
     }
     
-    // 3. Vérifier que l'utilisateur a un profil client
-    const clientProfile = profiles.find(p => p.type === 'client');
-    
-    if (!clientProfile) {
-      // L'utilisateur a des profils mais pas client
-      const primaryProfile = profiles[0];
-      
-      return res.status(403).json({ 
-        success: false, 
-        message: `Vous n'avez pas de compte client.`,
-        redirect_to_type: primaryProfile.type,
-        redirect_url: getLoginUrl(primaryProfile.type),
-        available_types: profiles.map(p => ({
-          type: p.type,
-          login_url: getLoginUrl(p.type),
-          name: getTypeName(p.data)
-        }))
+    // 3. ✅ Vérifier que le client est actif
+    if (client.is_active === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Compte client désactivé'
       });
     }
-    
-    // 4. ✅ Mettre à jour user_metadata avec le type pour persistance après refresh
+
+    // 4. ✅ Mettre à jour user_metadata (pour refresh auto)
     await supabaseAdmin.auth.admin.updateUserById(authUserId, {
       user_metadata: {
         type: 'client',
-        database_id: clientProfile.database_id,
-        email: userEmail || '',
-        company_name: clientProfile.data.company_name,
-        available_types: profiles.map(p => p.type)
+        database_id: client.id,
+        email: userEmail,
+        company_name: client.company_name
       }
     });
     
-    console.log("✅ Client authentifié avec succès:", { email: userEmail, available_types: profiles.map(p => p.type) });
+    console.log("✅ Client authentifié:", { email: userEmail, id: client.id });
     
-    // 5. Réponse avec session Supabase
+    // 5. ✅ Retourner session Supabase + données client
     return res.json({
       success: true,
       data: {
-        // ✅ Renvoyer les tokens Supabase pour créer la session côté client
         supabase_session: {
           access_token: authData.session?.access_token,
           refresh_token: authData.session?.refresh_token,
@@ -352,17 +230,15 @@ router.post('/client/login', loginRateLimiter, async (req, res) => {
           expires_in: authData.session?.expires_in
         },
         user: {
-          ...clientProfile.data,
+          ...client,
           type: 'client',
-          database_id: clientProfile.database_id,
-          available_types: profiles.map(p => p.type),
           auth_user_id: authUserId
         }
       }
     });
     
   } catch (error) {
-    console.error('❌ Erreur lors de la connexion CLIENT:', error);
+    console.error('❌ Erreur connexion CLIENT:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la connexion',
@@ -371,20 +247,20 @@ router.post('/client/login', loginRateLimiter, async (req, res) => {
   }
 });
 
-// Route de connexion EXPERT avec support multi-profils
+// POST /api/auth/expert/login - Connexion EXPERT (SIMPLIFIÉ)
 router.post('/expert/login', loginRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log("🔑 Tentative de connexion EXPERT:", { email });
+    console.log("🔑 Connexion EXPERT:", { email });
 
-    // 1. ✅ Authentifier avec Supabase Auth (client ANON pour l'authentification)
+    // 1. ✅ Authentifier avec Supabase Auth
     const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email,
       password
     });
 
     if (authError || !authData?.user) {
-      console.error("❌ Erreur d'authentification:", authError);
+      console.error("❌ Auth échouée:", authError);
       return res.status(401).json({
         success: false,
         message: 'Email ou mot de passe incorrect'
@@ -392,66 +268,64 @@ router.post('/expert/login', loginRateLimiter, async (req, res) => {
     }
 
     const authUserId = authData.user.id;
-    const userEmail = authData.user.email;
+    const userEmail = authData.user.email || '';
     
-    // 2. Trouver tous les profils liés à ce compte
-    const profiles = await findUserProfiles(authUserId, userEmail || '');
+    // 2. ✅ Recherche DIRECTE dans Expert uniquement
+    const { data: expert, error: expertError } = await supabaseAdmin
+      .from('Expert')
+      .select('*')
+      .eq('auth_user_id', authUserId)
+      .maybeSingle();
     
-    if (profiles.length === 0) {
+    if (expertError || !expert) {
+      console.error("❌ Expert non trouvé:", expertError);
       return res.status(403).json({ 
         success: false, 
-        message: 'Aucun profil actif trouvé pour cet utilisateur' 
+        message: 'Aucun compte expert trouvé pour cet utilisateur' 
       });
     }
     
-    // 3. Vérifier que l'utilisateur a un profil expert
-    const expertProfile = profiles.find(p => p.type === 'expert');
-    
-    if (!expertProfile) {
-      // L'utilisateur a des profils mais pas expert
-      const primaryProfile = profiles[0];
-      
-      return res.status(403).json({ 
-        success: false, 
-        message: `Vous n'avez pas de compte expert.`,
-        redirect_to_type: primaryProfile.type,
-        redirect_url: getLoginUrl(primaryProfile.type),
-        available_types: profiles.map(p => ({
-          type: p.type,
-          login_url: getLoginUrl(p.type),
-          name: getTypeName(p.data)
-        }))
+    // 3. ✅ Vérifier statut actif et approuvé
+    if (expert.is_active === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Compte expert désactivé'
       });
     }
     
-    // 4. ✅ Mettre à jour user_metadata avec le type pour persistance après refresh
+    if (expert.approval_status !== 'approved') {
+      return res.status(403).json({
+        success: false,
+        message: 'Compte en attente d\'approbation',
+        approval_status: expert.approval_status
+      });
+    }
+
+    // 4. ✅ Mettre à jour user_metadata (pour refresh auto)
     await supabaseAdmin.auth.admin.updateUserById(authUserId, {
       user_metadata: {
         type: 'expert',
-        database_id: expertProfile.database_id,
-        email: userEmail || '',
-        name: expertProfile.data.name,
-        available_types: profiles.map(p => p.type)
+        database_id: expert.id,
+        email: userEmail,
+        name: expert.name
       }
     });
     
-    console.log("✅ Expert authentifié avec succès:", { email: userEmail, available_types: profiles.map(p => p.type) });
-    
-    // 5. Récupérer les infos cabinet si l'expert en a un
+    // 5. ✅ Récupérer infos cabinet si disponible
     let cabinetInfo = null;
     try {
       const { CabinetService } = await import('../services/cabinetService');
-      cabinetInfo = await CabinetService.getExpertCabinetInfo(expertProfile.database_id);
+      cabinetInfo = await CabinetService.getExpertCabinetInfo(expert.id);
     } catch (cabinetError) {
-      console.warn('⚠️  Impossible de récupérer les infos cabinet:', cabinetError);
-      // Ne pas bloquer la connexion si erreur cabinet
+      console.warn('⚠️ Erreur cabinet (non bloquant):', cabinetError);
     }
     
-    // 6. Réponse avec session Supabase
+    console.log("✅ Expert authentifié:", { email: userEmail, id: expert.id });
+    
+    // 6. ✅ Retourner session Supabase + données expert
     return res.json({
       success: true,
       data: {
-        // ✅ Renvoyer les tokens Supabase pour créer la session côté client
         supabase_session: {
           access_token: authData.session?.access_token,
           refresh_token: authData.session?.refresh_token,
@@ -459,10 +333,8 @@ router.post('/expert/login', loginRateLimiter, async (req, res) => {
           expires_in: authData.session?.expires_in
         },
         user: {
-          ...expertProfile.data,
+          ...expert,
           type: 'expert',
-          database_id: expertProfile.database_id,
-          available_types: profiles.map(p => p.type),
           auth_user_id: authUserId,
           cabinet: cabinetInfo ? {
             id: cabinetInfo.cabinet_id,
@@ -474,7 +346,7 @@ router.post('/expert/login', loginRateLimiter, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Erreur lors de la connexion EXPERT:', error);
+    console.error('❌ Erreur connexion EXPERT:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la connexion',
@@ -483,20 +355,20 @@ router.post('/expert/login', loginRateLimiter, async (req, res) => {
   }
 });
 
-// Route de connexion APPORTEUR avec support multi-profils
+// POST /api/auth/apporteur/login - Connexion APPORTEUR (SIMPLIFIÉ)
 router.post('/apporteur/login', loginRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log("🔑 Tentative de connexion APPORTEUR:", { email });
+    console.log("🔑 Connexion APPORTEUR:", { email });
 
-    // 1. ✅ Authentifier avec Supabase Auth (client ANON pour l'authentification)
+    // 1. ✅ Authentifier avec Supabase Auth
     const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email,
       password
     });
 
     if (authError || !authData?.user) {
-      console.error("❌ Erreur d'authentification:", authError);
+      console.error("❌ Auth échouée:", authError);
       return res.status(401).json({
         success: false,
         message: 'Email ou mot de passe incorrect'
@@ -504,56 +376,47 @@ router.post('/apporteur/login', loginRateLimiter, async (req, res) => {
     }
 
     const authUserId = authData.user.id;
-    const userEmail = authData.user.email;
+    const userEmail = authData.user.email || '';
     
-    // 2. Trouver tous les profils liés à ce compte
-    const profiles = await findUserProfiles(authUserId, userEmail || '');
+    // 2. ✅ Recherche DIRECTE dans ApporteurAffaires uniquement
+    const { data: apporteur, error: apporteurError } = await supabaseAdmin
+      .from('ApporteurAffaires')
+      .select('*')
+      .eq('auth_user_id', authUserId)
+      .maybeSingle();
     
-    if (profiles.length === 0) {
+    if (apporteurError || !apporteur) {
+      console.error("❌ Apporteur non trouvé:", apporteurError);
       return res.status(403).json({ 
         success: false, 
-        message: 'Aucun profil actif trouvé pour cet utilisateur' 
+        message: 'Aucun compte apporteur trouvé pour cet utilisateur' 
       });
     }
     
-    // 3. Vérifier que l'utilisateur a un profil apporteur
-    const apporteurProfile = profiles.find(p => p.type === 'apporteur');
-    
-    if (!apporteurProfile) {
-      // L'utilisateur a des profils mais pas apporteur
-      const primaryProfile = profiles[0];
-      
-      return res.status(403).json({ 
-        success: false, 
-        message: `Vous n'avez pas de compte apporteur.`,
-        redirect_to_type: primaryProfile.type,
-        redirect_url: getLoginUrl(primaryProfile.type),
-        available_types: profiles.map(p => ({
-          type: p.type,
-          login_url: getLoginUrl(p.type),
-          name: getTypeName(p.data)
-        }))
+    // 3. ✅ Vérifier que l'apporteur est actif
+    if (apporteur.is_active === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Compte apporteur désactivé'
       });
     }
-    
-    // 4. ✅ Mettre à jour user_metadata avec le type pour persistance après refresh
+
+    // 4. ✅ Mettre à jour user_metadata (pour refresh auto)
     await supabaseAdmin.auth.admin.updateUserById(authUserId, {
       user_metadata: {
         type: 'apporteur',
-        database_id: apporteurProfile.database_id,
-        email: userEmail || '',
-        company_name: apporteurProfile.data.company_name,
-        available_types: profiles.map(p => p.type)
+        database_id: apporteur.id,
+        email: userEmail,
+        company_name: apporteur.company_name
       }
     });
     
-    console.log("✅ Apporteur authentifié avec succès:", { email: userEmail, available_types: profiles.map(p => p.type) });
+    console.log("✅ Apporteur authentifié:", { email: userEmail, id: apporteur.id });
     
-    // 5. Réponse avec session Supabase
+    // 5. ✅ Retourner session Supabase + données apporteur
     return res.json({
       success: true,
       data: {
-        // ✅ Renvoyer les tokens Supabase pour créer la session côté client
         supabase_session: {
           access_token: authData.session?.access_token,
           refresh_token: authData.session?.refresh_token,
@@ -561,17 +424,15 @@ router.post('/apporteur/login', loginRateLimiter, async (req, res) => {
           expires_in: authData.session?.expires_in
         },
         user: {
-          ...apporteurProfile.data,
+          ...apporteur,
           type: 'apporteur',
-          database_id: apporteurProfile.database_id,
-          available_types: profiles.map(p => p.type),
           auth_user_id: authUserId
         }
       }
     });
     
   } catch (error) {
-    console.error('❌ Erreur lors de la connexion APPORTEUR:', error);
+    console.error('❌ Erreur connexion APPORTEUR:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la connexion',
@@ -580,20 +441,20 @@ router.post('/apporteur/login', loginRateLimiter, async (req, res) => {
   }
 });
 
-// POST /api/auth/admin/login - Connexion ADMIN
+// POST /api/auth/admin/login - Connexion ADMIN (SIMPLIFIÉ)
 router.post('/admin/login', loginRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log("🔑 Tentative de connexion ADMIN:", { email });
+    console.log("🔑 Connexion ADMIN:", { email });
 
-    // 1. ✅ Authentifier avec Supabase Auth (client ANON pour l'authentification)
+    // 1. ✅ Authentifier avec Supabase Auth
     const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email,
       password
     });
 
     if (authError || !authData?.user) {
-      console.error("❌ Erreur d'authentification:", authError);
+      console.error("❌ Auth échouée:", authError);
       return res.status(401).json({
         success: false,
         message: 'Email ou mot de passe incorrect'
@@ -601,64 +462,47 @@ router.post('/admin/login', loginRateLimiter, async (req, res) => {
     }
 
     const authUserId = authData.user.id;
-    const userEmail = authData.user.email;
+    const userEmail = authData.user.email || '';
     
-    // 2. Trouver tous les profils liés à ce compte
-    const profiles = await findUserProfiles(authUserId, userEmail || '');
+    // 2. ✅ Recherche DIRECTE dans Admin uniquement (1 email = 1 type)
+    const { data: admin, error: adminError } = await supabaseAdmin
+      .from('Admin')
+      .select('*')
+      .eq('auth_user_id', authUserId)
+      .maybeSingle();
     
-    if (profiles.length === 0) {
+    if (adminError || !admin) {
+      console.error("❌ Admin non trouvé:", adminError);
       return res.status(403).json({ 
         success: false, 
-        message: 'Aucun profil actif trouvé pour cet utilisateur' 
+        message: 'Aucun compte administrateur trouvé pour cet utilisateur' 
       });
     }
-
-    // 3. Vérifier qu'il y a un profil admin
-    const adminProfile = profiles.find(p => p.type === 'admin');
     
-    if (!adminProfile) {
-      // Multi-profils : retourner les profils disponibles
-      const availableTypes = profiles.map(p => ({
-        type: p.type,
-        name: getTypeName(p.data),
-        login_url: getLoginUrl(p.type)
-      }));
-      
-      return res.status(403).json({
-        success: false,
-        message: `Cet email est associé à un compte ${availableTypes[0].name}, pas un compte administrateur.`,
-        redirect_to_type: availableTypes[0].type,
-        available_types: availableTypes
-      });
-    }
-
-    const admin = adminProfile.data;
-    
-    // 4. Vérifier que l'admin est actif
+    // 3. ✅ Vérifier que l'admin est actif
     if (admin.is_active === false) {
       return res.status(403).json({
         success: false,
-        message: 'Votre compte administrateur est désactivé. Contactez le support.'
+        message: 'Compte administrateur désactivé'
       });
     }
 
-    // 5. ✅ Mettre à jour user_metadata avec le type pour persistance après refresh
+    // 4. ✅ Mettre à jour user_metadata (pour refresh auto)
     await supabaseAdmin.auth.admin.updateUserById(authUserId, {
       user_metadata: {
         type: 'admin',
         database_id: admin.id,
-        email: userEmail || '',
-        name: admin.name,
-        available_types: profiles.map(p => p.type)
+        email: userEmail,
+        name: admin.name
       }
     });
     
-    console.log("✅ Admin authentifié avec succès:", { email: userEmail, adminId: admin.id });
+    console.log("✅ Admin authentifié:", { email: userEmail, id: admin.id });
 
+    // 5. ✅ Retourner session Supabase + données admin
     return res.json({
       success: true,
       data: {
-        // ✅ Renvoyer les tokens Supabase pour créer la session côté client
         supabase_session: {
           access_token: authData.session?.access_token,
           refresh_token: authData.session?.refresh_token,
@@ -667,18 +511,14 @@ router.post('/admin/login', loginRateLimiter, async (req, res) => {
         },
         user: {
           ...admin,
-          id: authUserId,
-          email: userEmail || '',
           type: 'admin',
-          database_id: admin.id,
-          auth_user_id: authUserId,
-          available_types: profiles.map(p => p.type)
-        } as any
+          auth_user_id: authUserId
+        }
       }
     });
 
   } catch (error) {
-    console.error('❌ Erreur lors de la connexion ADMIN:', error);
+    console.error('❌ Erreur connexion ADMIN:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la connexion',
@@ -1253,31 +1093,47 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         console.error('❌ Erreur création notification admin:', notifError);
       }
 
-      // Générer le token JWT avec auth multi-profils
-      const token = jwt.sign(
-        { 
-          id: authData.user.id,              // 🔥 ID Supabase Auth
-          email: insertedClient.email, 
+      // ✅ Mettre à jour user_metadata
+      await supabaseAdmin.auth.admin.updateUserById(authData.user.id, {
+        user_metadata: {
           type: 'client',
-          database_id: insertedClient.id,    // 🔥 ID table Client
-          available_types: ['client'],       // 🔥 Pour l'instant 1 seul type
-          iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
-        },
-        jwtConfig.secret
-      );
+          database_id: insertedClient.id,
+          email: insertedClient.email,
+          company_name: insertedClient.company_name
+        }
+      });
 
-      // Préparer la réponse avec tous les champs attendus par le frontend
+      console.log('✅ Client inscrit avec succès. Connexion automatique...');
+      
+      // ✅ Connecter automatiquement après inscription
+      const { data: signInData, error: signInError } = await supabaseAuth.auth.signInWithPassword({
+        email: insertedClient.email,
+        password
+      });
+      
+      if (signInError || !signInData.session) {
+        console.warn('⚠️ Inscription OK mais connexion auto échouée');
+        return res.status(200).json({
+          success: true,
+          message: 'Inscription réussie. Veuillez vous connecter.',
+          data: { user: { ...insertedClient, type: 'client' } }
+        });
+      }
+
+      // ✅ Retourner session Supabase
       return res.status(200).json({
         success: true,
         data: {
-          token,
+          supabase_session: {
+            access_token: signInData.session.access_token,
+            refresh_token: signInData.session.refresh_token,
+            expires_at: signInData.session.expires_at,
+            expires_in: signInData.session.expires_in
+          },
           user: {
             ...insertedClient,
             type: 'client',
-            database_id: insertedClient.id,
-            auth_user_id: authData.user.id,
-            available_types: ['client']
+            auth_user_id: authData.user.id
           }
         }
       });
@@ -1353,32 +1209,25 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         console.error('❌ Erreur notification admin (non bloquant):', notifError);
       }
 
-      // Générer le token JWT avec auth multi-profils
-      const token = jwt.sign(
-        { 
-          id: authData.user.id,              // 🔥 ID Supabase Auth
-          email: insertedExpert.email, 
+      // ✅ Mettre à jour user_metadata
+      await supabaseAdmin.auth.admin.updateUserById(authData.user.id, {
+        user_metadata: {
           type: 'expert',
-          database_id: insertedExpert.id,    // 🔥 ID table Expert
-          available_types: ['expert'],       // 🔥 Pour l'instant 1 seul type
-          iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
-        },
-        jwtConfig.secret
-      );
+          database_id: insertedExpert.id,
+          email: insertedExpert.email,
+          name: insertedExpert.name
+        }
+      });
 
-      // Préparer la réponse avec message d'approbation
+      // ✅ Expert doit attendre approbation, pas de connexion auto
       return res.status(200).json({
         success: true,
         message: 'Expert inscrit avec succès. Votre compte sera activé après validation par nos équipes.',
         data: {
-          token,
           user: {
             ...insertedExpert,
             type: 'expert',
-            database_id: insertedExpert.id,
-            auth_user_id: authData.user.id,
-            available_types: ['expert']
+            auth_user_id: authData.user.id
           }
         }
       });
@@ -2118,97 +1967,9 @@ router.get('/sessions', async (req, res) => {
 });
 
 // ============================================================================
-// ROUTE SWITCH TYPE - Changer de profil sans se reconnecter
+// ROUTE SWITCH TYPE - SUPPRIMÉE
 // ============================================================================
-
-router.post('/switch-type', async (req: Request, res: Response) => {
-  try {
-    const { new_type } = req.body;
-    
-    // Récupérer l'utilisateur du token
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token manquant ou invalide'
-      });
-    }
-    
-    const token = authHeader.substring(7);
-    let decoded: any;
-    
-    try {
-      decoded = jwt.verify(token, jwtConfig.secret);
-    } catch (error) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token invalide ou expiré'
-      });
-    }
-    
-    const authUserId = decoded.id;
-    const email = decoded.email;
-    
-    console.log("🔄 Switch type demandé:", { from: decoded.type, to: new_type, email });
-    
-    // Trouver tous les profils
-    const profiles = await findUserProfiles(authUserId, email);
-    
-    if (profiles.length === 0) {
-      return res.status(403).json({
-        success: false,
-        message: 'Aucun profil trouvé'
-      });
-    }
-    
-    // Vérifier que l'utilisateur a accès au type demandé
-    const targetProfile = profiles.find(p => p.type === new_type);
-    
-    if (!targetProfile) {
-      return res.status(403).json({
-        success: false,
-        message: `Type ${new_type} non disponible pour cet utilisateur`,
-        available_types: profiles.map(p => p.type)
-      });
-    }
-    
-    // Créer nouveau JWT
-    const newToken = jwt.sign(
-      {
-        id: authUserId,
-        email: email,
-        type: new_type,
-        database_id: targetProfile.database_id,
-        available_types: profiles.map(p => p.type),
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
-      },
-      jwtConfig.secret
-    );
-    
-    console.log("✅ Switch type réussi:", { email, new_type, available_types: profiles.map(p => p.type) });
-    
-    return res.json({
-      success: true,
-      data: {
-        token: newToken,
-        user: {
-          ...targetProfile.data,
-          type: new_type,
-          database_id: targetProfile.database_id,
-          available_types: profiles.map(p => p.type),
-          auth_user_id: authUserId
-        }
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Erreur switch type:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors du changement de type'
-    });
-  }
-});
+// Plus nécessaire avec le système simplifié (1 email = 1 type)
+// Si besoin de changer de type, l'utilisateur doit créer un nouveau compte
 
 export default router; 
