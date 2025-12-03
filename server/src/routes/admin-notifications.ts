@@ -215,6 +215,8 @@ router.get('/admin', enhancedAuthMiddleware, async (req: Request, res: Response)
         .select('*')
         .eq('user_id', userId)
         .eq('user_type', 'admin')
+        .neq('status', 'replaced')
+        .eq('hidden_in_list', false)
         .order('created_at', { ascending: false });
       
       // Si un status spécifique est demandé, filtrer

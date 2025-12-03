@@ -8,6 +8,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NotificationPreferencesChecker } from './notification-preferences-checker';
+import { NotificationAggregationService } from './notification-aggregation-service';
 
 const supabase = createClient(
   process.env.SUPABASE_URL || '',
@@ -75,6 +76,7 @@ export class DocumentValidationReminderService {
 
       console.log(`📊 [Document SLA Reminder] ${dossiers.length} dossier(s) en attente trouvé(s)`);
       let remindersSent = 0;
+      const adminsToAggregate = new Set<string>();
 
       for (const dossier of dossiers) {
         const transformedDossier: DossierPending = {
@@ -90,12 +92,24 @@ export class DocumentValidationReminderService {
         const shouldRemind = this.shouldSendReminder(transformedDossier, now);
         
         if (shouldRemind.should && shouldRemind.threshold) {
-          await this.sendReminder(transformedDossier, shouldRemind.threshold);
+          const affectedAdmins = await this.sendReminder(transformedDossier, shouldRemind.threshold);
           remindersSent++;
+          
+          // Collecter les admins qui ont reçu des notifications pour agrégation
+          affectedAdmins.forEach(adminId => adminsToAggregate.add(adminId));
         }
       }
 
       console.log(`✅ [Document SLA Reminder] Vérification terminée - ${remindersSent} rappel(s) envoyé(s)`);
+
+      // Agréger les notifications par client pour chaque admin affecté
+      if (adminsToAggregate.size > 0) {
+        console.log(`\n📊 [Document SLA Reminder] Agrégation pour ${adminsToAggregate.size} admin(s)...`);
+        for (const adminId of adminsToAggregate) {
+          await NotificationAggregationService.aggregateNotificationsByClient(adminId);
+        }
+        console.log('✅ [Document SLA Reminder] Agrégation terminée');
+      }
     } catch (error) {
       console.error('❌ [Document SLA Reminder] Erreur lors de la vérification:', error);
     }
@@ -144,7 +158,8 @@ export class DocumentValidationReminderService {
   static async sendReminder(
     dossier: DossierPending,
     threshold: '24h' | '48h' | '120h'
-  ): Promise<void> {
+  ): Promise<string[]> {
+    const affectedAdmins: string[] = [];
     try {
       const referenceDate = new Date(dossier.updated_at || dossier.created_at);
       const now = new Date();
@@ -179,7 +194,7 @@ export class DocumentValidationReminderService {
 
       if (!admins || admins.length === 0) {
         console.warn('⚠️ [Document SLA Reminder] Aucun admin actif trouvé');
-        return;
+        return [];
       }
 
       // Créer une notification et remplacer l'ancienne pour chaque admin
@@ -199,7 +214,7 @@ export class DocumentValidationReminderService {
         }
 
         // ====================================================================
-        // ÉTAPE 1 : CRÉER LA NOUVELLE NOTIFICATION SLA
+        // ÉTAPE 1 : CRÉER LA NOUVELLE NOTIFICATION SLA (ENFANT)
         // ====================================================================
         const { data: newNotification, error: insertError } = await supabase
           .from('notification')
@@ -212,9 +227,15 @@ export class DocumentValidationReminderService {
             priority: reminderPriority,
             is_read: false,
             status: 'unread',
+            is_child: false, // Sera mis à true lors de l'agrégation
+            hidden_in_list: false, // Sera mis à true lors de l'agrégation
             action_url: `/admin/dossiers/${dossier.id}`,
             action_data: {
               client_produit_id: dossier.id,
+              client_id: dossier.Client?.id,
+              client_name: clientName,
+              client_company: clientName,
+              product_name: produitNom,
               threshold: threshold,
               sla_reminder: true,
               days_elapsed: daysElapsed,
@@ -222,11 +243,12 @@ export class DocumentValidationReminderService {
             },
             metadata: {
               client_produit_id: dossier.id,
+              client_id: dossier.Client?.id,
+              client_name: clientName,
+              produit_nom: produitNom,
               threshold: threshold,
               days_elapsed: daysElapsed,
-              hours_elapsed: Math.floor(hoursElapsed),
-              client_name: clientName,
-              produit_nom: produitNom
+              hours_elapsed: Math.floor(hoursElapsed)
             },
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -244,6 +266,7 @@ export class DocumentValidationReminderService {
         }
 
         console.log(`✅ [Document SLA Reminder] Notification ${threshold} créée pour ${admin.email} (dossier ${dossier.id})`);
+        affectedAdmins.push(admin.auth_user_id);
 
         // ====================================================================
         // ÉTAPE 2 : REMPLACER LES ANCIENNES NOTIFICATIONS (SYSTÈME EN CASCADE)
@@ -341,8 +364,11 @@ export class DocumentValidationReminderService {
         .eq('id', dossier.id);
 
       console.log(`✅ [Document SLA Reminder] Rappel ${threshold} envoyé et dossier ${dossier.id} mis à jour`);
+      
+      return affectedAdmins;
     } catch (error) {
       console.error(`❌ [Document SLA Reminder] Erreur lors de l'envoi du rappel:`, error);
+      return [];
     }
   }
 }

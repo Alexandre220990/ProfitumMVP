@@ -34,6 +34,7 @@ import {
   formatTimeElapsed,
   getSLAStatusClasses
 } from '@/utils/notification-sla';
+import { NotificationGroup } from './NotificationGroup';
 
 interface Notification {
   id: string;
@@ -44,6 +45,11 @@ interface Notification {
   notification_type: string;
   priority: 'low' | 'normal' | 'medium' | 'high' | 'urgent';
   is_read: boolean;
+  is_parent?: boolean;
+  is_child?: boolean;
+  hidden_in_list?: boolean;
+  children_count?: number;
+  parent_id?: string;
   action_url?: string;
   action_data?: any;
   metadata?: any;
@@ -286,6 +292,19 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
           <ScrollArea className={compact ? 'h-[300px]' : 'h-[500px]'}>
             <div className="space-y-3">
               {filteredNotifications.map((notification) => {
+                // Si c'est une notification parent (groupée), utiliser NotificationGroup
+                if (notification.is_parent && notification.notification_type === 'client_actions_summary') {
+                  return (
+                    <NotificationGroup
+                      key={notification.id}
+                      notification={notification}
+                      onNotificationClick={handleNotificationClick}
+                      onDismiss={dismissNotification}
+                    />
+                  );
+                }
+
+                // Sinon, affichage normal pour les notifications individuelles
                 const slaStatus = calculateSLAStatus(notification.notification_type, notification.created_at);
                 const isUrgent = notification.priority === 'urgent' || notification.priority === 'high';
                 

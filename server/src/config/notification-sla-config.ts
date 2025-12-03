@@ -221,15 +221,6 @@ export const NOTIFICATION_SLA_CONFIG: Record<string, NotificationSLA> = {
     description: 'Acceptation du dossier par l\'expert - Critique'
   },
 
-  /** Documents en attente de validation - Rappel */
-  documents_pending_validation_reminder: {
-    targetHours: 24,      // 24h pour valider
-    acceptableHours: 48,  // 48h acceptable
-    criticalHours: 72,    // 72h critique
-    defaultPriority: 'high',
-    description: 'Validation des documents sous 24h - Rappel'
-  },
-
   /** Documents en attente de validation - Escalade */
   documents_pending_validation_escalated: {
     targetHours: 48,      // 48h pour valider

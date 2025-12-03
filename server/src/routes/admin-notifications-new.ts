@@ -128,12 +128,14 @@ router.get('/admin', enhancedAuthMiddleware, async (req: Request, res: Response)
       });
     }
 
-    // Récupérer toutes les notifications pour cet admin
+    // Récupérer toutes les notifications pour cet admin (exclure les remplacées et masquées)
     const { data: notifications, error } = await supabase
       .from('notification')
       .select('*')
       .eq('user_id', user.id)
       .eq('user_type', 'admin')
+      .neq('status', 'replaced')
+      .eq('hidden_in_list', false)
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -161,8 +163,57 @@ router.get('/admin', enhancedAuthMiddleware, async (req: Request, res: Response)
 });
 
 /**
+ * GET /api/notifications/:id/children
+ * Récupérer les notifications enfants d'une notification parent
+ */
+router.get('/:id/children', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    // Récupérer les enfants de cette notification parent
+    const { data: children, error } = await supabase
+      .from('notification')
+      .select('*')
+      .eq('parent_id', id)
+      .eq('user_id', user.id)
+      .neq('status', 'replaced')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération enfants:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des détails'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: children || [],
+      count: children?.length || 0
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route children:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
  * PUT /api/notifications/:id/read
  * Marquer une notification comme lue
+ * Si c'est un parent, marque aussi tous les enfants
  */
 router.put('/:id/read', enhancedAuthMiddleware, async (req: Request, res: Response) => {
   try {
@@ -176,6 +227,15 @@ router.put('/:id/read', enhancedAuthMiddleware, async (req: Request, res: Respon
       });
     }
 
+    // Vérifier si c'est un parent
+    const { data: notification } = await supabase
+      .from('notification')
+      .select('is_parent')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single();
+
+    // Marquer la notification comme lue
     const { error } = await supabase
       .from('notification')
       .update({
@@ -194,9 +254,30 @@ router.put('/:id/read', enhancedAuthMiddleware, async (req: Request, res: Respon
       });
     }
 
+    // Si c'est un parent, marquer aussi tous les enfants comme lus
+    if (notification?.is_parent) {
+      const { error: childrenError } = await supabase
+        .from('notification')
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('parent_id', id)
+        .eq('user_id', user.id);
+
+      if (childrenError) {
+        console.error('❌ Erreur marquage enfants comme lus:', childrenError);
+      } else {
+        console.log(`✅ Parent et enfants marqués comme lus pour notification ${id}`);
+      }
+    }
+
     return res.json({
       success: true,
-      message: 'Notification marquée comme lue'
+      message: notification?.is_parent 
+        ? 'Notification et ses détails marqués comme lus'
+        : 'Notification marquée comme lue'
     });
 
   } catch (error) {
