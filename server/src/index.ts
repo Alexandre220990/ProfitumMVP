@@ -10,6 +10,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth';
+import authSimpleRoutes from './routes/auth-simple';  // ✅ Nouvelles routes simplifiées
 import auditsRouter from './routes/audits';
 import simulationsRoutes from './routes/simulations';
 import partnersRouter from './routes/partners';
@@ -305,7 +306,15 @@ addCorsTestRoute(app);
 
 // ===== ROUTES PUBLIQUES (pas d'authentification requise) =====
 // Ces routes sont accessibles sans authentification mais sont loggées
-app.use('/api/auth', publicRouteLogger, authRoutes);
+
+// ✅ ROUTES D'AUTHENTIFICATION SIMPLIFIÉES (Supabase Native)
+// Priorité: /me, /check, /refresh (pas de login backend)
+app.use('/api/auth', publicRouteLogger, authSimpleRoutes);
+
+// ⚠️ ANCIENNES ROUTES (conservées temporairement pour compatibilité)
+// TODO: À supprimer après migration complète
+app.use('/api/auth-legacy', publicRouteLogger, authRoutes);
+
 app.use('/api/partners', publicRouteLogger, partnersRouter);
 
 // 🚀 ROUTES DU SIMULATEUR - PUBLIQUES (mode anonyme pur)

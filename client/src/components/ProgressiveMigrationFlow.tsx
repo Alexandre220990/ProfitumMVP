@@ -8,7 +8,7 @@ import { Card, CardContent } from './ui/card';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 import { CheckCircle, ArrowRight, UserPlus, Database, Rocket, Check } from 'lucide-react';
-import { loginWithSupabase } from '@/lib/supabase-auth';
+import { loginSimple } from '@/lib/auth-simple';
 
 // Types pour la migration
 interface SessionData {
@@ -89,8 +89,8 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
       if (result.success) {
         setMigrationProgress(100);
         
-        // ✅ Connexion automatique avec Supabase (route spécifique)
-        const loginResult = await loginWithSupabase({
+        // ✅ Connexion automatique avec Supabase (nouvelle méthode simplifiée)
+        const loginResult = await loginSimple({
           email: registrationData.email,
           password: registrationData.password
         });

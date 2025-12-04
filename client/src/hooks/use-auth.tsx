@@ -1,8 +1,7 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { loginWithSupabase, registerWithSupabase, logoutFromSupabase, checkSupabaseAuth } from '@/lib/supabase-auth';
-import { loginClient, loginExpert, loginApporteur } from '@/lib/auth-distinct';
+import { loginSimple, registerSimple, logoutSimple, checkAuthSimple } from '@/lib/auth-simple';
 import { UserType, LoginCredentials } from '@/types/api';
 import { supabase } from '@/lib/supabase';
 import { useSessionRefresh } from './use-session-refresh';
@@ -29,9 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async (shouldNavigate: boolean = true): Promise<boolean> => {
     try {
-      console.log('🔍 Vérification de l\'authentification avec Supabase...');
+      console.log('🔍 [use-auth] Vérification authentification simplifiée...');
       
-      const response = await checkSupabaseAuth();
+      // ✅ Utiliser le nouveau système simplifié
+      const response = await checkAuthSimple();
       
       if (!response.success || !response.data) {
         console.log('❌ Authentification échouée:', response.message);
@@ -53,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Mettre à jour le manifest PWA selon le type d'utilisateur
       if (typeof window !== 'undefined' && (window as any).updatePWAManifest) {
         (window as any).updatePWAManifest(user.type);
-        // Stocker le type d'utilisateur dans localStorage pour l'installation PWA
         localStorage.setItem('pwa_user_type', user.type);
       }
       
@@ -88,35 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (credentials: LoginCredentials) => {
-    console.log('🎯 [use-auth] login() appelé avec:', { email: credentials.email, type: credentials.type });
+    console.log('🎯 [use-auth] login() simplifié appelé avec:', { email: credentials.email, type: credentials.type });
     setIsLoading(true);
     try {
-      console.log('🔐 [use-auth] Tentative de connexion avec services distincts...');
+      console.log('🔐 [use-auth] Connexion DIRECTE avec Supabase Auth...');
       
-      // Supabase gère automatiquement le nettoyage de session
-      
-      // Utiliser la fonction d'authentification appropriée selon le type
-      let response;
-      if (credentials.type === 'client') {
-        console.log('→ [use-auth] Route CLIENT');
-        response = await loginClient(credentials);
-      } else if (credentials.type === 'expert') {
-        console.log('→ [use-auth] Route EXPERT');
-        response = await loginExpert(credentials);
-      } else if (credentials.type === 'apporteur') {
-        console.log('→ [use-auth] Route APPORTEUR');
-        response = await loginApporteur(credentials);
-      } else if (credentials.type === 'admin') {
-        console.log('→ [use-auth] Route ADMIN, import loginAdmin...');
-        const { loginAdmin } = await import('@/lib/auth-distinct');
-        console.log('→ [use-auth] loginAdmin importé, appel en cours...');
-        response = await loginAdmin(credentials);
-        console.log('→ [use-auth] loginAdmin terminé, response:', response);
-      } else {
-        console.log('→ [use-auth] Route FALLBACK');
-        // Fallback vers l'ancienne méthode pour compatibilité
-        response = await loginWithSupabase(credentials);
-      }
+      // ✅ Utiliser le nouveau système simplifié (authentification directe Supabase + récupération profil)
+      const response = await loginSimple(credentials);
       
       console.log('📥 Réponse authentification reçue:', { 
         success: response.success, 
@@ -137,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         database_id: user?.database_id
       });
 
-      // ✅ Supabase gère automatiquement le stockage du token (session persistante)
+      // ✅ Supabase gère automatiquement le stockage de la session (persistSession: true)
       
       // Convertir AuthUser vers UserType
       const userData: UserType = {
@@ -186,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         console.warn('⚠️ Type utilisateur non reconnu:', user.type);
         console.log('➡️ Redirection par défaut vers dashboard client');
-        navigate('/dashboard/client'); // Redirection par défaut vers client
+        navigate('/dashboard/client');
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur de connexion");
@@ -199,8 +176,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (data: any) => {
     setIsLoading(true);
     try {
-      console.log('📝 Tentative d\'inscription avec Supabase...');
-      const response = await registerWithSupabase(data);
+      console.log('📝 [use-auth] Inscription simplifiée avec Supabase...');
+      
+      // ✅ Utiliser le nouveau système simplifié
+      const response = await registerSimple(data);
       
       if (!response.success || !response.data) {
         throw new Error(response.message || "Erreur d'inscription");
@@ -208,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { user } = response.data;
 
-      // ✅ Supabase gère automatiquement le stockage du token (session persistante)
+      // ✅ Supabase gère automatiquement le stockage de la session (persistSession: true)
       
       // Convertir AuthUser vers UserType
       const userData: UserType = {
@@ -233,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         console.warn('⚠️ Type utilisateur non reconnu:', user.type);
         console.log('➡️ Redirection par défaut vers dashboard client');
-        navigate('/dashboard/client'); // Redirection par défaut vers client
+        navigate('/dashboard/client');
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur d'inscription");
@@ -245,14 +224,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await logoutFromSupabase();
+      console.log('👋 [use-auth] Déconnexion simplifiée...');
+      
+      // ✅ Utiliser le nouveau système simplifié
+      await logoutSimple();
       // ✅ Supabase gère automatiquement le nettoyage de session et des tokens
       
       setUser(null);
       navigate("/");
       toast.success("Déconnexion réussie ! Vous avez été déconnecté");
     } catch (error) {
-      console.error('Erreur lors de la déconnexion: ', error);
+      console.error('❌ Erreur lors de la déconnexion:', error);
     }
   };
 
