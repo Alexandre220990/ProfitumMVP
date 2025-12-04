@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { config } from "@/config/env";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 import { toast } from "sonner";
 import { UniversalNotificationCenter } from "@/components/notifications/UniversalNotificationCenter";
 import { Eye, Edit, Plus, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, FolderOpen, Package, FileText, Users, TrendingUp, CheckCircle, XCircle, AlertCircle, Clock, Euro } from "lucide-react";
@@ -176,7 +177,7 @@ export default function GestionDossiers() { const { user } = useAuth();
 
       if (!confirmValidation) return;
 
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) {
         toast.error("Token d'authentification manquant");
         return;
@@ -224,7 +225,7 @@ export default function GestionDossiers() { const { user } = useAuth();
     if (!reason) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) {
         toast.error("Token d'authentification manquant");
         return;
@@ -271,7 +272,7 @@ export default function GestionDossiers() { const { user } = useAuth();
     
     try {
       // Charger la liste des experts disponibles
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) return;
 
       const response = await fetch(`${config.API_URL}/api/admin/experts`, {
@@ -299,7 +300,7 @@ export default function GestionDossiers() { const { user } = useAuth();
     if (!selectedExpert || !selectedDossier) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) {
         toast.error("Token d'authentification manquant");
         return;

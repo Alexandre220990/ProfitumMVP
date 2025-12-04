@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { config } from "@/config/env";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -73,7 +74,7 @@ const ComplianceDashboard: React.FC = () => {
       
       // Charger les statistiques de conformité
       const statsResponse = await fetch(`${config.API_URL}/api/compliance/stats`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${await getSupabaseToken()}` }
       });
       const stats = await statsResponse.json();
       if (stats.success) {
@@ -82,7 +83,7 @@ const ComplianceDashboard: React.FC = () => {
 
       // Charger les contrôles de conformité
               const controlsResponse = await fetch(`${config.API_URL}/api/compliance/controls`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${await getSupabaseToken()}` }
       });
       const controlsData = await controlsResponse.json();
       if (controlsData.success) {
@@ -91,7 +92,7 @@ const ComplianceDashboard: React.FC = () => {
 
       // Charger les workflows
               const workflowsResponse = await fetch(`${config.API_URL}/api/workflow/templates`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${await getSupabaseToken()}` }
       });
       const workflowsData = await workflowsResponse.json();
       if (workflowsData.success) {
@@ -100,7 +101,7 @@ const ComplianceDashboard: React.FC = () => {
 
       // Charger les incidents récents
               const incidentsResponse = await fetch(`${config.API_URL}/api/compliance/incidents?limit=10`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${await getSupabaseToken()}` }
       });
       const incidentsData = await incidentsResponse.json();
       if (incidentsData.success) {

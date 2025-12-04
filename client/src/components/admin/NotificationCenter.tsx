@@ -27,6 +27,7 @@ import {
   Timer
 } from 'lucide-react';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { useNavigate } from 'react-router-dom';
 import { 
   calculateSLAStatus, 
@@ -77,7 +78,7 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
 
   const loadNotifications = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) return;
 
       const response = await fetch(`${config.API_URL}/api/notifications/admin`, {
@@ -101,7 +102,7 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/notifications/${notificationId}/read`, {
         method: 'PUT',
         headers: {
@@ -153,7 +154,7 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
 
   const dismissNotification = async (notificationId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/notifications/${notificationId}/dismiss`, {
         method: 'PUT',
         headers: {

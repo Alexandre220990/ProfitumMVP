@@ -55,6 +55,7 @@ import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
 import { RDVReportModal } from '@/components/rdv/RDVReportModal';
 import { FileText as FileTextIcon } from 'lucide-react';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -182,7 +183,7 @@ export function UniversalNotificationCenter({
         loadingReportsRef.current.add(eventId);
 
         try {
-          const token = localStorage.getItem('token');
+          const token = await getSupabaseToken();
           const response = await fetch(`${config.API_URL}/api/rdv/${eventId}/report`, {
             headers: {
               'Authorization': `Bearer ${token}`
@@ -719,7 +720,7 @@ export function UniversalNotificationCenter({
 
   const handleOpenReportModal = async (rdvId: string, rdvTitle?: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/rdv/${rdvId}/report`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -757,7 +758,7 @@ export function UniversalNotificationCenter({
     notes?: string
   ) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/rdv/${eventId}/respond`, {
         method: 'PUT',
         headers: {
@@ -1682,7 +1683,7 @@ export function UniversalNotificationCenter({
             // Recharger le rapport pour mettre à jour l'affichage
             const eventId = rdvReportModal.rdvId;
             if (eventId) {
-              const token = localStorage.getItem('token');
+              const token = await getSupabaseToken();
               fetch(`${config.API_URL}/api/rdv/${eventId}/report`, {
                 headers: {
                   'Authorization': `Bearer ${token}`

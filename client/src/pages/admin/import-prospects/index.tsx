@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { useNavigate } from 'react-router-dom';
 
 const STEPS = [
@@ -83,7 +84,7 @@ export default function ImportProspects() {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/admin/import-prospects/upload`, {
         method: 'POST',
         headers: {
@@ -175,7 +176,7 @@ export default function ImportProspects() {
     setIsCheckingDuplicates(true);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const formData = new FormData();
       formData.append('file', file);
       formData.append('mapping', JSON.stringify(mapping));
@@ -219,7 +220,7 @@ export default function ImportProspects() {
     }
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/admin/import-prospects/preview`, {
         method: 'POST',
         headers: {
@@ -263,7 +264,7 @@ export default function ImportProspects() {
       formData.append('mapping', JSON.stringify(mapping));
       formData.append('excludedSirens', JSON.stringify(excludedSirens));
 
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/admin/import-prospects/execute`, {
         method: 'POST',
         headers: {
