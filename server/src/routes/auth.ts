@@ -527,12 +527,28 @@ router.post('/admin/login', loginRateLimiter, async (req, res) => {
   }
 });
 
-// Route de connexion GÉNÉRIQUE (pour compatibilité)
+// ⚠️ Route de connexion GÉNÉRIQUE (DÉPRÉCIÉE depuis décembre 2025)
+// ⚠️ MIGRATION : Utiliser /client/login, /admin/login, /expert/login, /apporteur/login
 router.post('/login', loginRateLimiter, async (req, res) => {
   try {
     const { email, password, type, user_type } = req.body;
     const effectiveType = type || user_type; // Support des deux formats
-    console.log("🔑 Tentative de connexion:", { email, type: effectiveType });
+    
+    // ⚠️ Logs de dépréciation
+    console.warn('⚠️ ========================================');
+    console.warn('⚠️ ROUTE DÉPRÉCIÉE: /api/auth/login');
+    console.warn(`⚠️ Utilisateur: ${email} | Type: ${effectiveType}`);
+    console.warn(`⚠️ Utiliser plutôt: /api/auth/${effectiveType}/login`);
+    console.warn('⚠️ Cette route sera supprimée le 31 décembre 2025');
+    console.warn('⚠️ ========================================');
+    
+    // Headers de dépréciation (pour monitoring)
+    res.setHeader('X-API-Deprecated', 'true');
+    res.setHeader('X-API-Deprecated-Since', '2025-12-03');
+    res.setHeader('X-API-Deprecated-Sunset', '2025-12-31');
+    res.setHeader('X-API-Deprecated-Alternative', `/api/auth/${effectiveType}/login`);
+    
+    console.log("🔑 Tentative de connexion générique (déprécié):", { email, type: effectiveType });
 
     // ✅ Authentifier avec Supabase Auth (client ANON pour l'authentification)
     const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({

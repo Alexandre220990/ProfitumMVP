@@ -8,6 +8,7 @@ import { Card, CardContent } from './ui/card';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 import { CheckCircle, ArrowRight, UserPlus, Database, Rocket, Check } from 'lucide-react';
+import { loginWithSupabase } from '@/lib/supabase-auth';
 
 // Types pour la migration
 interface SessionData {
@@ -88,23 +89,22 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
       if (result.success) {
         setMigrationProgress(100);
         
-        // Connexion automatique
-        const loginResponse = await fetch(`${config.API_URL}/api/auth/login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            email: registrationData.email,
-            password: registrationData.password
-          })
+        // ✅ Connexion automatique avec Supabase (route spécifique)
+        const loginResult = await loginWithSupabase({
+          email: registrationData.email,
+          password: registrationData.password
         });
 
-        const loginResult = await loginResponse.json();
-
-        if (loginResult.success) {
+        if (loginResult.success && loginResult.data) {
+          // Stocker la session
           localStorage.setItem('token', loginResult.data.token);
-          setUser(loginResult.data.user);
+          
+          // Convertir AuthUser vers UserType (experience: number → string)
+          const userData = {
+            ...loginResult.data.user,
+            experience: loginResult.data.user.experience?.toString()
+          };
+          setUser(userData);
 
           toast.success(`🎉 Compte créé avec succès ! Bienvenue ${registrationData.username} ! ${result.data.migratedProducts.length} produits éligibles ont été migrés.`);
 
@@ -115,6 +115,8 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
 
           // Rediriger vers le dashboard
           navigate(`/dashboard/client/${result.data.clientId}`);
+        } else {
+          throw new Error(loginResult.message || 'Erreur de connexion après migration');
         }
       } else {
         throw new Error(result.error || 'Erreur lors de la migration');
