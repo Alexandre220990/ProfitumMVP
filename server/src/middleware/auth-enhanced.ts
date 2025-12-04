@@ -575,7 +575,7 @@ export const requirePermission = (requiredPermission: Permission) => {
 };
 
 // Middleware pour vérifier le type d'utilisateur
-export const requireUserType = (requiredType: 'client' | 'expert' | 'admin') => {
+export const requireUserType = (requiredType: 'client' | 'expert' | 'admin' | 'apporteur') => {
   return (req: Request, res: Response, next: NextFunction) => {
     const authReq = req as unknown as AuthenticatedRequest;
     

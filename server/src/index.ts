@@ -9,7 +9,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import cookieParser from 'cookie-parser';
-import authRoutes from './routes/auth';
+import authRoutes from './routes/auth-legacy-backup';
 import authSimpleRoutes from './routes/auth-simple';  // ✅ Nouvelles routes simplifiées
 import auditsRouter from './routes/audits';
 import simulationsRoutes from './routes/simulations';
@@ -59,14 +59,15 @@ import {
   enhancedAuthMiddleware, 
   publicRouteLogger, 
   requirePermission, 
-  Permission 
+  Permission,
+  requireUserType as requireUserTypeEnhanced
 } from './middleware/auth-enhanced';
 
-// Import du middleware d'authentification simplifié (ANCIEN - JWT personnalisés)
-import { simpleAuthMiddleware, requireUserType } from './middleware/auth-simple';
-
 // Import du nouveau middleware d'authentification Supabase
-import { supabaseAuthMiddleware, requireUserType as requireUserTypeSupabase } from './middleware/supabase-auth-simple';
+import { 
+  supabaseAuthMiddleware, 
+  requireUserType
+} from './middleware/supabase-auth-simple';
 
 // Import du middleware d'authentification optionnelle
 import { optionalAuthMiddleware } from './middleware/optional-auth';
@@ -391,14 +392,14 @@ app.use('/api/simulations', enhancedAuthMiddleware, simulationsRoutes);
 app.use('/api/simulation', enhancedAuthMiddleware, simulationRoutes);
 
 // Routes client - PROTÉGÉES avec permissions spécifiques
-app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientRoutes);
-app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientDocumentsRoutes);
+app.use('/api/client', enhancedAuthMiddleware, requireUserTypeEnhanced('client'), clientRoutes);
+app.use('/api/client', enhancedAuthMiddleware, requireUserTypeEnhanced('client'), clientDocumentsRoutes);
 
 // Routes simulation client - PROTÉGÉES
-app.use('/api/client/simulation', enhancedAuthMiddleware, requireUserType('client'), clientSimulationRoutes);
+app.use('/api/client/simulation', enhancedAuthMiddleware, requireUserTypeEnhanced('client'), clientSimulationRoutes);
 
 // Routes réactivation client - PROTÉGÉES
-app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientReactivationRoutes);
+app.use('/api/client', enhancedAuthMiddleware, requireUserTypeEnhanced('client'), clientReactivationRoutes);
 
 // Routes produits simplifiés (Chronotachygraphes, Logiciel Solid) - PROTÉGÉES
 app.use('/api/simplified-products', enhancedAuthMiddleware, simplifiedProductsRoutes);
@@ -411,30 +412,30 @@ app.use('/api/documents', supabaseAuthMiddleware, documentsUnifiedAllRoutes);
 app.use('/api/documents-secure', documentsDownloadRoutes);
 
 // Routes notifications expert - PROTÉGÉES
-app.use('/api/expert/notifications', enhancedAuthMiddleware, requireUserType('expert'), expertNotificationsRoutes);
+app.use('/api/expert/notifications', enhancedAuthMiddleware, requireUserTypeEnhanced('expert'), expertNotificationsRoutes);
 
 // Routes expert - PROTÉGÉES avec permissions spécifiques
 // IMPORTANT: expertDossierActionsRoutes doit être monté AVANT expertRoutes
 // pour éviter les conflits de routes (ex: /dossier/:id/complete-audit)
-app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), (req, res, next) => {
+app.use('/api/expert', enhancedAuthMiddleware, requireUserTypeEnhanced('expert'), (req, res, next) => {
   // Debug: logger les routes expert pour comprendre le routage
   if (req.path.includes('complete-audit')) {
     console.log('🔍 Route complete-audit détectée:', req.method, req.path);
   }
   next();
 }, expertDossierActionsRoutes);
-app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
-app.use('/api/expert/analytics', enhancedAuthMiddleware, requireUserType('expert'), expertAnalyticsRoutes);
-app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertDocumentsRoutes);
+app.use('/api/expert', enhancedAuthMiddleware, requireUserTypeEnhanced('expert'), expertRoutes);
+app.use('/api/expert/analytics', enhancedAuthMiddleware, requireUserTypeEnhanced('expert'), expertAnalyticsRoutes);
+app.use('/api/expert', enhancedAuthMiddleware, requireUserTypeEnhanced('expert'), expertDocumentsRoutes);
 
 // Routes admin - PROTÉGÉES avec permissions spécifiques
 // Routes admin avec authentification
 // IMPORTANT: Monter les routes spécifiques AVANT les routes générales pour éviter les conflits
-app.use('/api/admin/cabinets', enhancedAuthMiddleware, requireUserType('admin'), adminCabinetsRoutes);
-app.use('/api/admin/documents', enhancedAuthMiddleware, requireUserType('admin'), adminDocumentsUnifiedRoutes);
-app.use('/api/admin/import', enhancedAuthMiddleware, requireUserType('admin'), adminImportRoutes);
-app.use('/api/admin/import-prospects', enhancedAuthMiddleware, requireUserType('admin'), adminImportProspectsRoutes);
-app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
+app.use('/api/admin/cabinets', enhancedAuthMiddleware, requireUserTypeEnhanced('admin'), adminCabinetsRoutes);
+app.use('/api/admin/documents', enhancedAuthMiddleware, requireUserTypeEnhanced('admin'), adminDocumentsUnifiedRoutes);
+app.use('/api/admin/import', enhancedAuthMiddleware, requireUserTypeEnhanced('admin'), adminImportRoutes);
+app.use('/api/admin/import-prospects', enhancedAuthMiddleware, requireUserTypeEnhanced('admin'), adminImportProspectsRoutes);
+app.use('/api/admin', enhancedAuthMiddleware, requireUserTypeEnhanced('admin'), adminRoutes);
 
 // Routes de notifications admin - PROTÉGÉES
 app.use('/api/notifications', enhancedAuthMiddleware, adminNotificationsRoutes);
@@ -683,10 +684,10 @@ app.use('/api/unified-messaging', enhancedAuthMiddleware, unifiedMessagingRoutes
 
 // Routes de tests - UNIQUEMENT EN DÉVELOPPEMENT
 if (process.env.NODE_ENV !== 'production') {
-  app.use('/api/tests', enhancedAuthMiddleware, requireUserType('admin'), testsRoutes);
+  app.use('/api/tests', enhancedAuthMiddleware, requireUserTypeEnhanced('admin'), testsRoutes);
   console.log('🧪 Routes tests montées sur /api/tests (DEV ONLY)');
   
-  app.use('/api/terminal-tests', enhancedAuthMiddleware, requireUserType('admin'), terminalTestsRoutes);
+  app.use('/api/terminal-tests', enhancedAuthMiddleware, requireUserTypeEnhanced('admin'), terminalTestsRoutes);
   console.log('🧪 Routes terminal-tests montées sur /api/terminal-tests (DEV ONLY)');
   
   app.get("/debug-sentry", function mainHandler(req, res) {
@@ -738,25 +739,25 @@ const skipAuthForApporteurPublic = (req: Request, res: Response, next: NextFunct
 
 // 1. Routes simulation apporteur - PROTÉGÉES (plus spécifiques)
 // ✅ Utilisation de supabaseAuthMiddleware pour compatibilité avec tokens Supabase
-app.use('/api/apporteur/prospects', supabaseAuthMiddleware, requireUserTypeSupabase('apporteur'), apporteurSimulationRoutes);
+app.use('/api/apporteur/prospects', supabaseAuthMiddleware, requireUserType('apporteur'), apporteurSimulationRoutes);
 console.log('✅ Routes simulation apporteur montées sur /api/apporteur/prospects');
 
 // 2. Routes paramètres apporteur (profile, notifications, deactivate) - PROTÉGÉES
-app.use('/api/apporteur', enhancedAuthMiddleware, requireUserType('apporteur'), apporteurSettingsRoutes);
+app.use('/api/apporteur', enhancedAuthMiddleware, requireUserTypeEnhanced('apporteur'), apporteurSettingsRoutes);
 console.log('✅ Routes paramètres apporteur montées sur /api/apporteur/profile|notifications|deactivate');
 
 // 3. Routes apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
-app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserTypeSupabase('apporteur'), apporteurRoutes);
+app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurRoutes);
 
 // 4. Routes API apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
-app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserTypeSupabase('apporteur'), apporteurApiRoutes);
+app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurApiRoutes);
 
 
 // Routes expert pour apporteurs - PROTÉGÉES
 app.use('/api/expert-apporteur', enhancedAuthMiddleware, expertApporteurRoutes);
 
 // Routes admin pour apporteurs - PROTÉGÉES
-app.use('/api/admin/apporteurs', enhancedAuthMiddleware, requireUserType('admin'), adminApporteurRoutes);
+app.use('/api/admin/apporteurs', enhancedAuthMiddleware, requireUserTypeEnhanced('admin'), adminApporteurRoutes);
 
 // ===== ROUTES RDV UNIFIÉES =====
 // Routes RDV - PROTÉGÉES (remplace ClientRDV et unifie avec CalendarEvent)
