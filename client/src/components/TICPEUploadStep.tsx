@@ -16,6 +16,7 @@ import {
   Fuel
 } from 'lucide-react';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface TICPEUploadStepProps {
   clientProduitId: string;
@@ -141,7 +142,7 @@ export default function TICPEUploadStep({
       const response = await fetch(`${config.API_URL}/api/documents/upload`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         body: formData
       });
@@ -227,7 +228,7 @@ export default function TICPEUploadStep({
       const updateResponse = await fetch(`${config.API_URL}/api/client/produits-eligibles/${clientProduitId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -246,7 +247,7 @@ export default function TICPEUploadStep({
       const response = await fetch(`${config.API_URL}/api/notifications/admin/document-validation`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

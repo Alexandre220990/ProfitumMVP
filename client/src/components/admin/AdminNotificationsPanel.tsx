@@ -16,6 +16,7 @@ import {
   User
 } from 'lucide-react';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface AdminNotification {
   id: string;
@@ -63,7 +64,7 @@ export default function AdminNotificationsPanel() {
       setLoading(true);
       const response = await fetch(`${config.API_URL}/api/notifications/admin`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -93,7 +94,7 @@ export default function AdminNotificationsPanel() {
       const response = await fetch(`${config.API_URL}/api/notifications/admin/${notificationId}/status`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ status, admin_notes: notes })

@@ -10,6 +10,7 @@ import { Eye, EyeOff, Lock, CheckCircle, AlertCircle, ArrowLeft, User, Mail, Loa
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { NotificationPreferencesPanel } from '@/components/notifications/NotificationPreferencesPanel';
 import { InstallPWAButton } from '@/components/pwa/InstallPWAButton';
 import { InstallPWAAdminButton } from '@/components/pwa/InstallPWAAdminButton';
@@ -76,7 +77,7 @@ export default function AdminProfil() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) {
         throw new Error('Vous devez être connecté');
       }
@@ -130,7 +131,7 @@ export default function AdminProfil() {
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) {
         throw new Error('Vous devez être connecté');
       }
@@ -169,7 +170,7 @@ export default function AdminProfil() {
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) {
         throw new Error('Vous devez être connecté');
       }

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Clock, Eye, Check, X, Building, MapPin, Users, Star, FileText, CheckCircle, XCircle } from "lucide-react";
 import { config } from "@/config/env";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 
 interface ExpertValidation { id: string;
   name: string;
@@ -78,7 +79,7 @@ export default function ValidationDashboard() {
       
       // Charger les validations d'experts
       const expertsResponse = await fetch(`${config.API_URL }/api/admin/validations/experts`, { headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token') }`
+          'Authorization': `Bearer ${await getSupabaseToken() }`
         }
       });
       
@@ -87,7 +88,7 @@ export default function ValidationDashboard() {
 
       // Charger les validations de contenu
       const contentResponse = await fetch(`${ config.API_URL }/api/admin/validations/content`, { headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token') }`
+          'Authorization': `Bearer ${await getSupabaseToken() }`
         }
       });
       
@@ -109,7 +110,7 @@ export default function ValidationDashboard() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         body: JSON.stringify({ action, rejection_reason: action === 'reject' ? rejectionReason : undefined })
       });
@@ -141,7 +142,7 @@ export default function ValidationDashboard() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         body: JSON.stringify({ action, rejection_reason: action === 'reject' ? rejectionReason : undefined })
       });

@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface ApporteurCandidature {
   id: string;
@@ -83,7 +84,7 @@ const ApporteurCandidatures: React.FC = () => {
   const loadCandidatures = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/admin/apporteur-candidatures`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -113,7 +114,7 @@ const ApporteurCandidatures: React.FC = () => {
   const handleProcessCandidature = async (candidatureId: string, action: 'approve' | 'reject' | 'request_rdv', rdvInfo?: { title: string; date: string; time: string }) => {
     try {
       setIsProcessing(true);
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/admin/apporteur-candidatures/${candidatureId}/process`, {
         method: 'POST',
         headers: {
@@ -189,7 +190,7 @@ L'équipe Profitum`;
   // Télécharger un CV
   const handleDownloadCV = async (candidatureId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/admin/apporteur-candidatures/${candidatureId}/cv`, {
         headers: {
           'Authorization': `Bearer ${token}`
