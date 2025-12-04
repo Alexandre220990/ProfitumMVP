@@ -19,6 +19,7 @@ import {
   FileText
 } from 'lucide-react';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { 
   calculateSLAStatus, 
   formatTimeElapsed,
@@ -73,7 +74,7 @@ export function NotificationGroup({
 
     setLoadingChildren(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/notifications/${notification.id}/children`, {
         headers: {
           'Authorization': `Bearer ${token}`

@@ -18,6 +18,7 @@ import {
   FileText
 } from 'lucide-react';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface Notification {
   id: string;
@@ -65,7 +66,7 @@ export function ExpertNotificationGroup({
 
     setLoadingChildren(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/expert/notifications/${notification.id}/children`, {
         headers: {
           'Authorization': `Bearer ${token}`
