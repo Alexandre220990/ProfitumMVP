@@ -1678,7 +1678,7 @@ export function UniversalNotificationCenter({
           rdvTitle={rdvReportModal.rdvTitle}
           isOpen={rdvReportModal.isOpen}
           onClose={() => setRdvReportModal({ isOpen: false, rdvId: null, existingReport: null })}
-          onSuccess={() => {
+          onSuccess={async () => {
             reload();
             // Recharger le rapport pour mettre à jour l'affichage
             const eventId = rdvReportModal.rdvId;
