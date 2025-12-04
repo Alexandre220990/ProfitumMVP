@@ -268,11 +268,18 @@ export const checkAuthSimple = async (): Promise<AuthResponse> => {
       expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toLocaleString() : 'N/A'
     });
 
-    // 2️⃣ Récupérer le profil utilisateur depuis le backend (avec timeout)
+    // 2️⃣ Récupérer le profil utilisateur depuis le backend (avec timeout court)
+    console.log(`🌐 [checkAuthSimple] Appel vers: ${config.API_URL}/api/auth/me`);
+    console.log(`🔑 [checkAuthSimple] Avec token: ${session.access_token.substring(0, 20)}...`);
+    
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout de 10 secondes
+    const timeoutId = setTimeout(() => {
+      console.error('⏱️ TIMEOUT 5s sur /api/auth/me - Annulation !');
+      controller.abort();
+    }, 5000); // Timeout RÉDUIT à 5 secondes
 
     try {
+      console.log('🚀 [checkAuthSimple] Lancement fetch...');
       const profileResponse = await fetch(`${config.API_URL}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -282,6 +289,7 @@ export const checkAuthSimple = async (): Promise<AuthResponse> => {
       });
 
       clearTimeout(timeoutId);
+      console.log(`📥 [checkAuthSimple] Réponse reçue: ${profileResponse.status} ${profileResponse.statusText}`);
 
       if (!profileResponse.ok) {
         const errorData = await profileResponse.json().catch(() => ({}));

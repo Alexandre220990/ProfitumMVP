@@ -241,33 +241,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Vérifier l'authentification au chargement de l'application
   useEffect(() => {
     const initializeAuth = async () => {
-      console.log('🚀 Initialisation de l\'authentification...');
+      console.log('🚀 [use-auth] Initialisation de l\'authentification...');
       
       // Attendre un peu pour laisser Supabase restaurer la session depuis localStorage
-      // Supabase le fait automatiquement avec persistSession: true, mais il faut un peu de temps
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Supabase restaure automatiquement la session depuis localStorage
-      // Vérifier simplement si elle existe
+      // Vérifier si une session existe
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          console.log('✅ Session Supabase trouvée au démarrage:', {
+          console.log('✅ [use-auth] Session Supabase trouvée au démarrage:', {
             userId: session.user?.id,
             email: session.user?.email,
             expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toLocaleString() : 'N/A'
           });
         } else {
-          console.log('⚠️ Aucune session Supabase trouvée au démarrage');
+          console.log('⚠️ [use-auth] Aucune session Supabase trouvée au démarrage');
         }
       } catch (error) {
-        console.error('❌ Erreur lors de la vérification de session au démarrage:', error);
+        console.error('❌ [use-auth] Erreur vérification session:', error);
       }
       
-      // Ne pas naviguer automatiquement lors de l'initialisation pour éviter les boucles
-      await checkAuth(false);
-      setIsLoading(false);
+      // SÉCURITÉ : Timeout sur checkAuth pour éviter le blocage infini
+      console.log('🔍 [use-auth] Appel checkAuth avec timeout 8s...');
+      const checkAuthPromise = checkAuth(false);
+      const timeoutPromise = new Promise((resolve) => {
+        setTimeout(() => {
+          console.error('⏱️ [use-auth] TIMEOUT 8s sur checkAuth! Forçage setIsLoading(false)');
+          resolve(false);
+        }, 8000);
+      });
+      
+      try {
+        await Promise.race([checkAuthPromise, timeoutPromise]);
+        console.log('✅ [use-auth] checkAuth terminé');
+      } catch (error) {
+        console.error('❌ [use-auth] Erreur dans checkAuth:', error);
+      } finally {
+        setIsLoading(false);
+        console.log('✅ [use-auth] setIsLoading(false) - Initialisation terminée');
+      }
     };
 
     initializeAuth();
