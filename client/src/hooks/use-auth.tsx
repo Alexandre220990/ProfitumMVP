@@ -64,9 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         first_name: supabaseUser.user_metadata?.first_name || supabaseUser.user_metadata?.name?.split(' ')[0],
         last_name: supabaseUser.user_metadata?.last_name || supabaseUser.user_metadata?.name?.split(' ').slice(1).join(' '),
         company_name: supabaseUser.user_metadata?.company_name,
-        phone: supabaseUser.user_metadata?.phone || supabaseUser.user_metadata?.phone_number,
-        database_id: supabaseUser.user_metadata?.database_id || supabaseUser.id,
-        ...supabaseUser.user_metadata
+        database_id: supabaseUser.user_metadata?.database_id || supabaseUser.id
       };
       
       setUser(userData);
@@ -137,9 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         first_name: supabaseUser.user_metadata?.first_name || supabaseUser.user_metadata?.name?.split(' ')[0],
         last_name: supabaseUser.user_metadata?.last_name || supabaseUser.user_metadata?.name?.split(' ').slice(1).join(' '),
         company_name: supabaseUser.user_metadata?.company_name,
-        phone: supabaseUser.user_metadata?.phone || supabaseUser.user_metadata?.phone_number,
-        database_id: supabaseUser.user_metadata?.database_id || supabaseUser.id,
-        ...supabaseUser.user_metadata
+        database_id: supabaseUser.user_metadata?.database_id || supabaseUser.id
       };
       
       setUser(userData);

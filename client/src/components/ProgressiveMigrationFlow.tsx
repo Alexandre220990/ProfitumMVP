@@ -8,7 +8,7 @@ import { Card, CardContent } from './ui/card';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 import { CheckCircle, ArrowRight, UserPlus, Database, Rocket, Check } from 'lucide-react';
-import { loginSimple } from '@/lib/auth-simple';
+// Plus besoin d'import - utilise directement useAuth().login()
 
 // Types pour la migration
 interface SessionData {
@@ -89,15 +89,14 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
       if (result.success) {
         setMigrationProgress(100);
         
-        // ✅ Connexion automatique avec Supabase (nouvelle méthode simplifiée)
-        const loginResult = await loginSimple({
+        // ✅ Connexion automatique avec Supabase (direct)
+        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
           email: registrationData.email,
           password: registrationData.password
         });
 
-        if (loginResult.success && loginResult.data) {
-          // Stocker la session
-          localStorage.setItem('token', loginResult.data.token);
+        if (loginData.session && loginData.user) {
+          // Supabase gère automatiquement la session
           
           // Convertir AuthUser vers UserType (experience: number → string)
           const userData = {
