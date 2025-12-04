@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/use-auth';
 import { config } from '@/config/env';
@@ -42,12 +42,7 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
   const [migrationProgress, setMigrationProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Charger les données de session au montage
-  useEffect(() => {
-    loadSessionData();
-  }, [sessionToken]);
-
-  const loadSessionData = async () => {
+  const loadSessionData = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -66,7 +61,12 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [sessionToken, navigate]);
+
+  // Charger les données de session au montage
+  useEffect(() => {
+    loadSessionData();
+  }, [loadSessionData]);
 
   const handleRegistration = async (registrationData: any) => {
     setMigrationProgress(25);
