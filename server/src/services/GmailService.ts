@@ -298,6 +298,70 @@ export class GmailService {
   }
 
   /**
+   * Détecter si un email est un bounce (notification d'échec de livraison)
+   */
+  private static isBounceEmail(fromEmail: string, subject: string, bodyText: string): {
+    isBounce: boolean;
+    originalRecipient?: string;
+    bounceType?: 'hard' | 'soft';
+    bounceReason?: string;
+  } {
+    // Emails système qui indiquent des bounces
+    const bounceFromPatterns = [
+      'mailer-daemon@',
+      'postmaster@',
+      'mail-daemon@',
+      'noreply@',
+      'no-reply@',
+      'bounce@',
+      'bounces@'
+    ];
+
+    const fromLower = fromEmail.toLowerCase();
+    const isBounce = bounceFromPatterns.some(pattern => fromLower.includes(pattern));
+
+    if (!isBounce) {
+      return { isBounce: false };
+    }
+
+    // Extraire l'email original depuis le corps ou le sujet
+    const emailPattern = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
+    const emailsInBody = bodyText.match(emailPattern) || [];
+    const emailsInSubject = subject.match(emailPattern) || [];
+    
+    // Le premier email trouvé est généralement l'email qui a bounced
+    const originalRecipient = emailsInSubject[0] || emailsInBody[0];
+
+    // Déterminer le type de bounce
+    const bodyLower = bodyText.toLowerCase();
+    let bounceType: 'hard' | 'soft' = 'hard';
+    let bounceReason = 'Unknown';
+
+    // Hard bounces (permanents)
+    if (bodyLower.includes('user unknown') || 
+        bodyLower.includes('address not found') ||
+        bodyLower.includes('no such user') ||
+        bodyLower.includes('recipient address rejected')) {
+      bounceType = 'hard';
+      bounceReason = 'Invalid email address';
+    }
+    // Soft bounces (temporaires)
+    else if (bodyLower.includes('mailbox full') ||
+             bodyLower.includes('quota exceeded') ||
+             bodyLower.includes('temporarily unavailable')) {
+      bounceType = 'soft';
+      bounceReason = 'Mailbox full or temporary issue';
+    }
+
+    return {
+      isBounce: true,
+      originalRecipient,
+      bounceType,
+      bounceReason
+    };
+  }
+
+  /**
    * Récupérer les nouveaux emails depuis Gmail
    */
   static async fetchNewReplies(sinceDate?: Date): Promise<{
@@ -371,6 +435,103 @@ export class GmailService {
 
           if (!fromEmail) {
             continue;
+          }
+
+          // ✅ Détecter si c'est un bounce (notification d'échec de livraison)
+          const subject = subjectHeader?.value || '';
+          const bodyText = emailBody.text || emailBody.html || emailBody.snippet || '';
+          const bounceInfo = this.isBounceEmail(fromEmail, subject, bodyText);
+
+          if (bounceInfo.isBounce && bounceInfo.originalRecipient) {
+            console.log(`📩 Bounce détecté pour: ${bounceInfo.originalRecipient} (Type: ${bounceInfo.bounceType})`);
+            
+            // Chercher le prospect par email
+            const { data: prospect } = await supabase
+              .from('prospects')
+              .select('id')
+              .eq('email', bounceInfo.originalRecipient.toLowerCase())
+              .single();
+
+            if (prospect) {
+              // Récupérer les emails envoyés à mettre à jour
+              const { data: existingEmails } = await supabase
+                .from('prospects_emails')
+                .select('id, metadata')
+                .eq('prospect_id', prospect.id)
+                .eq('bounced', false);
+
+              // Mettre à jour chaque email avec metadata mergé
+              if (existingEmails && existingEmails.length > 0) {
+                for (const email of existingEmails) {
+                  const updatedMetadata = {
+                    ...(email.metadata || {}),
+                    bounced_reason: bounceInfo.bounceReason,
+                    bounced_type: bounceInfo.bounceType,
+                    bounce_detected_at: new Date().toISOString()
+                  };
+
+                  await supabase
+                    .from('prospects_emails')
+                    .update({
+                      bounced: true,
+                      bounced_at: new Date().toISOString(),
+                      metadata: updatedMetadata
+                    })
+                    .eq('id', email.id);
+                }
+              }
+
+              // Mettre à jour le statut du prospect
+              const { error: updateProspectError } = await supabase
+                .from('prospects')
+                .update({
+                  emailing_status: 'bounced',
+                  email_validity: bounceInfo.bounceType === 'hard' ? 'invalid' : 'risky',
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', prospect.id);
+
+              if (updateProspectError) {
+                console.error('❌ Erreur mise à jour prospect bounced:', updateProspectError);
+              }
+
+              // Récupérer et mettre à jour les emails programmés
+              const { data: scheduledEmails } = await supabase
+                .from('prospect_email_scheduled')
+                .select('id, metadata')
+                .eq('prospect_id', prospect.id)
+                .eq('status', 'scheduled');
+
+              if (scheduledEmails && scheduledEmails.length > 0) {
+                for (const scheduled of scheduledEmails) {
+                  const updatedMetadata = {
+                    ...(scheduled.metadata || {}),
+                    cancelled_reason: 'email_bounced',
+                    bounce_type: bounceInfo.bounceType,
+                    bounce_reason: bounceInfo.bounceReason,
+                    cancelled_at: new Date().toISOString()
+                  };
+
+                  await supabase
+                    .from('prospect_email_scheduled')
+                    .update({
+                      status: 'cancelled',
+                      updated_at: new Date().toISOString(),
+                      metadata: updatedMetadata
+                    })
+                    .eq('id', scheduled.id);
+                }
+              }
+
+              console.log(`✅ Prospect ${prospect.id} marqué comme bounced (${bounceInfo.bounceType})`);
+            } else {
+              console.log(`⚠️ Bounce détecté mais prospect non trouvé pour: ${bounceInfo.originalRecipient}`);
+            }
+
+            // Marquer le message comme lu et continuer
+            await this.markAsRead(message.id!);
+            results.processed++;
+            continue; // Ne pas traiter comme une réponse normale
           }
 
           // Extraire l'email du destinataire (notre email)
@@ -523,6 +684,24 @@ export class GmailService {
     emailContent: string
   ): Promise<{ id: string; email: string } | null> {
     try {
+      // ⛔ Ne pas créer de prospect pour les emails système
+      const systemEmailPatterns = [
+        'mailer-daemon@',
+        'postmaster@',
+        'noreply@',
+        'no-reply@',
+        'bounce@',
+        'bounces@',
+        'donotreply@',
+        'do-not-reply@'
+      ];
+
+      const emailLower = email.toLowerCase();
+      if (systemEmailPatterns.some(pattern => emailLower.includes(pattern))) {
+        console.log(`⛔ Email système ignoré: ${email}`);
+        return null;
+      }
+
       // Extraire le nom depuis le header "From: John Doe <john@example.com>"
       const nameMatch = fromHeaderFull.match(/^([^<]+)</);
       let firstname: string | null = null;

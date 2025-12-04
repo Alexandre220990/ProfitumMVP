@@ -51,7 +51,7 @@ interface Prospect {
   id: string;
   email: string;
   email_validity: 'valid' | 'risky' | 'invalid' | null;
-  source: 'google_maps' | 'import_csv' | 'linkedin' | 'manuel';
+  source: 'google_maps' | 'import_csv' | 'linkedin' | 'manuel' | 'email_reply';
   created_at: string;
   updated_at: string;
   firstname: string | null;

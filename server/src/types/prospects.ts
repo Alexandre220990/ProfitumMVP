@@ -1,6 +1,6 @@
 // Types pour le système de prospection automatisé
 
-export type ProspectSource = 'google_maps' | 'import_csv' | 'linkedin' | 'manuel';
+export type ProspectSource = 'google_maps' | 'import_csv' | 'linkedin' | 'manuel' | 'email_reply';
 export type EmailValidity = 'valid' | 'risky' | 'invalid';
 export type EnrichmentStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
 export type AIStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
