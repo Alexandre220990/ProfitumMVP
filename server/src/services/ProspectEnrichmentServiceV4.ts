@@ -410,8 +410,9 @@ Retourne UNIQUEMENT le JSON, sans texte avant ou après.`;
       const month = currentDate.toLocaleDateString('fr-FR', { month: 'long' });
       const quarter = `Q${Math.floor(currentDate.getMonth() / 3) + 1}`;
       
-      const scoreAttractivite = operationalData.potentiel_global_profitum.score_attractivite_prospect;
-      const potentielMoyen = operationalData.potentiel_global_profitum.economies_annuelles_totales.moyenne;
+      // ✅ Vérification sécurisée des données opérationnelles
+      const scoreAttractivite = operationalData?.potentiel_global_profitum?.score_attractivite_prospect ?? 5;
+      const potentielMoyen = operationalData?.potentiel_global_profitum?.economies_annuelles_totales?.moyenne ?? 0;
 
       const prompt = `Tu es un expert en timing commercial et psychologie des cycles d'affaires B2B.
 

@@ -2091,18 +2091,18 @@ router.post('/generate-ai-email-v4', async (req, res) => {
 - Poste : ${prospectInfo.job_title || 'Non renseigné'}
 
 **ICE BREAKERS LINKEDIN (AVEC GESTION TEMPORELLE) :**
-${enrichedData.linkedin_data ? JSON.stringify(enrichedData.linkedin_data.ice_breakers_generes, null, 2).substring(0, 1500) : 'Non disponibles'}
+${enrichedData.linkedin_data?.ice_breakers_generes ? JSON.stringify(enrichedData.linkedin_data.ice_breakers_generes, null, 2).substring(0, 1500) : 'Non disponibles'}
 
 **ÉLIGIBILITÉ & POTENTIEL PROFITUM :**
-${JSON.stringify(enrichedData.operational_data.donnees_operationnelles.signaux_eligibilite_profitum, null, 2).substring(0, 1000)}
+${enrichedData.operational_data?.donnees_operationnelles?.signaux_eligibilite_profitum ? JSON.stringify(enrichedData.operational_data.donnees_operationnelles.signaux_eligibilite_profitum, null, 2).substring(0, 1000) : 'Non disponibles'}
 
 **POTENTIEL ÉCONOMIES :**
-- Moyenne : ${enrichedData.operational_data.potentiel_global_profitum.economies_annuelles_totales.moyenne}€/an
-- Maximum : ${enrichedData.operational_data.potentiel_global_profitum.economies_annuelles_totales.maximum}€/an
-- Score attractivité : ${enrichedData.operational_data.potentiel_global_profitum.score_attractivite_prospect}/10
+- Moyenne : ${enrichedData.operational_data?.potentiel_global_profitum?.economies_annuelles_totales?.moyenne ?? 0}€/an
+- Maximum : ${enrichedData.operational_data?.potentiel_global_profitum?.economies_annuelles_totales?.maximum ?? 0}€/an
+- Score attractivité : ${enrichedData.operational_data?.potentiel_global_profitum?.score_attractivite_prospect ?? 5}/10
 
 **CONTEXTE TEMPOREL :**
-${JSON.stringify(enrichedData.timing_analysis.analyse_periode.contexte_business, null, 2).substring(0, 800)}
+${enrichedData.timing_analysis?.analyse_periode?.contexte_business ? JSON.stringify(enrichedData.timing_analysis.analyse_periode.contexte_business, null, 2).substring(0, 800) : 'Non disponible'}
 
 🚨 RÈGLES CRITIQUES :
 
@@ -2166,7 +2166,7 @@ Réponds UNIQUEMENT au format JSON suivant (sans texte avant ou après) :
     }
   ],
   "arguments_eligibilite_utilises": ["Arg1", "Arg2"],
-  "potentiel_mentionne": "${enrichedData.operational_data.potentiel_global_profitum.economies_annuelles_totales.moyenne}€/an",
+  "potentiel_mentionne": "${enrichedData.operational_data?.potentiel_global_profitum?.economies_annuelles_totales?.moyenne ?? 0}€/an",
   "adaptation_temporelle": "Description de l'adaptation au contexte temporel",
   "nombre_mots": 180,
   "score_personnalisation": 9
@@ -2193,14 +2193,14 @@ Réponds UNIQUEMENT au format JSON suivant (sans texte avant ou après) :
 
     // 📊 INSIGHTS PROSPECT POUR LE FRONTEND
     const prospectInsights = {
-      potentiel_economies: `${enrichedData.operational_data.potentiel_global_profitum.economies_annuelles_totales.moyenne}€/an`,
-      score_attractivite: `${enrichedData.operational_data.potentiel_global_profitum.score_attractivite_prospect}/10`,
-      timing_score: `${enrichedData.timing_analysis.scoring_opportunite.score_global_timing}/10`,
+      potentiel_economies: `${enrichedData.operational_data?.potentiel_global_profitum?.economies_annuelles_totales?.moyenne ?? 0}€/an`,
+      score_attractivite: `${enrichedData.operational_data?.potentiel_global_profitum?.score_attractivite_prospect ?? 5}/10`,
+      timing_score: `${enrichedData.timing_analysis?.scoring_opportunite?.score_global_timing ?? 5}/10`,
       ice_breakers_disponibles: enrichedData.linkedin_data?.ice_breakers_generes?.length || 0,
       donnees_operationnelles: {
-        poids_lourds: enrichedData.operational_data.donnees_operationnelles.parc_vehicules.poids_lourds_plus_7_5T.valeur,
-        chauffeurs: enrichedData.operational_data.donnees_operationnelles.ressources_humaines.nombre_chauffeurs.valeur,
-        salaries: enrichedData.operational_data.donnees_operationnelles.ressources_humaines.nombre_salaries_total.valeur
+        poids_lourds: enrichedData.operational_data?.donnees_operationnelles?.parc_vehicules?.poids_lourds_plus_7_5T?.valeur ?? 0,
+        chauffeurs: enrichedData.operational_data?.donnees_operationnelles?.ressources_humaines?.nombre_chauffeurs?.valeur ?? 0,
+        salaries: enrichedData.operational_data?.donnees_operationnelles?.ressources_humaines?.nombre_salaries_total?.valeur ?? 0
       }
     };
 
@@ -2302,16 +2302,16 @@ router.post('/generate-optimal-sequence-v4', async (req, res) => {
 
     // Construire les insights
     const prospectInsights = {
-      potentiel_economies: `${enrichedData.operational_data.potentiel_global_profitum.economies_annuelles_totales.moyenne}€/an`,
-      score_attractivite: `${enrichedData.operational_data.potentiel_global_profitum.score_attractivite_prospect}/10`,
-      timing_strategy: enrichedData.timing_analysis.scoring_opportunite.action_recommandee,
+      potentiel_economies: `${enrichedData.operational_data?.potentiel_global_profitum?.economies_annuelles_totales?.moyenne ?? 0}€/an`,
+      score_attractivite: `${enrichedData.operational_data?.potentiel_global_profitum?.score_attractivite_prospect ?? 5}/10`,
+      timing_strategy: enrichedData.timing_analysis?.scoring_opportunite?.action_recommandee ?? 'À déterminer',
       donnees_operationnelles: {
-        poids_lourds: enrichedData.operational_data.donnees_operationnelles.parc_vehicules.poids_lourds_plus_7_5T.valeur,
-        chauffeurs: enrichedData.operational_data.donnees_operationnelles.ressources_humaines.nombre_chauffeurs.valeur,
-        salaries: enrichedData.operational_data.donnees_operationnelles.ressources_humaines.nombre_salaries_total.valeur,
-        ca: enrichedData.operational_data.donnees_operationnelles.donnees_financieres.chiffre_affaires.valeur,
-        surface_locaux: enrichedData.operational_data.donnees_operationnelles.infrastructures.locaux_principaux.surface_m2.valeur,
-        statut_propriete: enrichedData.operational_data.donnees_operationnelles.infrastructures.locaux_principaux.statut_propriete.proprietaire_ou_locataire
+        poids_lourds: enrichedData.operational_data?.donnees_operationnelles?.parc_vehicules?.poids_lourds_plus_7_5T?.valeur ?? 0,
+        chauffeurs: enrichedData.operational_data?.donnees_operationnelles?.ressources_humaines?.nombre_chauffeurs?.valeur ?? 0,
+        salaries: enrichedData.operational_data?.donnees_operationnelles?.ressources_humaines?.nombre_salaries_total?.valeur ?? 0,
+        ca: enrichedData.operational_data?.donnees_operationnelles?.donnees_financieres?.chiffre_affaires?.valeur ?? 0,
+        surface_locaux: enrichedData.operational_data?.donnees_operationnelles?.infrastructures?.locaux_principaux?.surface_m2?.valeur ?? 0,
+        statut_propriete: enrichedData.operational_data?.donnees_operationnelles?.infrastructures?.locaux_principaux?.statut_propriete?.proprietaire_ou_locataire ?? 'INCONNU'
       }
     };
 
