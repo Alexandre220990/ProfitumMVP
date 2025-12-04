@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { config } from "@/config/env";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 import { ParticipantSelectorModal, SelectedParticipant } from "@/components/leads/ParticipantSelectorModal";
 
 export default function AjouterLeadPage() {
@@ -46,7 +47,7 @@ export default function AjouterLeadPage() {
       }
 
       try {
-        const token = localStorage.getItem('token');
+        const token = await getSupabaseToken();
         const response = await fetch(`${config.API_URL}/api/unified-messaging/contacts`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -120,7 +121,7 @@ export default function AjouterLeadPage() {
         return;
       }
 
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/admin/leads`, {
         method: 'POST',
         headers: {

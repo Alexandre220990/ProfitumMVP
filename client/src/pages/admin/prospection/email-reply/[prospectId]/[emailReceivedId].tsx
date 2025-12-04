@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
 import { config } from "@/config/env";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -76,7 +77,7 @@ export default function EmailReplyPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
 
       // Récupérer le prospect
       const prospectResponse = await fetch(`${config.API_URL}/api/prospects/${prospectId}`, {
@@ -133,7 +134,7 @@ export default function EmailReplyPage() {
 
   const markAsRead = async () => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       await fetch(
         `${config.API_URL}/api/prospects/${prospectId}/emails-received/${emailReceivedId}/mark-read`,
         {

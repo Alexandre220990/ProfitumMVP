@@ -316,15 +316,16 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
       setLoadingContacts(true);
       
       // Charger tous les utilisateurs (clients, experts, apporteurs)
+      const token = await getSupabaseToken();
       const [clientsResp, expertsResp, apporteursResp] = await Promise.all([
         fetch(`${config.API_URL}/api/admin/clients`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
         fetch(`${config.API_URL}/api/admin/experts`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
         fetch(`${config.API_URL}/api/admin/apporteurs`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
 

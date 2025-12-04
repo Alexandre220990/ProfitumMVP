@@ -70,7 +70,7 @@ export default function ReplyEmailModal({
 
     try {
       setIsGenerating(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
 
       // Construire le contexte pour l'IA
       const context = {
@@ -132,7 +132,7 @@ export default function ReplyEmailModal({
 
     try {
       setIsSending(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
 
       const response = await fetch(
         `${config.API_URL}/api/prospects/${prospectId}/send-reply/${emailReceivedId}`,

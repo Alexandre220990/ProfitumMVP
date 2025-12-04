@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Sparkles, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface SendEmailModalProps {
   prospectId: string;
@@ -50,7 +51,7 @@ export default function SendEmailModal({
 
     try {
       setIsGenerating(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
 
       const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-email`, {
         method: 'POST',
@@ -99,7 +100,7 @@ export default function SendEmailModal({
 
     try {
       setIsSending(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
 
       const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/send-email`, {
         method: 'POST',
