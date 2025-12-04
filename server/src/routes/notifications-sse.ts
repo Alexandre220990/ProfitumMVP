@@ -126,36 +126,49 @@ router.get('/stream', sseRateLimiter, async (req: Request, res: Response) => {
           });
         }
       } catch (supabaseError) {
-        // Log détaillé pour comprendre le problème (toujours logger pour debug)
+        // Déterminer le type d'erreur
+        let isTokenExpired = false;
+        let isRateLimited = false;
+        let errorMessage = 'Token invalide ou expiré';
+        
+        if (supabaseError instanceof Error) {
+          const errorMsg = supabaseError.message.toLowerCase();
+          isTokenExpired = errorMsg.includes('expired') || errorMsg.includes('expiré') || errorMsg.includes('jwt expired');
+          isRateLimited = errorMsg.includes('429') || errorMsg.includes('rate limit') || errorMsg.includes('too many');
+          
+          if (isTokenExpired) {
+            errorMessage = 'Token expiré. Veuillez rafraîchir votre session.';
+          } else if (isRateLimited) {
+            errorMessage = 'Trop de tentatives. Veuillez attendre quelques instants.';
+          } else if (errorMsg.includes('invalid') || errorMsg.includes('invalide')) {
+            errorMessage = 'Token invalide. Veuillez vous reconnecter.';
+          } else {
+            errorMessage = `Erreur d'authentification: ${supabaseError.message}`;
+          }
+        }
+        
+        // Log détaillé pour comprendre le problème
         const errorDetails = {
           jwtError: jwtError instanceof Error ? jwtError.message : 'Erreur JWT',
           supabaseError: supabaseError instanceof Error ? supabaseError.message : 'Erreur Supabase',
           supabaseErrorName: supabaseError instanceof Error ? supabaseError.name : 'Unknown',
+          isTokenExpired,
+          isRateLimited,
           tokenPreview: token ? token.substring(0, 30) + '...' : 'null',
           tokenLength: token ? token.length : 0,
           hasSupabaseUrl: !!process.env.SUPABASE_URL,
           hasSupabaseAnonKey: !!getSupabaseAnonKey()
         };
         
-        console.error('❌ SSE Auth Error (détaillé):', errorDetails);
+        console.error('❌ SSE Auth Error:', errorDetails);
         
-        // Message d'erreur plus informatif
-        let errorMessage = 'Token invalide ou expiré';
-        if (supabaseError instanceof Error) {
-          if (supabaseError.message.includes('expired') || supabaseError.message.includes('expiré')) {
-            errorMessage = 'Token expiré - veuillez vous reconnecter';
-          } else if (supabaseError.message.includes('invalid') || supabaseError.message.includes('invalide')) {
-            errorMessage = 'Token invalide';
-          } else {
-            errorMessage = `Erreur d'authentification: ${supabaseError.message}`;
-          }
-        }
-        
-        res.status(401).json({
+        res.status(isRateLimited ? 429 : 401).json({
           success: false,
           message: errorMessage,
           error: supabaseError instanceof Error ? supabaseError.message : 'Erreur d\'authentification',
-          code: 'SSE_AUTH_FAILED'
+          code: isTokenExpired ? 'TOKEN_EXPIRED' : isRateLimited ? 'RATE_LIMITED' : 'SSE_AUTH_FAILED',
+          tokenExpired: isTokenExpired,
+          rateLimited: isRateLimited
         });
         return;
       }
