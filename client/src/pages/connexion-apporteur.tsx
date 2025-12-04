@@ -14,9 +14,14 @@ export default function ConnexionApporteur() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [wrongTypeError, setWrongTypeError] = useState<any>(null);
   
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const handleRedirect = (url: string) => {
+    navigate(url);
+  };
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -64,8 +69,8 @@ export default function ConnexionApporteur() {
       console.error('❌ Erreur connexion apporteur:', error);
       
       // Gérer l'erreur 403 avec redirection (multi-profils)
-      if (error.response?.status === 403 && error.response?.data?.message) {
-        toast.error(error.response.data.message);
+      if (error.response?.status === 403 && error.response?.data) {
+        setWrongTypeError(error.response.data);
         return;
       }
       
