@@ -3,6 +3,9 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
 import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
+import { useNotificationSSE } from '@/hooks/use-notification-sse';
+import { useFCMNotifications } from '@/hooks/useFCMNotifications';
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import ApporteurAuthGuard from './ApporteurAuthGuard';
 import { NotificationSlider } from './NotificationSlider';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +44,18 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
   const { badgeCount } = useMessagingBadge();
   
   // Hook pour les notifications avec compteur en temps réel (compteur global du centre de notifications)
-  const { unreadCount: notificationsCount } = useSupabaseNotifications();
+  const { unreadCount: notificationsCount, reload: reloadNotifications } = useSupabaseNotifications();
+
+  // 🔔 Activer les notifications en temps réel avec toasts
+  useNotificationSSE({
+    enabled: true,
+    onNotification: (notification) => {
+      console.log('🔔 Notification reçue (SSE - Apporteur):', notification);
+      reloadNotifications();
+    }
+  });
+  useFCMNotifications();
+  useRealtimeNotifications();
 
   const handleLogout = () => {
     localStorage.removeItem('token');

@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
 import { TypeSwitcher } from '@/components/TypeSwitcher';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
 import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
+import { useNotificationSSE } from '@/hooks/use-notification-sse';
+import { useFCMNotifications } from '@/hooks/useFCMNotifications';
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import { 
   Home,
-  BarChart3,
   Calendar,
   MessageSquare,
   FileText,
@@ -42,10 +44,25 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { badgeCount } = useMessagingBadge();
-  const { unreadCount: notificationsCount } = useSupabaseNotifications();
+  const { unreadCount: notificationsCount, reload: reloadNotifications } = useSupabaseNotifications();
 
-  // États pour les badges dynamiques
-  const [newDocuments, setNewDocuments] = useState(0);
+  // 🔔 Activer les notifications en temps réel avec toasts
+  // SSE pour notifications serveur
+  useNotificationSSE({
+    enabled: true,
+    onNotification: (notification) => {
+      console.log('🔔 Notification reçue (SSE):', notification);
+      // Le toast est déjà affiché par le hook
+      // Rafraîchir la liste des notifications
+      reloadNotifications();
+    }
+  });
+
+  // 📱 Notifications push FCM (Firebase Cloud Messaging)
+  useFCMNotifications();
+
+  // 🌐 Notifications WebSocket temps réel
+  useRealtimeNotifications();
 
   const handleLogout = async () => {
     await logout();
@@ -89,8 +106,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       name: 'Documents',
       href: '/documents-client',
       icon: FileText,
-      current: location.pathname === '/documents-client',
-      badge: newDocuments > 0 ? newDocuments : undefined
+      current: location.pathname === '/documents-client'
     },
     {
       name: 'Marketplace',

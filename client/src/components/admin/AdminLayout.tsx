@@ -3,6 +3,9 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
 import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
+import { useNotificationSSE } from '@/hooks/use-notification-sse';
+import { useFCMNotifications } from '@/hooks/useFCMNotifications';
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import { Badge } from '@/components/ui/badge';
 import { 
   LayoutDashboard,
@@ -45,7 +48,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { badgeCount } = useMessagingBadge();
-  const { unreadCount: notificationsCount } = useSupabaseNotifications();
+  const { unreadCount: notificationsCount, reload: reloadNotifications } = useSupabaseNotifications();
+
+  // 🔔 Activer les notifications en temps réel avec toasts
+  useNotificationSSE({
+    enabled: true,
+    onNotification: (notification) => {
+      console.log('🔔 Notification reçue (SSE - Admin):', notification);
+      reloadNotifications();
+    }
+  });
+  useFCMNotifications();
+  useRealtimeNotifications();
 
   const handleLogout = async () => {
     await logout();
