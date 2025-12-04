@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Building, User, Save, ArrowRight } from 'lucide-react';
 import { config } from '@/config';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 
 interface Step1Props {
@@ -42,7 +43,7 @@ export function Step1_ProspectInfo({ prospectId, data, onUpdate, onNext, onSaveA
     try {
       const response = await fetch(`${config.API_URL}/api/apporteur/clients/${prospectId}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -99,7 +100,7 @@ export function Step1_ProspectInfo({ prospectId, data, onUpdate, onNext, onSaveA
       const response = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

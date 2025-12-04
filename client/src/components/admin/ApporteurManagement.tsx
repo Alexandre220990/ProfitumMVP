@@ -39,6 +39,7 @@ import {
     UserX 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { config } from '@/config';
 
 interface ApporteurData {
@@ -90,7 +91,7 @@ const ApporteurManagement: React.FC = () => {
     const loadApporteurs = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('token');
+            const token = await getSupabaseToken();
             
             console.log('🔍 Frontend - Chargement apporteurs:', {
                 url: `${config.API_URL}/api/admin/apporteurs`,
@@ -186,7 +187,7 @@ const ApporteurManagement: React.FC = () => {
                 return;
             }
 
-            const token = localStorage.getItem('token');
+            const token = await getSupabaseToken();
             console.log('🔍 Frontend - Envoi requête API:', {
                 url: `${config.API_URL}/api/admin/apporteurs/create`,
                 method: 'POST',
@@ -258,7 +259,7 @@ const ApporteurManagement: React.FC = () => {
     // Mettre à jour le statut
     const handleUpdateStatus = async (apporteurId: string, newStatus: string) => {
         try {
-            const token = localStorage.getItem('token');
+            const token = await getSupabaseToken();
             const response = await fetch(`${config.API_URL}/api/admin/apporteurs/${apporteurId}/status`, {
                 method: 'PUT',
                 headers: {
@@ -289,7 +290,7 @@ const ApporteurManagement: React.FC = () => {
         }
 
         try {
-            const token = localStorage.getItem('token');
+            const token = await getSupabaseToken();
             const response = await fetch(`${config.API_URL}/api/admin/apporteurs/${apporteurId}`, {
                 method: 'DELETE',
                 headers: {

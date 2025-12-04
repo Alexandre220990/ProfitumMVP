@@ -11,6 +11,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { config } from '@/config';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 
 interface Expert {
@@ -58,7 +59,7 @@ export function ExpertSelectionCard({ cpe, onExpertValidated }: Props) {
       
       const response = await fetch(`${config.API_URL}/api/client/products/${cpe.id}/available-experts`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -87,7 +88,7 @@ export function ExpertSelectionCard({ cpe, onExpertValidated }: Props) {
       const response = await fetch(`${config.API_URL}/api/client/products/${cpe.id}/validate-expert`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ expert_id: cpe.expert_id })
@@ -114,7 +115,7 @@ export function ExpertSelectionCard({ cpe, onExpertValidated }: Props) {
       const response = await fetch(`${config.API_URL}/api/client/products/${cpe.id}/select-expert`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ expert_id: expertId })

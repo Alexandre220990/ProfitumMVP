@@ -17,6 +17,7 @@ import {
   Plus
 } from 'lucide-react';
 import { config } from '@/config';
+ import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 
 interface MeetingToCreate {
@@ -71,7 +72,7 @@ export function Step4_MeetingPlanning({
       try {
         const response = await fetch(`${config.API_URL}/api/apporteur/profile`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${await getSupabaseToken()}`
           }
         });
         
@@ -194,7 +195,7 @@ export function Step4_MeetingPlanning({
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${await getSupabaseToken()}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({

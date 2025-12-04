@@ -26,6 +26,7 @@ import {
   Edit
 } from 'lucide-react';
 import { config } from '@/config';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -117,7 +118,7 @@ export default function ProspectDetailsView({
       // Récupérer les détails du prospect
       const response = await fetch(`${config.API_URL}/api/apporteur/clients/${prospectId}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -133,7 +134,7 @@ export default function ProspectDetailsView({
         `${config.API_URL}/api/apporteur/prospects/${prospectId}/meetings`,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${await getSupabaseToken()}`,
             'Content-Type': 'application/json'
           }
         }
