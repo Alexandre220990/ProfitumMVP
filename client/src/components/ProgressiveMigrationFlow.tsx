@@ -8,7 +8,7 @@ import { Card, CardContent } from './ui/card';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 import { CheckCircle, ArrowRight, UserPlus, Database, Rocket, Check } from 'lucide-react';
-// Plus besoin d'import - utilise directement useAuth().login()
+import { supabase } from '@/lib/supabase';
 
 // Types pour la migration
 interface SessionData {
@@ -98,12 +98,17 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
         if (loginData.session && loginData.user) {
           // Supabase gère automatiquement la session
           
-          // Convertir AuthUser vers UserType (experience: number → string)
+          // Créer l'objet user depuis metadata
           const userData = {
-            ...loginResult.data.user,
-            experience: loginResult.data.user.experience?.toString()
+            id: loginData.user.id,
+            email: loginData.user.email || '',
+            type: 'client' as const,
+            username: registrationData.username || loginData.user.email?.split('@')[0],
+            first_name: registrationData.first_name,
+            last_name: registrationData.last_name,
+            company_name: registrationData.company_name
           };
-          setUser(userData);
+          setUser(userData as any);
 
           toast.success(`🎉 Compte créé avec succès ! Bienvenue ${registrationData.username} ! ${result.data.migratedProducts.length} produits éligibles ont été migrés.`);
 
@@ -115,7 +120,7 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
           // Rediriger vers le dashboard
           navigate(`/dashboard/client/${result.data.clientId}`);
         } else {
-          throw new Error(loginResult.message || 'Erreur de connexion après migration');
+          throw new Error(loginError?.message || 'Erreur de connexion après migration');
         }
       } else {
         throw new Error(result.error || 'Erreur lors de la migration');
