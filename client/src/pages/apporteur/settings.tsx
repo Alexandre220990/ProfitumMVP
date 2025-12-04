@@ -141,7 +141,7 @@ export default function SettingsPage() {
       const response = await fetch(`${config.API_URL}/api/apporteur/profile`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -198,7 +198,7 @@ export default function SettingsPage() {
       const response = await fetch(`${config.API_URL}/api/auth/change-password`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -235,7 +235,7 @@ export default function SettingsPage() {
       const response = await fetch(`${config.API_URL}/api/apporteur/notifications`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(notificationPrefs)
@@ -355,7 +355,7 @@ export default function SettingsPage() {
       const response = await fetch(`${config.API_URL}/api/apporteur/deactivate`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

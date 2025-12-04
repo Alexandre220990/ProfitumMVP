@@ -54,8 +54,8 @@ export function Step4_MeetingPlanning({
   prospectName,
   selectedExperts,
   simulationResults,
-  scheduledMeetings,
-  onUpdate,
+  scheduledMeetings: _scheduledMeetings,
+  onUpdate: _onUpdate,
   onNext,
   onSkip,
   onBack

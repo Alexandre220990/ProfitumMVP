@@ -20,6 +20,7 @@ import {
 import { toast } from 'sonner';
 import { config } from '@/config/env';
 import { get, post } from '@/lib/api';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface Document {
   id: string;
@@ -152,7 +153,7 @@ export default function ClientStep3DocumentCollection({
     try {
       setUploadingId(docId);
 
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         throw new Error('Token non trouvé');
@@ -207,7 +208,7 @@ export default function ClientStep3DocumentCollection({
     try {
       setUploadingId(docId);
 
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         throw new Error('Token non trouvé');
@@ -273,7 +274,7 @@ export default function ClientStep3DocumentCollection({
     }
 
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         toast.error('Session expirée, veuillez vous reconnecter');
@@ -355,7 +356,7 @@ export default function ClientStep3DocumentCollection({
       toast.info('Ouverture du document...');
 
       // Récupérer le token d'authentification
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         console.error('❌ Aucun token trouvé dans localStorage');

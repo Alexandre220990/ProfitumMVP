@@ -244,21 +244,28 @@ export function useFCMNotifications(): UseFCMNotificationsReturn {
 
     console.log('📡 Écoute des messages FCM en foreground...');
 
-    const unsubscribe = onForegroundMessage((payload) => {
+    let unsubscribe: (() => void) | null = null;
+
+    // onForegroundMessage est async, donc on doit l'attendre
+    onForegroundMessage((payload: any) => {
       console.log('📬 Message FCM reçu (foreground):', payload);
 
       // Afficher une notification toast
-      toast(payload.notification?.title || 'Notification', {
-        description: payload.notification?.body || payload.data?.message,
-        action: payload.data?.action_url ? {
+      toast(payload?.notification?.title || 'Notification', {
+        description: payload?.notification?.body || payload?.data?.message,
+        action: payload?.data?.action_url ? {
           label: 'Voir',
           onClick: () => window.location.href = payload.data.action_url
         } : undefined
       });
+    }).then((unsub) => {
+      unsubscribe = unsub;
+    }).catch((err) => {
+      console.error('Erreur écoute messages FCM:', err);
     });
 
     return () => {
-      if (unsubscribe) {
+      if (typeof unsubscribe === 'function') {
         unsubscribe();
       }
     };

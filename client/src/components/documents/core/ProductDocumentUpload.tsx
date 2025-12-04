@@ -170,7 +170,7 @@ export default function ProductDocumentUpload({
       formData.append('user_type', user?.type || 'client');
 
       // Upload vers l'API avec authentification par token
-      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         clearInterval(progressInterval);
@@ -255,7 +255,7 @@ export default function ProductDocumentUpload({
 
   const removeDocument = useCallback(async (documentId: string, documentLabel: string) => {
     try {
-      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         toast.error("Token d'authentification manquant");
@@ -293,7 +293,7 @@ export default function ProductDocumentUpload({
   const viewDocument = useCallback(async (document: DocumentFile) => {
     try {
       // Obtenir l'URL signée depuis le backend
-      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         toast.error("Non authentifié");
@@ -356,7 +356,7 @@ export default function ProductDocumentUpload({
       }
 
       // Mettre à jour le statut du dossier
-      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       console.log('🔑 Token disponible:', token ? `OUI (${token.substring(0, 20)}...)` : 'NON');
       console.log('🔍 LocalStorage keys:', Object.keys(localStorage));
@@ -457,7 +457,7 @@ export default function ProductDocumentUpload({
   useEffect(() => {
     const loadExistingDocuments = async () => {
       try {
-        const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
+        const token = await getSupabaseToken();
         
         if (!token) {
           console.warn('⚠️ Pas de token - impossible de charger les documents existants');

@@ -255,14 +255,10 @@ export default function ExpertDocumentsTab({
     try {
       toast.info('Téléchargement en cours...');
 
-      // Récupérer le token d'authentification (essayer plusieurs clés)
-      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
+      // Récupérer le token d'authentification
+      const token = await getSupabaseToken();
       
-      console.log('🔐 Téléchargement - Tokens disponibles:', {
-        token: !!await getSupabaseToken(),
-        supabase_token: !!localStorage.getItem('supabase_token'),
-        tokenToUse: !!token
-      });
+      console.log('🔐 Téléchargement - Token disponible:', !!token);
       
       if (!token) {
         console.error('❌ Aucun token trouvé dans localStorage');
@@ -323,14 +319,10 @@ export default function ExpertDocumentsTab({
     try {
       toast.info('Ouverture du document...');
 
-      // Récupérer le token d'authentification (essayer plusieurs clés)
-      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
+      // Récupérer le token d'authentification
+      const token = await getSupabaseToken();
       
-      console.log('🔐 Visualisation - Tokens disponibles:', {
-        token: !!await getSupabaseToken(),
-        supabase_token: !!localStorage.getItem('supabase_token'),
-        tokenToUse: !!token
-      });
+      console.log('🔐 Visualisation - Token disponible:', !!token);
       
       if (!token) {
         console.error('❌ Aucun token trouvé dans localStorage');

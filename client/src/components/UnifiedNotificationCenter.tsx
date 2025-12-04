@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 
 const UnifiedNotificationCenter: React.FC = () => {
@@ -68,7 +69,7 @@ const UnifiedNotificationCenter: React.FC = () => {
         method = 'PATCH';
       }
 
-      const token = localStorage.getItem('token') || '';
+      const token = (await getSupabaseToken()) || '';
       const headers: Record<string, string> = {};
 
       if (token) {
@@ -106,7 +107,7 @@ const UnifiedNotificationCenter: React.FC = () => {
         method = 'DELETE';
       }
 
-      const token = localStorage.getItem('token') || '';
+      const token = (await getSupabaseToken()) || '';
       const headers: Record<string, string> = {};
 
       if (token) {
@@ -142,7 +143,7 @@ const UnifiedNotificationCenter: React.FC = () => {
         return;
       }
 
-      const token = localStorage.getItem('token') || '';
+      const token = (await getSupabaseToken()) || '';
       const headers: Record<string, string> = {};
 
       if (token) {
@@ -170,7 +171,7 @@ const UnifiedNotificationCenter: React.FC = () => {
       let endpoint = `/api/notifications/${notificationId}`;
       if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}`;
       if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}`;
-      await fetch(endpoint, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+      await fetch(endpoint, { method: 'DELETE', headers: { 'Authorization': `Bearer ${await getSupabaseToken()}` } });
       // Le hook realtime mettra à jour automatiquement l'état
     } catch (error) { console.error('Erreur suppression:', error); }
   };
