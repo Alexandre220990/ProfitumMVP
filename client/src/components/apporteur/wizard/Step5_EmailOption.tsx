@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Mail, Send, AlertCircle, CheckCircle } from 'lucide-react';
 import { config } from '@/config';
 import { toast } from 'sonner';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface Step5Props {
   prospectId: string;
@@ -36,12 +37,13 @@ export function Step5_EmailOption({
     setSending(true);
     
     try {
+      const token = await getSupabaseToken();
       const response = await fetch(
         `${config.API_URL}/api/apporteur/prospects/${prospectId}/send-credentials`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ emailType: emailOption })

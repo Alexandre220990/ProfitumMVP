@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Upload, FileText, Loader2 } from 'lucide-react';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 import { config } from '@/config';
 
@@ -85,7 +86,7 @@ export function WorkflowDocumentUpload({
       }));
 
       // Requête vers API unifiée
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/documents/upload`, {
         method: 'POST',
         headers: {

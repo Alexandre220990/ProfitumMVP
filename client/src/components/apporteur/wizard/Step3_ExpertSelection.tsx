@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Users, AlertCircle } from 'lucide-react';
 import { ProductWithManualExpertSelector } from '../ProductWithManualExpertSelector';
 import { toast } from 'sonner';
 import { config } from '@/config';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface Step3Props {
   prospectId: string;
@@ -56,12 +57,13 @@ export function Step3_ExpertSelection({
           expert_id: expertId
         }));
       
+      const token = await getSupabaseToken();
       const response = await fetch(
         `${config.API_URL}/api/apporteur/prospects/${prospectId}/assign-experts`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ expert_assignments: updates })

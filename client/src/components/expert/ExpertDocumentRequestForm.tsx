@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface DocumentRequest {
   id: string;
@@ -80,7 +81,7 @@ export default function ExpertDocumentRequestForm({
     try {
       setIsSubmitting(true);
 
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         throw new Error('Token non trouvé');

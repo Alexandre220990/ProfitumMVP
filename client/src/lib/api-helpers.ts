@@ -1,4 +1,5 @@
 import { ApiResponse } from "@/types/simulation";
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 // URL de l'API - configuration dynamique selon l'environnement
 const API_URL: string = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
@@ -9,7 +10,8 @@ export function extractData<T>(response: ApiResponse<T> | null | undefined): T |
 }
 
 // Fonction pour obtenir les headers d'authentification
-const getAuthHeaders = () => { const token = localStorage.getItem('token');
+const getAuthHeaders = async () => { 
+  const token = await getSupabaseToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json' };
   
@@ -29,7 +31,8 @@ const handleAuthError = (error: any) => { if (error.status === 401) {
 };
 
 export const get = async <T>(endpoint: string): Promise<ApiResponse<T>> => { try {
-    const response = await fetch(`${API_URL }${ endpoint }`, { method: 'GET', headers: getAuthHeaders() });
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_URL }${ endpoint }`, { method: 'GET', headers });
 
     if (!response.ok) { if (response.status === 401) {
         handleAuthError({ status: 401 });
@@ -44,7 +47,8 @@ export const get = async <T>(endpoint: string): Promise<ApiResponse<T>> => { try
 };
 
 export const post = async <T>(endpoint: string, body: any): Promise<ApiResponse<T>> => { try {
-    const response = await fetch(`${API_URL }${ endpoint }`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(body) });
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_URL }${ endpoint }`, { method: 'POST', headers, body: JSON.stringify(body) });
 
     if (!response.ok) { if (response.status === 401) {
         handleAuthError({ status: 401 });

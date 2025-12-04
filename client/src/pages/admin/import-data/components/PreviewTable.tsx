@@ -17,7 +17,7 @@ interface PreviewTableProps {
 export default function PreviewTable({
   fileData,
   mappingConfig,
-  workflowConfig,
+  workflowConfig: _workflowConfig,
   onPreviewReady,
   previewData: initialPreviewData
 }: PreviewTableProps) {

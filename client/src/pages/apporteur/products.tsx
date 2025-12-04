@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -37,9 +38,10 @@ export default function ProductsPage() {
 
   const loadProducts = async () => {
     try {
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/apporteur/produits`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -383,3 +385,4 @@ export default function ProductsPage() {
     </motion.div>
   );
 }
+

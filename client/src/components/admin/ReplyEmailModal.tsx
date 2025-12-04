@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { config } from "@/config/env";
 import { toast } from "sonner";
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import {
   X,
   Sparkles,

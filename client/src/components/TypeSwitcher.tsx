@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Check, ChevronDown, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,11 +57,12 @@ export const TypeSwitcher = () => {
     setSwitching(true);
     
     try {
+      const token = await getSupabaseToken();
       const response = await fetch('/api/auth/switch-type', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ new_type: newType })
       });

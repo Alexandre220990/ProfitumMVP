@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import {
   Upload,
   Users,
@@ -255,7 +256,7 @@ export default function DocumentsGEDUnifiePage() {
   const loadAllFiles = async () => {
     try {
       // Charger les fichiers via endpoint admin global au lieu de 'all'
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(`${baseUrl}/api/admin/documents/all`, {

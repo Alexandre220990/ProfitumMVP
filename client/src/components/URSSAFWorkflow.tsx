@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { 
   CheckCircle, 
   Clock, 
@@ -146,10 +147,11 @@ export default function URSSAFWorkflow({
     try {
       setIsValidatingEligibility(true);
       
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/dossier-steps/urssaf/validate-eligibility`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

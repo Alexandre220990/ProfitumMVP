@@ -9,6 +9,7 @@ import { CalendarEvent } from '@/services/calendar-service';
 import { useAuth } from '@/hooks/use-auth';
 import { config } from '@/config';
 import { toast } from 'sonner';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -1309,7 +1310,7 @@ const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
   const loadReport = async (rdvId: string) => {
     setLoadingReport(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/rdv/${rdvId}/report`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1864,7 +1865,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
   // Charger tous les participants disponibles
   const loadAvailableParticipants = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const headers = { 'Authorization': `Bearer ${token}` };
       const requests: Array<{ type: ParticipantType; url: string }> = [];
 

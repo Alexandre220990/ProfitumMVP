@@ -10,6 +10,7 @@ import {
   TrendingUp, Activity, BookOpen, FolderOpen, UserCheck, Zap,
   ArrowUpRight, Target, Calendar, Globe
 } from "lucide-react";
+import { getSupabaseToken } from '@/lib/auth-helpers';
 // import { createClient } from "@supabase/supabase-js";
 
 // Configuration Supabase
@@ -175,7 +176,7 @@ const AdminDashboard = () => {
       console.log('📊 Chargement des données du dashboard admin...');
       
       // Utiliser le token du localStorage ou de Supabase
-      const token = localStorage.getItem('supabase_token') || localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         console.error('❌ Aucun token disponible');

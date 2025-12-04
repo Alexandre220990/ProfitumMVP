@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { 
   Search, 
   Filter, 
@@ -73,9 +74,10 @@ export default function ProductSelector({
       
       // Appel à l'API pour récupérer les produits réels
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const token = await getSupabaseToken();
       const response = await fetch(`${baseUrl}/api/apporteur/produits`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });

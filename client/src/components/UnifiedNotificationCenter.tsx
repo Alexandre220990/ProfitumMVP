@@ -37,7 +37,7 @@ const UnifiedNotificationCenter: React.FC = () => {
 
   // Filtrage dynamique selon le rôle
   const filteredNotifications = notifications.filter(notification => {
-    const matchesSearch = notification.title.toLowerCase().includes(searchQuery.toLowerCase()) || notification.message.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (notification.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || notification.message.toLowerCase().includes(searchQuery.toLowerCase());
     
     // Filtre par statut
     let matchesFilter = true;
@@ -429,13 +429,13 @@ const UnifiedNotificationCenter: React.FC = () => {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center space-x-2 mb-1">
                                 <h4 className="font-medium text-gray-900 truncate">
-                                  {notification.title}
+                                  {notification.title || 'Sans titre'}
                                 </h4>
                                 <Badge
                                   variant="secondary"
-                                  className={cn("text-xs", getPriorityColor(notification.priority))}
+                                  className={cn("text-xs", getPriorityColor(notification.priority || 'normal'))}
                                 >
-                                  {notification.priority}
+                                  {notification.priority || 'normal'}
                                 </Badge>
                                 {!notification.is_read && (
                                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>

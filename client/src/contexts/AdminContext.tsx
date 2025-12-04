@@ -1,5 +1,6 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 // Types pour les permissions
 interface Permission { 
@@ -258,9 +259,10 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       // Utiliser import.meta.env pour Vite au lieu de process.env
       const API_URL = import.meta.env.VITE_API_URL || 'https://www.profitum.app';
+      const token = await getSupabaseToken();
       const response = await fetch(`${API_URL}/api/admin/dashboard`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
 

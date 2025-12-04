@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { config } from '@/config';
 import { toast } from 'sonner';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface Expert {
   id: string;
@@ -68,10 +69,11 @@ export function ProductWithManualExpertSelector({
       setLoading(true);
       console.log(`🔍 Chargement de TOUS les experts pour le produit ${product.produit_name}...`);
       
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/apporteur/experts/by-products`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ productIds: [product.produit_id] })

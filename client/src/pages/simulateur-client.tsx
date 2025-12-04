@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, Edit3, CheckCircle2, Save, AlertCircle, ArrowLeft } from "lucide-react";
 import { config } from "@/config/env";
 import { useAuth } from "@/hooks/use-auth";
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface QuestionOptions {
   choix?: string[];
@@ -290,13 +291,12 @@ const SimulateurClient = () => {
     }
   }, [user, navigate]);
 
-  const getHeadersWithAuth = useCallback((): HeadersInit => {
+  const getHeadersWithAuth = useCallback(async (): Promise<HeadersInit> => {
     const headers: HeadersInit = {
       "Content-Type": "application/json"
     };
 
-    const token =
-      localStorage.getItem("token") || localStorage.getItem("supabase_token");
+    const token = await getSupabaseToken();
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }

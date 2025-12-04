@@ -122,7 +122,7 @@ export default function ClientStep3DocumentCollection({
   const unresolvedRejectedDocs = rejectedDocs.filter(rejectedDoc => {
     // Chercher un remplacement valide pour ce document rejeté
     const hasValidReplacement = documents.some(doc => 
-      doc.parent_document_id === rejectedDoc.id && 
+      doc.shared_document_id === rejectedDoc.id && 
       doc.validation_status !== 'rejected' // Le remplacement doit être pending ou validated
     );
     return !hasValidReplacement; // Garder seulement ceux qui n'ont PAS de remplacement valide
@@ -431,12 +431,12 @@ export default function ClientStep3DocumentCollection({
   const replacementMap = new Map<string, Document[]>(); // parent_id -> [replacements]
   
   documents.forEach(doc => {
-    if (doc.parent_document_id) {
+    if (doc.shared_document_id) {
       // C'est un remplacement
-      if (!replacementMap.has(doc.parent_document_id)) {
-        replacementMap.set(doc.parent_document_id, []);
+      if (!replacementMap.has(doc.shared_document_id)) {
+        replacementMap.set(doc.shared_document_id, []);
       }
-      replacementMap.get(doc.parent_document_id)!.push(doc);
+      replacementMap.get(doc.shared_document_id)!.push(doc);
     } else {
       // C'est un document original
       documentMap.set(doc.id, doc);

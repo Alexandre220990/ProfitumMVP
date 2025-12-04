@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { config } from "@/config/env";
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface AdminForm {
   email: string;
@@ -88,7 +89,7 @@ const FormulaireAdmin = () => {
     try {
       // Utiliser le token JWT depuis localStorage au lieu de la session Supabase
       // pour éviter les problèmes de déconnexion
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) {
         setError('Vous devez être connecté pour créer un administrateur');
         navigate('/connect-admin');

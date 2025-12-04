@@ -13,9 +13,9 @@ interface ImportProgressProps {
 }
 
 export default function ImportProgress({
-  fileData,
-  mappingConfig,
-  workflowConfig,
+  fileData: _fileData,
+  mappingConfig: _mappingConfig,
+  workflowConfig: _workflowConfig,
   onCompleted
 }: ImportProgressProps) {
   const [progress, setProgress] = useState(0);

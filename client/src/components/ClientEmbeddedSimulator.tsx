@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { config } from '@/config';
 import { toast } from 'sonner';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 // ============================================================================
 // TYPES
@@ -84,9 +85,10 @@ export function ClientEmbeddedSimulator({
     try {
       setLoading(true);
       
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/simulator/questions`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
