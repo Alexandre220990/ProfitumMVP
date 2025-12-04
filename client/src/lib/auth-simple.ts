@@ -268,40 +268,75 @@ export const checkAuthSimple = async (): Promise<AuthResponse> => {
       expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toLocaleString() : 'N/A'
     });
 
-    // 2️⃣ Récupérer le profil utilisateur depuis le backend
-    const profileResponse = await fetch(`${config.API_URL}/api/auth/me`, {
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    // 2️⃣ Récupérer le profil utilisateur depuis le backend (avec timeout)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout de 10 secondes
 
-    if (!profileResponse.ok) {
-      const errorData = await profileResponse.json();
-      console.error('❌ Erreur récupération profil:', errorData);
+    try {
+      const profileResponse = await fetch(`${config.API_URL}/api/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!profileResponse.ok) {
+        const errorData = await profileResponse.json().catch(() => ({}));
+        console.error('❌ Erreur récupération profil:', errorData);
+        
+        // Si 401/403, la session est invalide
+        if (profileResponse.status === 401 || profileResponse.status === 403) {
+          return {
+            success: false,
+            message: 'Session expirée ou invalide'
+          };
+        }
+        
+        return {
+          success: false,
+          message: errorData.message || 'Erreur lors de la récupération du profil'
+        };
+      }
+
+      const profileData = await profileResponse.json();
+      console.log('✅ Profil utilisateur récupéré:', profileData);
+
+      if (!profileData.success || !profileData.data?.user) {
+        return {
+          success: false,
+          message: 'Profil utilisateur introuvable'
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          token: session.access_token,
+          user: profileData.data.user
+        }
+      };
+
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      // Si c'est un timeout
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.error('⏱️ Timeout lors de la récupération du profil (10s)');
+        return {
+          success: false,
+          message: 'Délai d\'attente dépassé lors de la récupération du profil'
+        };
+      }
+      
+      console.error('❌ Erreur fetch profil:', fetchError);
       return {
         success: false,
-        message: errorData.message || 'Erreur lors de la récupération du profil'
+        message: fetchError instanceof Error ? fetchError.message : 'Erreur réseau'
       };
     }
-
-    const profileData = await profileResponse.json();
-    console.log('✅ Profil utilisateur récupéré:', profileData);
-
-    if (!profileData.success || !profileData.data?.user) {
-      return {
-        success: false,
-        message: 'Profil utilisateur introuvable'
-      };
-    }
-
-    return {
-      success: true,
-      data: {
-        token: session.access_token,
-        user: profileData.data.user
-      }
-    };
 
   } catch (error) {
     console.error('❌ Erreur lors de la vérification:', error);
