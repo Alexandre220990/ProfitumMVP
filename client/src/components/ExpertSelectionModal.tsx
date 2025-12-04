@@ -18,6 +18,7 @@ import {
   Phone
 } from 'lucide-react';
 import { config } from '@/config/env';
+import { supabase } from '@/lib/supabase';
 
 interface ExpertSelectionModalProps {
   isOpen: boolean;
