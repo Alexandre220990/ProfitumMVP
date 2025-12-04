@@ -109,37 +109,66 @@ export function useSessionRefresh() {
   };
 
   useEffect(() => {
-    // Vérifier immédiatement au montage
-    checkAndRefreshIfNeeded();
+    // Flag pour éviter les actions après unmount
+    let isSubscribed = true;
+    
+    // Attendre 2 secondes avant la première vérification pour laisser l'app s'initialiser
+    const initialCheckTimeout = setTimeout(() => {
+      if (isSubscribed) {
+        console.log('🔍 [useSessionRefresh] Première vérification de session...');
+        checkAndRefreshIfNeeded();
+      }
+    }, 2000);
 
     // Vérifier toutes les heures (3600000 ms)
     const CHECK_INTERVAL = 60 * 60 * 1000; // 1 heure
     
     refreshIntervalRef.current = setInterval(() => {
-      console.log('⏰ Vérification périodique de la session...');
-      checkAndRefreshIfNeeded();
+      if (isSubscribed) {
+        console.log('⏰ Vérification périodique de la session...');
+        checkAndRefreshIfNeeded();
+      }
     }, CHECK_INTERVAL);
 
     // Vérifier aussi quand la page devient visible (retour de l'arrière-plan)
+    // Mais avec debounce pour éviter les appels multiples
+    let visibilityTimeout: NodeJS.Timeout | null = null;
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('👁️ Page visible, vérification de la session...');
-        checkAndRefreshIfNeeded();
+      if (document.visibilityState === 'visible' && isSubscribed) {
+        // Debounce de 1 seconde
+        if (visibilityTimeout) clearTimeout(visibilityTimeout);
+        visibilityTimeout = setTimeout(() => {
+          console.log('👁️ Page visible, vérification de la session...');
+          checkAndRefreshIfNeeded();
+        }, 1000);
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Vérifier aussi quand la fenêtre reprend le focus (pour PWA)
+    // Mais avec debounce pour éviter les appels multiples
+    let focusTimeout: NodeJS.Timeout | null = null;
     const handleFocus = () => {
-      console.log('🎯 Fenêtre en focus, vérification de la session...');
-      checkAndRefreshIfNeeded();
+      if (isSubscribed) {
+        // Debounce de 1 seconde
+        if (focusTimeout) clearTimeout(focusTimeout);
+        focusTimeout = setTimeout(() => {
+          console.log('🎯 Fenêtre en focus, vérification de la session...');
+          checkAndRefreshIfNeeded();
+        }, 1000);
+      }
     };
 
     window.addEventListener('focus', handleFocus);
 
     // Cleanup
     return () => {
+      console.log('🧹 [useSessionRefresh] Cleanup');
+      isSubscribed = false;
+      clearTimeout(initialCheckTimeout);
+      if (visibilityTimeout) clearTimeout(visibilityTimeout);
+      if (focusTimeout) clearTimeout(focusTimeout);
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
       }

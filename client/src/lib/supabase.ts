@@ -15,6 +15,18 @@ declare global {
 
 // Fonction pour créer ou récupérer le client Supabase singleton
 function getSupabaseClient() {
+  // Configuration commune optimisée pour éviter les blocages
+  const authConfig = {
+    persistSession: true, 
+    autoRefreshToken: true, 
+    detectSessionInUrl: true,
+    storage: window.localStorage,
+    storageKey: 'supabase.auth.token',
+    flowType: 'implicit' as const,
+    // Ajout de timeouts pour éviter les blocages
+    debug: false
+  };
+
   // En développement avec HMR, utiliser window pour persister le client
   if (import.meta.hot && typeof window !== 'undefined') {
     if (!window.__SUPABASE_CLIENT__) {
@@ -22,16 +34,7 @@ function getSupabaseClient() {
       window.__SUPABASE_CLIENT__ = createClient<Database>(
         config.SUPABASE_URL, 
         config.SUPABASE_ANON_KEY, 
-        { 
-  auth: {
-    persistSession: true, 
-    autoRefreshToken: true, 
-    detectSessionInUrl: true,
-    storage: window.localStorage,
-            storageKey: 'supabase.auth.token',
-            flowType: 'implicit'
-          }
-        }
+        { auth: authConfig }
       );
     } else {
       console.log('♻️ [Supabase] Réutilisation du client singleton (HMR)');
@@ -40,19 +43,11 @@ function getSupabaseClient() {
   }
 
   // En production, créer normalement
+  console.log('🏭 [Supabase] Création du client (Production)');
   return createClient<Database>(
     config.SUPABASE_URL, 
     config.SUPABASE_ANON_KEY, 
-    { 
-      auth: {
-        persistSession: true, 
-        autoRefreshToken: true, 
-        detectSessionInUrl: true,
-        storage: window.localStorage,
-        storageKey: 'supabase.auth.token',
-        flowType: 'implicit'
-      }
-    }
+    { auth: authConfig }
   );
 }
 

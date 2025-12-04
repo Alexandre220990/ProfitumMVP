@@ -105,6 +105,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     
     try {
+      // 🔧 NETTOYER LES CACHES PROBLÉMATIQUES AVANT LA CONNEXION
+      console.log('🧹 [login] Nettoyage caches problématiques...');
+      
+      // Nettoyer les préférences en cache qui pourraient causer des problèmes
+      const keysToClean = Object.keys(localStorage).filter(key => 
+        key.startsWith('user_preferences_') || 
+        key.startsWith('simulation_') ||
+        key.includes('_cache_')
+      );
+      
+      keysToClean.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+          console.log('🗑️ [login] Cache nettoyé:', key);
+        } catch (e) {
+          // Ignorer les erreurs de nettoyage
+        }
+      });
+      
       // Authentification Supabase
       console.log('🔐 [login] signInWithPassword...');
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -278,10 +297,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('🚀 [useEffect:init] DÉBUT Initialisation authentification...');
     
+    // Flag pour éviter les actions après unmount
+    let isSubscribed = true;
+    
     const initializeAuth = async () => {
       try {
         console.log('⏳ [init] Attente 100ms pour restauration session...');
         await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Vérifier si le composant est toujours monté
+        if (!isSubscribed) {
+          console.log('⚠️ [init] Composant démonté, arrêt init');
+          return;
+        }
         
         console.log('🔍 [init] Vérification session Supabase...');
         const { data: { session } } = await supabase.auth.getSession();
@@ -302,18 +330,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }, 5000);
         });
         
-        await Promise.race([checkPromise, timeoutPromise]);
-        console.log('✅ [init] checkAuth terminé');
+        const result = await Promise.race([checkPromise, timeoutPromise]);
+        
+        // Vérifier si le composant est toujours monté avant de mettre à jour l'état
+        if (!isSubscribed) {
+          console.log('⚠️ [init] Composant démonté après checkAuth, skip mise à jour état');
+          return;
+        }
+        
+        console.log('✅ [init] checkAuth terminé, résultat:', result);
         
       } catch (error) {
         console.error('❌ [init] Erreur:', error);
       } finally {
-        setIsLoading(false);
-        console.log('✅ [init] setIsLoading(false) - FIN INITIALISATION');
+        // S'assurer que isLoading passe à false seulement si le composant est monté
+        if (isSubscribed) {
+          setIsLoading(false);
+          console.log('✅ [init] setIsLoading(false) - FIN INITIALISATION');
+        }
       }
     };
 
     initializeAuth();
+    
+    // Cleanup : marquer que le composant est démonté
+    return () => {
+      console.log('🧹 [useEffect:init] Cleanup init');
+      isSubscribed = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -325,6 +369,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Flag pour éviter les actions après unmount
     let isSubscribed = true;
+    // Flag pour éviter les appels multiples de checkAuth
+    let isProcessingEvent = false;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       // Ignorer les events si le composant est démonté
@@ -333,35 +379,88 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
+      // Éviter le traitement concurrent du même type d'événement
+      if (isProcessingEvent) {
+        console.log('⚠️ [onAuthStateChange] Event déjà en traitement, skip:', event);
+        return;
+      }
+      
       console.log('🔔 [onAuthStateChange] Event:', event, { hasSession: !!session });
       
-      switch (event) {
-        case 'SIGNED_IN':
-          console.log('✅ [onAuthStateChange] SIGNED_IN - checkAuth...');
-          await checkAuth(false);
-          break;
-          
-        case 'SIGNED_OUT':
-          console.log('👋 [onAuthStateChange] SIGNED_OUT');
-          setUser(null);
-          if (typeof window !== 'undefined' && (window as any).updatePWAManifest) {
-            (window as any).updatePWAManifest('client');
-            localStorage.setItem('pwa_user_type', 'client');
-          }
-          break;
-          
-        case 'TOKEN_REFRESHED':
-          console.log('🔄 [onAuthStateChange] TOKEN_REFRESHED - checkAuth...');
-          await checkAuth(false);
-          break;
-          
-        case 'USER_UPDATED':
-          console.log('👤 [onAuthStateChange] USER_UPDATED - checkAuth...');
-          await checkAuth(false);
-          break;
-          
-        default:
-          console.log('ℹ️ [onAuthStateChange] Event non géré:', event);
+      try {
+        isProcessingEvent = true;
+        
+        switch (event) {
+          case 'SIGNED_IN':
+            console.log('✅ [onAuthStateChange] SIGNED_IN - skip checkAuth (déjà fait dans login())');
+            // On ne fait PAS checkAuth ici car il est déjà appelé dans login()
+            break;
+            
+          case 'SIGNED_OUT':
+            console.log('👋 [onAuthStateChange] SIGNED_OUT');
+            if (isSubscribed) {
+              setUser(null);
+              if (typeof window !== 'undefined' && (window as any).updatePWAManifest) {
+                (window as any).updatePWAManifest('client');
+                localStorage.setItem('pwa_user_type', 'client');
+              }
+            }
+            break;
+            
+          case 'TOKEN_REFRESHED':
+            console.log('🔄 [onAuthStateChange] TOKEN_REFRESHED - mise à jour silencieuse user');
+            // Mise à jour silencieuse du user depuis la session rafraîchie
+            if (session && isSubscribed) {
+              const supabaseUser = session.user;
+              const userData: UserType = {
+                id: supabaseUser.id,
+                auth_user_id: supabaseUser.id,
+                email: supabaseUser.email || '',
+                type: (supabaseUser.user_metadata?.type as any) || 'client',
+                username: supabaseUser.user_metadata?.username || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0],
+                first_name: supabaseUser.user_metadata?.first_name || supabaseUser.user_metadata?.name?.split(' ')[0],
+                last_name: supabaseUser.user_metadata?.last_name || supabaseUser.user_metadata?.name?.split(' ').slice(1).join(' '),
+                company_name: supabaseUser.user_metadata?.company_name,
+                database_id: supabaseUser.user_metadata?.database_id || supabaseUser.id
+              };
+              setUser(userData);
+              console.log('✅ [onAuthStateChange] User mis à jour après refresh');
+            }
+            break;
+            
+          case 'USER_UPDATED':
+            console.log('👤 [onAuthStateChange] USER_UPDATED - mise à jour user');
+            if (session && isSubscribed) {
+              const supabaseUser = session.user;
+              const userData: UserType = {
+                id: supabaseUser.id,
+                auth_user_id: supabaseUser.id,
+                email: supabaseUser.email || '',
+                type: (supabaseUser.user_metadata?.type as any) || 'client',
+                username: supabaseUser.user_metadata?.username || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0],
+                first_name: supabaseUser.user_metadata?.first_name || supabaseUser.user_metadata?.name?.split(' ')[0],
+                last_name: supabaseUser.user_metadata?.last_name || supabaseUser.user_metadata?.name?.split(' ').slice(1).join(' '),
+                company_name: supabaseUser.user_metadata?.company_name,
+                database_id: supabaseUser.user_metadata?.database_id || supabaseUser.id
+              };
+              setUser(userData);
+              console.log('✅ [onAuthStateChange] User mis à jour');
+            }
+            break;
+            
+          case 'INITIAL_SESSION':
+            console.log('🏁 [onAuthStateChange] INITIAL_SESSION - déjà géré par init');
+            // Ne rien faire, c'est géré par l'initialisation
+            break;
+            
+          default:
+            console.log('ℹ️ [onAuthStateChange] Event non géré:', event);
+        }
+      } finally {
+        // Libérer le flag après un délai pour éviter les events trop rapprochés
+        setTimeout(() => {
+          isProcessingEvent = false;
+        }, 500);
       }
     });
 
