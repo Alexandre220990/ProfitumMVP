@@ -46,7 +46,8 @@ import {
   ChevronUp,
   ChevronDown,
   Clock,
-  Send
+  Send,
+  Timer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -604,51 +605,8 @@ export function UniversalNotificationCenter({
     return iconMap[type] || <Info className="h-4 w-4 text-gray-500" />;
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent': return 'bg-red-100 text-red-800 border-red-200';
-      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'low': return 'bg-blue-100 text-blue-800 border-blue-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
 
-  const formatFutureTime = (hours: number | null) => {
-    if (hours === null) return null;
-    if (hours <= 0) return 'immédiatement';
-    if (hours < 1) return 'dans moins d’une heure';
-    if (hours < 24) return `dans ${Math.ceil(hours)}h`;
-    const days = Math.ceil(hours / 24);
-    return `dans ${days} jour${days > 1 ? 's' : ''}`;
-  };
 
-  const formatPastTime = (date: Date) => {
-    const diffMs = Date.now() - date.getTime();
-    const diffHours = diffMs / (1000 * 60 * 60);
-    if (diffHours < 1) return 'moins d’une heure';
-    if (diffHours < 24) return `${Math.floor(diffHours)}h`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}j`;
-    const diffWeeks = Math.floor(diffDays / 7);
-    return `${diffWeeks}sem`;
-  };
-
-  const formatSlaDescription = (notification: any) => {
-    if (!notification.sla.dueAt) {
-      return null;
-    }
-
-    if (notification.sla.isLate) {
-      return `En retard depuis ${formatPastTime(notification.sla.dueAt)}`;
-    }
-
-    const futureLabel = formatFutureTime(notification.sla.hoursRemaining);
-    if (!futureLabel) {
-      return null;
-    }
-
-    return `À traiter ${futureLabel}`;
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -661,52 +619,6 @@ export function UniversalNotificationCenter({
     return date.toLocaleDateString('fr-FR');
   };
 
-  /**
-   * Formater le temps restant pour un événement (compteur statique)
-   */
-  const formatEventTimeRemaining = (notification: any): string | null => {
-    const metadata = notification.metadata || {};
-    const eventStatus = metadata.event_status || 
-      (notification.notification_type === 'event_upcoming' ? 'upcoming' :
-       notification.notification_type === 'event_in_progress' ? 'in_progress' :
-       notification.notification_type === 'event_completed' ? 'completed' : null);
-
-    if (!eventStatus || !metadata.scheduled_date || !metadata.scheduled_time) {
-      return null;
-    }
-
-    const now = new Date();
-    const eventStart = new Date(`${metadata.scheduled_date}T${metadata.scheduled_time}`);
-    const durationMs = (metadata.duration_minutes || 60) * 60 * 1000;
-    const eventEnd = new Date(eventStart.getTime() + durationMs);
-
-    if (eventStatus === 'upcoming') {
-      const timeRemaining = eventStart.getTime() - now.getTime();
-      // Si l'événement devrait commencer maintenant ou est en retard, ne pas afficher "Maintenant"
-      // mais plutôt le décompte négatif ou rien (la date/heure sera affichée séparément)
-      if (timeRemaining <= 0) return null; // Ne pas afficher de décompte si l'événement est passé
-      
-      const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-      const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-      
-      if (hours > 0) {
-        return `Dans ${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`;
-      } else {
-        return `Dans ${minutes}min`;
-      }
-    } else if (eventStatus === 'in_progress') {
-      const timeRemaining = eventEnd.getTime() - now.getTime();
-      if (timeRemaining <= 0) return null; // Ne pas afficher si terminé
-      
-      const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-      const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-      
-      return `Se termine dans ${hours > 0 ? `${hours}h ` : ''}${minutes}min`;
-    } else {
-      // Pour les événements terminés, ne pas afficher de décompte
-      return null;
-    }
-  };
 
   const getRoleLabel = () => {
     switch (userRole) {
@@ -806,12 +718,7 @@ export function UniversalNotificationCenter({
 
   const renderNotificationCard = (notification: any) => {
     const metadata = notification.metadata || {};
-    const slaDescription = formatSlaDescription(notification);
     const actionUrl = getPrimaryActionUrl(notification);
-    const dossierLabel =
-      metadata.dossier_nom ||
-      metadata.produit ||
-      (metadata.dossier_id ? `Dossier ${metadata.dossier_id.slice(0, 8)}…` : null);
     const isArchived = notification.status === 'archived';
     
     // Vérifier si c'est une notification d'événement
@@ -828,7 +735,6 @@ export function UniversalNotificationCenter({
       notification.notification_type === 'event_proposed' ||
       (metadata.event_status === 'proposed' && metadata.event_id);
     
-    const eventTimeRemaining = isEventNotification ? formatEventTimeRemaining(notification) : null;
     const eventStatus = metadata.event_status || 
       (notification.notification_type === 'event_upcoming' ? 'upcoming' :
        notification.notification_type === 'event_in_progress' ? 'in_progress' :
@@ -839,349 +745,234 @@ export function UniversalNotificationCenter({
     
     // Déterminer si la tuile est cliquable
     const isClickable = !isArchived && !!actionUrl;
-    
-    // Pour les événements, améliorer la distinction visuelle lu/non lu
-    const getEventCardStyle = () => {
-      if (isArchived) return "opacity-60";
+
+    // Calculer le SLA pour obtenir hoursElapsed
+    const slaStatus = {
+      hoursElapsed: 0,
+      status: 'ok' as 'ok' | 'warning' | 'overdue'
+    };
+
+    if (notification.created_at) {
+      const createdAt = new Date(notification.created_at);
+      const now = new Date();
+      slaStatus.hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
       
-      if (isEventNotification) {
-        if (isUnread) {
-          // Non lu : bordure épaisse et fond coloré plus marqué
-          if (eventStatus === 'completed') {
-            return "border-l-4 border-l-green-600 bg-green-100 shadow-md";
-          } else if (eventStatus === 'in_progress') {
-            return "border-l-4 border-l-orange-600 bg-orange-100 shadow-md";
-          } else if (eventStatus === 'proposed' || isEventProposed) {
-            return "border-l-4 border-l-purple-600 bg-purple-100 shadow-md";
-          } else {
-            return "border-l-4 border-l-blue-600 bg-blue-100 shadow-md";
-          }
-        } else {
-          // Lu : bordure fine et fond plus clair
-          if (eventStatus === 'completed') {
-            return "border-l-2 border-l-green-300 bg-green-50";
-          } else if (eventStatus === 'in_progress') {
-            return "border-l-2 border-l-orange-300 bg-orange-50";
-          } else if (eventStatus === 'proposed' || isEventProposed) {
-            return "border-l-2 border-l-purple-300 bg-purple-50";
-          } else {
-            return "border-l-2 border-l-blue-300 bg-blue-50";
-          }
-        }
+      // Déterminer le statut SLA en fonction du type
+      const slaHours = metadata.sla_hours || 24;
+      if (slaStatus.hoursElapsed > slaHours) {
+        slaStatus.status = 'overdue';
+      } else if (slaStatus.hoursElapsed > slaHours * 0.75) {
+        slaStatus.status = 'warning';
       }
-      
-      // Pour les autres notifications
-      if (notification.sla.isLate && !isArchived) {
-        return "border-l-4 border-l-red-500 bg-red-50";
-      } else if (isUnread) {
-        return "border-l-4 border-l-blue-500 bg-blue-50 shadow-sm";
-      } else if (!isArchived) {
-        return "border-l-2 border-l-gray-200 bg-white";
+    }
+
+    const getPriorityBadge = (priority: string) => {
+      if (priority === 'urgent' || priority === 'high') {
+        return (
+          <Badge variant="destructive" className="text-xs px-1.5 py-0 ml-2">
+            <Zap className="w-3 h-3 mr-1" />
+            Urgent
+          </Badge>
+        );
       }
-      
-      return "opacity-60";
+      return null;
+    };
+
+    // Formater le temps écoulé comme dans le dropdown
+    const formatTimeElapsed = (hours: number) => {
+      if (hours < 1) {
+        const minutes = Math.floor(hours * 60);
+        return `Il y a ${minutes} min`;
+      } else if (hours < 24) {
+        return `Il y a ${Math.floor(hours)}h`;
+      } else {
+        const days = Math.floor(hours / 24);
+        return `Il y a ${days} jour${days > 1 ? 's' : ''}`;
+      }
+    };
+
+    // Classes SLA
+    const getSLAStatusClasses = (status: string) => {
+      switch (status) {
+        case 'overdue':
+          return 'bg-red-100 text-red-700 border-red-200';
+        case 'warning':
+          return 'bg-orange-100 text-orange-700 border-orange-200';
+        default:
+          return 'bg-green-100 text-green-700 border-green-200';
+      }
     };
     
     return (
-      <Card
+      <div
         key={notification.id}
+        onClick={() => {
+          if (isClickable) {
+            handleNotificationClick(notification);
+          }
+        }}
         className={cn(
-          "transition-all duration-200 hover:shadow-md",
-          getEventCardStyle()
+          "px-4 py-3 transition-colors group border-b border-gray-100 last:border-b-0",
+          isClickable && "hover:bg-blue-50 cursor-pointer",
+          isArchived && "opacity-60"
         )}
       >
-        <CardContent
-          className={cn(
-            "p-3 sm:p-4",
-            isClickable && "cursor-pointer hover:bg-gray-50 transition-colors"
-          )}
-          onClick={() => {
-            if (isClickable) {
-              handleNotificationClick(notification);
-            }
-          }}
-        >
-          <div className="flex flex-col md:flex-row items-start justify-between gap-3 md:gap-4">
-            <div className="flex items-start space-x-2 sm:space-x-3 flex-1 min-w-0 w-full">
-              <div className={cn(
-                "mt-1 flex-shrink-0",
-                isUnread && "opacity-100",
-                !isUnread && "opacity-60"
-              )}>
-                {getTypeIcon(notification.notification_type)}
-              </div>
-              <div className="flex-1 min-w-0 space-y-1 w-full">
-                <div className="flex items-center flex-wrap gap-2">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <h4 className={cn(
-                      "truncate text-sm md:text-base",
-                      isUnread 
-                        ? isEventNotification 
-                          ? "font-bold text-gray-900" 
-                          : "font-semibold text-gray-900"
-                        : isEventNotification
-                        ? "font-medium text-gray-700"
-                        : "font-medium text-gray-700"
-                    )}>
-                      {notification.title}
-                    </h4>
-                    {isUnread && (
-                      <div className={cn(
-                        "rounded-full flex-shrink-0",
-                        isEventNotification ? "w-3 h-3 bg-blue-600" : "w-2 h-2 bg-blue-500"
-                      )} />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge
-                      variant="secondary"
-                      className={cn("text-xs capitalize", getPriorityColor(notification.priority))}
-                    >
-                      {notification.priority}
-                    </Badge>
-                  {notification.sla.isLate && !isArchived && (
-                    <Badge
-                      variant="destructive"
-                      className="text-xs bg-red-100 text-red-700 border-red-200"
-                    >
-                      En retard
-                    </Badge>
-                  )}
-                  {notification.sla.slaHours && (
-                    <Badge variant="outline" className="text-xs">
-                      {notification.sla.slaHours}h SLA
-                    </Badge>
-                  )}
-                  </div>
+        <div className="flex items-start gap-3">
+          {/* Icône de type */}
+          <div className="flex-shrink-0 mt-0.5">
+            {getTypeIcon(notification.notification_type)}
+          </div>
+
+          {/* Contenu */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {notification.title}
+                  </p>
+                  {getPriorityBadge(notification.priority)}
                 </div>
-                <p className={cn(
-                  "text-xs md:text-sm line-clamp-2 break-words",
-                  isUnread ? "text-gray-700" : "text-gray-600"
-                )}>
+                <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
                   {notification.message}
                 </p>
-                {isEventNotification && (
-                  <div className="space-y-1">
-                    {/* Date/heure du RDV - toujours afficher */}
-                    {metadata.scheduled_datetime ? (
-                      <div className="text-xs text-gray-600 font-medium">
-                        📅 {metadata.scheduled_datetime}
-                      </div>
-                    ) : metadata.scheduled_date && metadata.scheduled_time ? (
-                      <div className="text-xs text-gray-600 font-medium">
-                        📅 {new Date(`${metadata.scheduled_date}T${metadata.scheduled_time}`).toLocaleString('fr-FR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                    ) : null}
-                    {/* Décompte jusqu'au début/fin - seulement si l'événement n'est pas terminé */}
-                    {eventTimeRemaining && eventStatus !== 'completed' && (
-                      <div className={cn(
-                        "text-xs font-semibold px-2 py-1 rounded inline-block",
-                        eventStatus === 'upcoming' && "bg-blue-100 text-blue-700",
-                        eventStatus === 'in_progress' && "bg-orange-100 text-orange-700"
-                      )}>
-                        {eventTimeRemaining}
-                      </div>
-                    )}
-                    {/* Badge statut pour les événements terminés */}
-                    {eventStatus === 'completed' && (
-                      <div className="text-xs font-semibold px-2 py-1 rounded inline-block bg-green-100 text-green-700">
-                        Terminé
-                      </div>
-                    )}
-                    {/* Badge pour les événements proposés */}
-                    {(eventStatus === 'proposed' || isEventProposed) && (
-                      <div className="text-xs font-semibold px-2 py-1 rounded inline-block bg-purple-100 text-purple-700">
-                        En attente de réponse
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* Actions pour les événements proposés */}
-                {isEventProposed && metadata.event_id && !isArchived && (
-                  <div className="flex flex-col sm:flex-row flex-wrap gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      size="sm"
-                      variant="default"
-                      className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
-                      onClick={() => {
-                        handleEventResponse(metadata.event_id, 'accept');
-                      }}
+              </div>
+
+              {/* Actions dans un conteneur séparé */}
+              <div 
+                className="flex items-center gap-1 flex-shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {isArchived ? (
+                  <>
+                    <button
+                      onClick={() => unarchiveNotification(notification.id)}
+                      className="p-1 rounded hover:bg-green-100 transition-colors"
+                      title="Restaurer"
                     >
-                      <Check className="w-4 h-4 mr-1" />
-                      Accepter
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-purple-300 text-purple-700 hover:bg-purple-50 w-full sm:w-auto"
-                      onClick={() => {
-                        openEventResponseModal(metadata.event_id, 'propose_alternative', metadata.event_title || notification.title);
-                      }}
+                      <ArchiveRestore className="w-4 h-4 text-green-600 hover:text-green-700" />
+                    </button>
+                    <button
+                      onClick={() => deleteNotification(notification.id)}
+                      className="p-1 rounded hover:bg-red-100 transition-colors"
+                      title="Supprimer"
                     >
-                      <Clock className="w-4 h-4 mr-1" />
-                      Proposer horaire
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-red-300 text-red-700 hover:bg-red-50 w-full sm:w-auto"
-                      onClick={() => {
-                        openEventResponseModal(metadata.event_id, 'refuse', metadata.event_title || notification.title);
-                      }}
+                      <Trash2 className="w-4 h-4 text-red-600 hover:text-red-700" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Actions pour les événements terminés */}
+                    {isEventNotification && eventStatus === 'completed' && metadata.event_id && (
+                      <>
+                        {/* Icône de rapport si un rapport existe */}
+                        {metadata.has_report && metadata.report && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportSummaryPopup({
+                                isOpen: true,
+                                report: metadata.report,
+                                eventTitle: metadata.event_title || notification.message
+                              });
+                            }}
+                            className="p-1 rounded hover:bg-green-100 transition-colors relative"
+                            title="Voir le résumé du rapport"
+                          >
+                            <FileTextIcon className="w-4 h-4 text-green-600 hover:text-green-700" />
+                            <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+                          </button>
+                        )}
+                        {/* Bouton pour ajouter/modifier le rapport */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenReportModal(metadata.event_id, metadata.event_title || notification.message);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-blue-100"
+                          title={metadata.has_report ? "Modifier le rapport" : "Ajouter un rapport"}
+                        >
+                          <FileTextIcon className="w-4 h-4 text-blue-600 hover:text-blue-700" />
+                        </button>
+                      </>
+                    )}
+                    
+                    <button
+                      onClick={() => archiveNotification(notification.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-100"
+                      title="Archiver"
                     >
-                      <X className="w-4 h-4 mr-1" />
-                      Refuser
-                    </Button>
-                  </div>
-                )}
-                {(metadata.next_step_label || metadata.next_step_description) && (
-                  <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md px-3 py-2 space-y-1">
-                    <div className="font-medium text-gray-700">
-                      Prochaine étape : {metadata.next_step_label || 'à définir'}
-                    </div>
-                    {metadata.next_step_description && (
-                      <div>{metadata.next_step_description}</div>
-                    )}
-                  </div>
-                )}
-                {metadata.recommended_action && (
-                  <div className="text-xs text-gray-500">
-                    Action recommandée : {metadata.recommended_action}
-                  </div>
-                )}
-                {metadata.support_email && (
-                  <div className="text-xs text-gray-400">
-                    Besoin d’aide ? {metadata.support_email}
-                  </div>
-                )}
-                {slaDescription && !isArchived && (
-                  <p
-                    className={cn(
-                      "text-xs font-medium",
-                      notification.sla.isLate ? "text-red-600" : "text-gray-500"
-                    )}
-                  >
-                    {slaDescription}
-                  </p>
-                )}
-                {(dossierLabel || metadata.client_nom) && (
-                  <p className="text-xs text-gray-500 flex flex-wrap items-center gap-2">
-                    {dossierLabel && <span>{dossierLabel}</span>}
-                    {metadata.client_nom && <span>• {metadata.client_nom}</span>}
-                  </p>
-                )}
-                {/* Pour les notifications d'événement, ne pas afficher "Il y a X" mais plutôt le décompte */}
-                {!isEventNotification && (
-                  <span className="text-xs text-gray-400">
-                    {formatDate(notification.created_at)}
-                  </span>
+                      <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-600" />
+                    </button>
+                  </>
                 )}
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2 w-full md:w-auto">
-              {isArchived ? (
-                <div
-                  className="flex items-center gap-2 w-full sm:w-auto"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => unarchiveNotification(notification.id)}
-                    className="h-8 px-2 text-green-600 hover:text-green-700 flex-1 sm:flex-initial"
-                    title="Restaurer"
-                  >
-                    <ArchiveRestore className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteNotification(notification.id)}
-                    className="h-8 px-2 text-red-600 hover:text-red-700 flex-1 sm:flex-initial"
-                    title="Supprimer définitivement"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+            {/* Footer - Time & SLA */}
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className="text-xs text-gray-500">
+                {formatTimeElapsed(slaStatus.hoursElapsed)}
+              </span>
+              
+              {slaStatus.status !== 'ok' && (
+                <Badge className={`text-xs ${getSLAStatusClasses(slaStatus.status)}`}>
+                  <Timer className="w-3 h-3 mr-1" />
+                  {slaStatus.status === 'overdue' 
+                    ? 'SLA dépassé' 
+                    : 'Urgent'}
+                </Badge>
+              )}
+
+              {/* Point bleu indiquant non lu */}
+              {isUnread && (
+                <div className="ml-auto">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
                 </div>
-              ) : (
-                <>
-                  <div
-                    className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <div className="flex items-center gap-1 w-full sm:w-auto">
-                      <Switch
-                        checked={notification.is_read}
-                        onCheckedChange={() => toggleReadStatus(notification)}
-                        className="data-[state=checked]:bg-green-600"
-                      />
-                      <span className="text-xs text-gray-600 whitespace-nowrap">
-                        {notification.is_read ? 'Lu' : 'Non lu'}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        archiveNotification(notification.id);
-                      }}
-                      className="h-8 px-2 text-gray-500 hover:text-red-600 hover:bg-red-50 w-full sm:w-auto"
-                      title="Archiver"
-                    >
-                      <Archive className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  {/* Bouton rapport pour les événements terminés */}
-                  {isEventNotification && eventStatus === 'completed' && metadata.event_id && (
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-                      {/* Icône de rapport si un rapport existe */}
-                      {metadata.has_report && metadata.report && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setReportSummaryPopup({
-                              isOpen: true,
-                              report: metadata.report,
-                              eventTitle: metadata.event_title || notification.message
-                            });
-                          }}
-                          className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50 relative w-full sm:w-auto"
-                          title="Voir le résumé du rapport"
-                        >
-                          <FileTextIcon className="w-5 h-5" />
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleOpenReportModal(metadata.event_id, metadata.event_title || notification.message);
-                        }}
-                        className="flex items-center gap-2 w-full sm:w-auto text-xs"
-                      >
-                        <FileTextIcon className="w-4 h-4" />
-                        {metadata.has_report ? 'Modifier rapport' : 'Ajouter rapport'}
-                      </Button>
-                    </div>
-                  )}
-                </>
               )}
             </div>
+
+            {/* Actions pour les événements proposés */}
+            {isEventProposed && metadata.event_id && !isArchived && (
+              <div className="flex flex-wrap gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="bg-green-600 hover:bg-green-700 text-white text-xs h-7"
+                  onClick={() => {
+                    handleEventResponse(metadata.event_id, 'accept');
+                  }}
+                >
+                  <Check className="w-3 h-3 mr-1" />
+                  Accepter
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-purple-300 text-purple-700 hover:bg-purple-50 text-xs h-7"
+                  onClick={() => {
+                    openEventResponseModal(metadata.event_id, 'propose_alternative', metadata.event_title || notification.title);
+                  }}
+                >
+                  <Clock className="w-3 h-3 mr-1" />
+                  Proposer horaire
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-red-300 text-red-700 hover:bg-red-50 text-xs h-7"
+                  onClick={() => {
+                    openEventResponseModal(metadata.event_id, 'refuse', metadata.event_title || notification.title);
+                  }}
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Refuser
+                </Button>
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
@@ -1652,20 +1443,20 @@ export function UniversalNotificationCenter({
 
             {/* Notifications list */}
             <ScrollArea className="flex-1 min-h-0">
-              <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : filteredNotifications.length === 0 ? (
-                  <div className="text-center py-8">
-                    <BellOff className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">Aucune notification trouvée</p>
-                  </div>
-                ) : (
-                  filteredNotifications.map((notification: any) => renderNotificationCard(notification))
-                )}
-              </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : filteredNotifications.length === 0 ? (
+                <div className="text-center py-8">
+                  <BellOff className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Aucune notification trouvée</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {filteredNotifications.map((notification: any) => renderNotificationCard(notification))}
+                </div>
+              )}
             </ScrollArea>
           </div>
         </div>

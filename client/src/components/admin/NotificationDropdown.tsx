@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, X, Trash2, Mail, FileText, Users, Zap, Timer } from 'lucide-react';
+import { Bell, X, Archive, Mail, FileText, Users, Zap, Timer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { config } from '@/config/env';
 import { getSupabaseToken } from '@/lib/auth-helpers';
@@ -135,12 +135,12 @@ export function NotificationDropdown({ unreadCount, onCountChange }: Notificatio
     }
   };
 
-  const dismissNotification = async (notificationId: string, e: React.MouseEvent) => {
+  const archiveNotification = async (notificationId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
     try {
       const token = await getSupabaseToken();
-      const response = await fetch(`${config.API_URL}/api/notifications/${notificationId}/dismiss`, {
+      const response = await fetch(`${config.API_URL}/api/notifications/${notificationId}/archive`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -152,10 +152,10 @@ export function NotificationDropdown({ unreadCount, onCountChange }: Notificatio
         if (onCountChange) {
           onCountChange(notifications.length - 1);
         }
-        toast.success('Notification supprimée');
+        toast.success('Notification archivée');
       }
     } catch (error) {
-      console.error('❌ Erreur suppression notification:', error);
+      console.error('❌ Erreur archivage notification:', error);
     }
   };
 
@@ -267,12 +267,13 @@ export function NotificationDropdown({ unreadCount, onCountChange }: Notificatio
                               </p>
                             </div>
 
-                            {/* Bouton supprimer */}
+                            {/* Bouton archiver */}
                             <button
-                              onClick={(e) => dismissNotification(notification.id, e)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 rounded hover:bg-red-100"
+                              onClick={(e) => archiveNotification(notification.id, e)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 rounded hover:bg-orange-100"
+                              title="Archiver"
                             >
-                              <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-600" />
+                              <Archive className="w-4 h-4 text-gray-400 hover:text-orange-600" />
                             </button>
                           </div>
 

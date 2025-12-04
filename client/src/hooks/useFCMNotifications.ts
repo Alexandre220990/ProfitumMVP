@@ -173,7 +173,7 @@ export function useFCMNotifications(): UseFCMNotificationsReturn {
     } catch (err) {
       console.error('❌ Erreur enregistrement token FCM:', err);
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
-      toast.error('Impossible d\'activer les notifications push');
+      // Toast d'erreur supprimé pour éviter les logs redondants
       return false;
     } finally {
       setIsLoading(false);
