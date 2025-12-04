@@ -1,5 +1,6 @@
 import { Router } from "express";
-import authRoutes from "./auth";
+import authRoutes from "./auth-legacy-backup";
+import authSimpleRoutes from "./auth-simple";
 import auditRoutes from "./audits";
 import simulationRoutes from "./simulationRoutes";
 import partnerRoutes from "./partners";
@@ -41,7 +42,11 @@ import * as path from 'path';
 const router = Router();
 
 // Routes d'authentification
-router.use('/auth', authRoutes);
+// ✅ NOUVELLES ROUTES SIMPLIFIÉES (priorité)
+router.use('/auth', authSimpleRoutes);
+
+// ⚠️ ANCIENNES ROUTES (backup temporaire)
+router.use('/auth-legacy', authRoutes);
 
 // Routes des audits
 router.use('/audits', enhancedAuthMiddleware, auditRoutes);

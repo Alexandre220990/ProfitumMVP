@@ -1,4 +1,4 @@
-import type { AuthUser } from './auth';
+import type { AuthUser } from '../types/auth';
 
 // Extension globale de l'interface Express pour req.user
 

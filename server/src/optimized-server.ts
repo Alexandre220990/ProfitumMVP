@@ -8,7 +8,8 @@ import compression from 'compression';
 import { createClient } from '@supabase/supabase-js';
 
 // Routes
-import authRoutes from './routes/auth';
+import authRoutes from './routes/auth-legacy-backup';
+import authSimpleRoutes from './routes/auth-simple';
 import auditsRouter from './routes/audits';
 import simulationsRoutes from './routes/simulations';
 import partnersRouter from './routes/partners';
