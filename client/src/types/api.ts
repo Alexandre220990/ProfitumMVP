@@ -4,6 +4,7 @@ import { AuthUser } from "./auth";
 export interface BaseUser { id: string;
   email: string;
   type: "client" | "expert" | "admin" | "apporteur";
+  available_types?: ("client" | "expert" | "admin" | "apporteur")[];
   username?: string;
   name?: string;
   first_name?: string;
