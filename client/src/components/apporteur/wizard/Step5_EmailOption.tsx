@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Mail, Send, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Send, AlertCircle, CheckCircle } from 'lucide-react';
 import { config } from '@/config';
 import { toast } from 'sonner';
 import { getSupabaseToken } from '@/lib/auth-helpers';

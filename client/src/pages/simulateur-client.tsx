@@ -378,7 +378,7 @@ const SimulateurClient = () => {
         const response = await fetch(`${config.API_URL}/api/simulator/session`, {
           method: "POST",
           credentials: "include",
-          headers: getHeadersWithAuth(),
+          headers: await getHeadersWithAuth(),
           body: JSON.stringify({
             client_data: {
               client_mode: true,
@@ -479,7 +479,7 @@ const SimulateurClient = () => {
         {
           method: "PATCH",
           credentials: "include",
-          headers: getHeadersWithAuth(),
+          headers: await getHeadersWithAuth(),
           body: JSON.stringify({ responses: changes })
         }
       );
@@ -572,7 +572,7 @@ const SimulateurClient = () => {
       const response = await fetch(`${config.API_URL}/api/client/simulation/update`, {
         method: "POST",
         credentials: "include",
-        headers: getHeadersWithAuth(),
+        headers: await getHeadersWithAuth(),
         body: JSON.stringify({
           simulationId: draftSimulation.id,
           responses: draftAnswers,
