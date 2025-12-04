@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { config } from "@/config/env";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -200,7 +201,7 @@ export default function ProspectSequencePage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
 
       // Récupérer le prospect
       const prospectResponse = await fetch(`${config.API_URL}/api/prospects/${sequenceId}`, {
@@ -362,7 +363,7 @@ export default function ProspectSequencePage() {
   const saveComment = async (emailId: string, isScheduled: boolean) => {
     try {
       setSavingComment(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
       const comment = emailComments.get(emailId) || '';
 
       const endpoint = isScheduled 
@@ -429,7 +430,7 @@ export default function ProspectSequencePage() {
 
     try {
       setIsEnriching(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
 
       // Préparer les informations du prospect
       const prospectInfo = {
@@ -491,7 +492,7 @@ export default function ProspectSequencePage() {
 
     try {
       setIsSavingField(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
 
       // Préparer les données à sauvegarder
       let dataToSave = customData || { [field]: editValues[field] };
@@ -1722,7 +1723,7 @@ export default function ProspectSequencePage() {
                   prospectId={prospect.id}
                   onUpdate={async (updatedData) => {
                     try {
-                      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
                       const response = await fetch(`${config.API_URL}/api/prospects/${prospect.id}`, {
                         method: 'PATCH',
                         headers: {
@@ -1802,7 +1803,7 @@ export default function ProspectSequencePage() {
                     prospectId={prospect.id}
                     onUpdate={async (updatedData) => {
                       try {
-                        const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                        const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
                         const response = await fetch(`${config.API_URL}/api/prospects/${prospect.id}`, {
                           method: 'PATCH',
                           headers: {

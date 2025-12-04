@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
 import { Card, CardContent } from '@/components/ui/card';
@@ -135,7 +136,7 @@ export const CollaborativeEventManager: React.FC = () => {
       setLoading(true);
       const response = await fetch(`${config.API_URL}/api/collaborative-events`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -158,7 +159,7 @@ export const CollaborativeEventManager: React.FC = () => {
     try {
       const response = await fetch(`${config.API_URL}/api/collaborative-events/stats`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -200,7 +201,7 @@ export const CollaborativeEventManager: React.FC = () => {
       const response = await fetch(`${config.API_URL}/api/collaborative-events`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(eventData)
@@ -226,7 +227,7 @@ export const CollaborativeEventManager: React.FC = () => {
       const responseData = await fetch(`/api/collaborative-events/invitations/${eventId}/respond`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ response })
@@ -252,7 +253,7 @@ export const CollaborativeEventManager: React.FC = () => {
       const response = await fetch(`/api/collaborative-events/${eventId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 

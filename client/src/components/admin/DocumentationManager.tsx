@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { config } from "@/config/env";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -68,7 +69,7 @@ const DocumentationManager: React.FC = () => {
       setLoading(true);
       const response = await fetch(`${config.API_URL}/api/admin/documents`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -89,7 +90,7 @@ const DocumentationManager: React.FC = () => {
     try {
       const response = await fetch(`${config.API_URL}/api/admin/documents/stats`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -113,7 +114,7 @@ const DocumentationManager: React.FC = () => {
     try { 
       const response = await fetch(`/api/admin/documents/search/${encodeURIComponent(searchQuery)}`, { 
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -139,7 +140,7 @@ const DocumentationManager: React.FC = () => {
       const response = await fetch(url, { 
         method, 
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData)
@@ -167,7 +168,7 @@ const DocumentationManager: React.FC = () => {
       const response = await fetch(`/api/admin/documents/${id}`, { 
         method: 'DELETE', 
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });

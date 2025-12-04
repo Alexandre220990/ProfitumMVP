@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { get, put, post } from '@/lib/api';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 import {
   FileText,
@@ -255,10 +256,10 @@ export default function ExpertDocumentsTab({
       toast.info('Téléchargement en cours...');
 
       // Récupérer le token d'authentification (essayer plusieurs clés)
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
       
       console.log('🔐 Téléchargement - Tokens disponibles:', {
-        token: !!localStorage.getItem('token'),
+        token: !!await getSupabaseToken(),
         supabase_token: !!localStorage.getItem('supabase_token'),
         tokenToUse: !!token
       });
@@ -323,10 +324,10 @@ export default function ExpertDocumentsTab({
       toast.info('Ouverture du document...');
 
       // Récupérer le token d'authentification (essayer plusieurs clés)
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
       
       console.log('🔐 Visualisation - Tokens disponibles:', {
-        token: !!localStorage.getItem('token'),
+        token: !!await getSupabaseToken(),
         supabase_token: !!localStorage.getItem('supabase_token'),
         tokenToUse: !!token
       });

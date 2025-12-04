@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { 
   Upload, 
   CheckCircle, 
@@ -169,7 +170,7 @@ export default function ProductDocumentUpload({
       formData.append('user_type', user?.type || 'client');
 
       // Upload vers l'API avec authentification par token
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
       
       if (!token) {
         clearInterval(progressInterval);
@@ -254,7 +255,7 @@ export default function ProductDocumentUpload({
 
   const removeDocument = useCallback(async (documentId: string, documentLabel: string) => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
       
       if (!token) {
         toast.error("Token d'authentification manquant");
@@ -292,7 +293,7 @@ export default function ProductDocumentUpload({
   const viewDocument = useCallback(async (document: DocumentFile) => {
     try {
       // Obtenir l'URL signée depuis le backend
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
       
       if (!token) {
         toast.error("Non authentifié");
@@ -355,7 +356,7 @@ export default function ProductDocumentUpload({
       }
 
       // Mettre à jour le statut du dossier
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
       
       console.log('🔑 Token disponible:', token ? `OUI (${token.substring(0, 20)}...)` : 'NON');
       console.log('🔍 LocalStorage keys:', Object.keys(localStorage));
@@ -456,7 +457,7 @@ export default function ProductDocumentUpload({
   useEffect(() => {
     const loadExistingDocuments = async () => {
       try {
-        const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+        const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
         
         if (!token) {
           console.warn('⚠️ Pas de token - impossible de charger les documents existants');
