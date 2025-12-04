@@ -564,6 +564,19 @@ export class GmailService {
               ? parseInt(messageData.internalDate) 
               : Date.now()).toISOString();
 
+            // ✅ Vérifier si cet email existe déjà (éviter les doublons)
+            const { data: existingEmail } = await supabase
+              .from('prospect_email_received')
+              .select('id')
+              .eq('gmail_message_id', message.id)
+              .maybeSingle();
+
+            if (existingEmail) {
+              console.log(`ℹ️ Email déjà stocké (gmail_message_id: ${message.id}), skip...`);
+              results.processed++;
+              continue;
+            }
+
             // ✅ Stocker l'email reçu dans prospect_email_received
             const { data: emailReceived, error: insertError } = await supabase
               .from('prospect_email_received')
