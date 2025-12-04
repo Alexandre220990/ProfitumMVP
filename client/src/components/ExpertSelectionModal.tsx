@@ -18,7 +18,7 @@ import {
   Phone
 } from 'lucide-react';
 import { config } from '@/config/env';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface ExpertSelectionModalProps {
   isOpen: boolean;
@@ -191,10 +191,10 @@ export default function ExpertSelectionModal({
       if (filters.availability && filters.availability !== 'all') params.append('availability', filters.availability);
       
       // ✅ Utiliser le token Supabase
-      const { data: { session } } = await supabase.auth.getSession();
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/client/experts?${params.toString()}`, {
         headers: {
-          'Authorization': `Bearer ${session?.access_token}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -249,8 +249,7 @@ export default function ExpertSelectionModal({
       };
       
       // ✅ Utiliser le token Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const token = await getSupabaseToken();
       console.log('🔍 [DEBUG] Envoi requête sélection expert:', {
         url: `${config.API_URL}/api/dossier-steps/expert/select`,
         body: requestBody,
