@@ -62,8 +62,11 @@ import {
   Permission 
 } from './middleware/auth-enhanced';
 
-// Import du middleware d'authentification simplifié
+// Import du middleware d'authentification simplifié (ANCIEN - JWT personnalisés)
 import { simpleAuthMiddleware, requireUserType } from './middleware/auth-simple';
+
+// Import du nouveau middleware d'authentification Supabase
+import { supabaseAuthMiddleware, requireUserType as requireUserTypeSupabase } from './middleware/supabase-auth-simple';
 
 // Import du middleware d'authentification optionnelle
 import { optionalAuthMiddleware } from './middleware/optional-auth';
@@ -401,8 +404,8 @@ app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), client
 app.use('/api/simplified-products', enhancedAuthMiddleware, simplifiedProductsRoutes);
 
 // Routes documents unifiées pour tous les users - PROTÉGÉES
-// Utilisation de simpleAuthMiddleware pour meilleure compatibilité avec tokens JWT clients
-app.use('/api/documents', simpleAuthMiddleware, documentsUnifiedAllRoutes);
+// ✅ Utilisation de supabaseAuthMiddleware pour compatibilité avec tokens Supabase
+app.use('/api/documents', supabaseAuthMiddleware, documentsUnifiedAllRoutes);
 
 // Route sécurisée pour télécharger des documents depuis Storage privé
 app.use('/api/documents-secure', documentsDownloadRoutes);
@@ -726,15 +729,16 @@ const skipAuthForApporteurPublic = (req: Request, res: Response, next: NextFunct
   if (req.path === '/register' || req.path.startsWith('/verify-sponsor')) {
     return next('route'); // Skip ce middleware ET le suivant (requireUserType)
   }
-  return simpleAuthMiddleware(req, res, next);
+  // ✅ Utiliser supabaseAuthMiddleware au lieu de simpleAuthMiddleware
+  return supabaseAuthMiddleware(req, res, next);
 };
 
 // ⚠️ IMPORTANT: Monter les routes dans l'ordre du plus spécifique au plus général
 // pour éviter les conflits de routing Express
 
 // 1. Routes simulation apporteur - PROTÉGÉES (plus spécifiques)
-// Utilisation de simpleAuthMiddleware pour cohérence avec les autres routes apporteur
-app.use('/api/apporteur/prospects', simpleAuthMiddleware, requireUserType('apporteur'), apporteurSimulationRoutes);
+// ✅ Utilisation de supabaseAuthMiddleware pour compatibilité avec tokens Supabase
+app.use('/api/apporteur/prospects', supabaseAuthMiddleware, requireUserTypeSupabase('apporteur'), apporteurSimulationRoutes);
 console.log('✅ Routes simulation apporteur montées sur /api/apporteur/prospects');
 
 // 2. Routes paramètres apporteur (profile, notifications, deactivate) - PROTÉGÉES
@@ -742,10 +746,10 @@ app.use('/api/apporteur', enhancedAuthMiddleware, requireUserType('apporteur'), 
 console.log('✅ Routes paramètres apporteur montées sur /api/apporteur/profile|notifications|deactivate');
 
 // 3. Routes apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
-app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurRoutes);
+app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserTypeSupabase('apporteur'), apporteurRoutes);
 
 // 4. Routes API apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
-app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurApiRoutes);
+app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserTypeSupabase('apporteur'), apporteurApiRoutes);
 
 
 // Routes expert pour apporteurs - PROTÉGÉES
