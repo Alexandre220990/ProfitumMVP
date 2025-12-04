@@ -211,7 +211,7 @@ export function useFCMNotifications(): UseFCMNotificationsReturn {
       if (response.ok) {
         setFcmToken(null);
         setIsInitialized(false);
-        toast.success('Notifications push désactivées');
+        // Toast supprimé pour éviter les logs redondants
         return true;
       }
 

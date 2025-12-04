@@ -6,6 +6,7 @@ import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
 import { useFCMNotifications } from '@/hooks/useFCMNotifications';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import { Badge } from '@/components/ui/badge';
+import { NotificationDropdown } from '@/components/admin/NotificationDropdown';
 import { 
   LayoutDashboard,
   Calendar,
@@ -43,15 +44,21 @@ interface NavigationItem {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationsCount, setNotificationsCount] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const { badgeCount } = useMessagingBadge();
-  const { unreadCount: notificationsCount } = useSupabaseNotifications();
+  const { unreadCount: initialNotificationsCount } = useSupabaseNotifications();
 
   // 🔔 Activer les notifications en temps réel avec toasts
   useFCMNotifications();
   useRealtimeNotifications();
+
+  // Initialiser le count de notifications
+  React.useEffect(() => {
+    setNotificationsCount(initialNotificationsCount);
+  }, [initialNotificationsCount]);
 
   const handleLogout = async () => {
     await logout();
@@ -286,17 +293,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
             <div className="ml-4 flex items-center md:ml-6">
               {/* Notifications */}
-              <button
-                type="button"
-                className="relative bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              >
-                <Bell className="h-6 w-6" />
-                {notificationsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-xs text-white flex items-center justify-center px-1">
-                    {notificationsCount > 9 ? '9+' : notificationsCount}
-                  </span>
-                )}
-              </button>
+              <NotificationDropdown 
+                unreadCount={notificationsCount}
+                onCountChange={(count) => setNotificationsCount(count)}
+              />
 
               {/* User Menu */}
               <div className="ml-3 relative">
