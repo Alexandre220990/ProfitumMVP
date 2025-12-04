@@ -3,18 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { UserType, LoginCredentials } from '@/types/api';
 import { supabase } from '@/lib/supabase';
-import { config } from '@/config/env';
 import { useSessionRefresh } from './use-session-refresh';
 
-/**
- * ✅ SYSTÈME D'AUTHENTIFICATION ULTRA-SIMPLIFIÉ
- * 
- * Architecture :
- * - Authentification DIRECTE avec Supabase (supabase.auth.signInWithPassword)
- * - Récupération profil depuis /api/auth/me
- * - Tout intégré dans ce hook (pas de fichiers externes)
- * - Timeouts de sécurité pour éviter blocages
- */
+// ============================================================================
+// ✅ AUTHENTIFICATION 100% SUPABASE - VERSION ULTRA-SIMPLIFIÉE
+// ============================================================================
+// Pas de backend pour l'authentification - Tout via Supabase directement
+// user_metadata contient TOUTES les infos nécessaires
+// ============================================================================
+
+console.log('📦 [use-auth.tsx] Module chargé - Version Supabase Native');
 
 interface AuthContextType {
   user: UserType | null;
@@ -33,159 +31,121 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   
+  console.log('🏗️ [AuthProvider] Initialisation du Provider');
+  
   useSessionRefresh();
 
   // ============================================================================
-  // FONCTION DE VÉRIFICATION - LOGIQUE INTÉGRÉE DIRECTEMENT
+  // VÉRIFICATION D'AUTHENTIFICATION - 100% SUPABASE
   // ============================================================================
   const checkAuth = async (shouldNavigate: boolean = true): Promise<boolean> => {
     try {
-      console.log('🔍 [use-auth] Vérification session Supabase...');
+      console.log('🔍 [checkAuth] Début vérification...');
       
-      // 1️⃣ Vérifier la session Supabase
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Vérifier la session Supabase
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-      if (sessionError || !session) {
-        console.log('⚠️ Pas de session active');
+      if (error || !session) {
+        console.log('⚠️ [checkAuth] Pas de session:', error?.message);
         setUser(null);
         return false;
       }
 
-      console.log('✅ Session Supabase:', session.user?.email);
+      console.log('✅ [checkAuth] Session trouvée:', session.user.email);
 
-      // 2️⃣ Récupérer le profil depuis le backend (avec timeout de sécurité)
-      console.log(`🌐 Appel ${config.API_URL}/api/auth/me...`);
+      // Créer l'objet user depuis user_metadata
+      const supabaseUser = session.user;
+      const userData: UserType = {
+        id: supabaseUser.id,
+        auth_user_id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        type: (supabaseUser.user_metadata?.type as any) || 'client',
+        username: supabaseUser.user_metadata?.username || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0],
+        first_name: supabaseUser.user_metadata?.first_name || supabaseUser.user_metadata?.name?.split(' ')[0],
+        last_name: supabaseUser.user_metadata?.last_name || supabaseUser.user_metadata?.name?.split(' ').slice(1).join(' '),
+        company_name: supabaseUser.user_metadata?.company_name,
+        phone: supabaseUser.user_metadata?.phone || supabaseUser.user_metadata?.phone_number,
+        database_id: supabaseUser.user_metadata?.database_id || supabaseUser.id,
+        ...supabaseUser.user_metadata
+      };
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.error('⏱️ TIMEOUT 5s sur /api/auth/me - Annulation');
-        controller.abort();
-      }, 5000);
-
-      try {
-        const profileResponse = await fetch(`${config.API_URL}/api/auth/me`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!profileResponse.ok) {
-          console.error(`❌ Erreur /api/auth/me: ${profileResponse.status} ${profileResponse.statusText}`);
-          setUser(null);
-          return false;
-        }
-
-        const profileData = await profileResponse.json();
-        console.log('✅ Profil récupéré:', profileData);
-
-        if (!profileData.success || !profileData.data?.user) {
-          console.error('❌ Profil invalide');
-          setUser(null);
-          return false;
-        }
-
-        const userData: UserType = {
-          ...profileData.data.user,
-          experience: profileData.data.user.experience?.toString()
+      setUser(userData);
+      console.log('✅ [checkAuth] User défini:', userData.email, userData.type);
+      
+      // PWA manifest
+      if (typeof window !== 'undefined' && (window as any).updatePWAManifest) {
+        (window as any).updatePWAManifest(userData.type);
+        localStorage.setItem('pwa_user_type', userData.type);
+      }
+      
+      // Redirection si demandé
+      if (shouldNavigate) {
+        const routes: Record<string, string> = {
+          client: '/dashboard/client',
+          expert: '/expert/dashboard',
+          admin: '/admin/dashboard-optimized',
+          apporteur: '/apporteur/dashboard'
         };
-        
-        setUser(userData);
-        console.log('✅ User authentifié:', userData.email, userData.type);
-        
-        // Mettre à jour le manifest PWA
-        if (typeof window !== 'undefined' && (window as any).updatePWAManifest) {
-          (window as any).updatePWAManifest(userData.type);
-          localStorage.setItem('pwa_user_type', userData.type);
-        }
-        
-        // Redirection selon type (si demandé)
-        if (shouldNavigate) {
-          const routes: Record<string, string> = {
-            client: '/dashboard/client',
-            expert: '/expert/dashboard',
-            admin: '/admin/dashboard-optimized',
-            apporteur: '/apporteur/dashboard'
-          };
-          navigate(routes[userData.type] || '/dashboard/client');
-        }
-        
-        return true;
-
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        
-        if (fetchError.name === 'AbortError') {
-          console.error('⏱️ Timeout fetch /api/auth/me');
-        } else {
-          console.error('❌ Erreur fetch:', fetchError);
-        }
-        
-        setUser(null);
-        return false;
+        console.log('🔀 [checkAuth] Redirection vers:', routes[userData.type]);
+        navigate(routes[userData.type] || '/dashboard/client');
       }
+      
+      return true;
 
     } catch (error) {
-      console.error('❌ Erreur checkAuth:', error);
+      console.error('❌ [checkAuth] Erreur:', error);
       setUser(null);
       return false;
     }
   };
 
   // ============================================================================
-  // FONCTION DE LOGIN - LOGIQUE INTÉGRÉE DIRECTEMENT
+  // CONNEXION - 100% SUPABASE
   // ============================================================================
   const login = async (credentials: LoginCredentials) => {
-    console.log('🎯 [use-auth] Login:', credentials.email);
+    console.log('🎯 [login] Début connexion:', credentials.email);
     setIsLoading(true);
     
     try {
-      // 1️⃣ Authentification DIRECTE avec Supabase
-      console.log('🔐 Authentification Supabase directe...');
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      // Authentification Supabase
+      console.log('🔐 [login] signInWithPassword...');
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password
       });
 
-      if (authError || !authData.session || !authData.user) {
-        console.error('❌ Erreur auth Supabase:', authError);
-        throw new Error(authError?.message || 'Erreur de connexion');
+      if (error) {
+        console.error('❌ [login] Erreur Supabase:', error.message);
+        throw new Error(error.message);
       }
 
-      console.log('✅ Auth Supabase réussie:', authData.user.email);
-
-      // 2️⃣ Récupérer le profil depuis le backend
-      console.log('📥 Récupération profil...');
-      const profileResponse = await fetch(`${config.API_URL}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${authData.session.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!profileResponse.ok) {
-        const errorText = await profileResponse.text();
-        console.error('❌ Erreur profil:', profileResponse.status, errorText);
-        throw new Error('Erreur lors de la récupération du profil');
+      if (!data.session || !data.user) {
+        console.error('❌ [login] Pas de session/user');
+        throw new Error('Connexion échouée');
       }
 
-      const profileData = await profileResponse.json();
-      console.log('✅ Profil reçu:', profileData);
-      
-      if (!profileData.success || !profileData.data?.user) {
-        throw new Error('Profil utilisateur introuvable');
-      }
+      console.log('✅ [login] Auth réussie:', data.user.email);
 
+      // Créer l'objet user depuis user_metadata
+      const supabaseUser = data.user;
       const userData: UserType = {
-        ...profileData.data.user,
-        experience: profileData.data.user.experience?.toString()
+        id: supabaseUser.id,
+        auth_user_id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        type: (supabaseUser.user_metadata?.type as any) || 'client',
+        username: supabaseUser.user_metadata?.username || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0],
+        first_name: supabaseUser.user_metadata?.first_name || supabaseUser.user_metadata?.name?.split(' ')[0],
+        last_name: supabaseUser.user_metadata?.last_name || supabaseUser.user_metadata?.name?.split(' ').slice(1).join(' '),
+        company_name: supabaseUser.user_metadata?.company_name,
+        phone: supabaseUser.user_metadata?.phone || supabaseUser.user_metadata?.phone_number,
+        database_id: supabaseUser.user_metadata?.database_id || supabaseUser.id,
+        ...supabaseUser.user_metadata
       };
       
       setUser(userData);
-      toast.success(`Bienvenue ${userData.first_name || userData.email}`);
+      console.log('✅ [login] User défini:', userData.email, userData.type);
+      
+      toast.success(`Bienvenue ${userData.first_name || userData.username || userData.email}`);
 
       // Vérification statut expert si nécessaire
       if (userData.type === 'expert') {
@@ -196,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (approvalResponse.success && approvalResponse.data) {
             const approvalStatus = (approvalResponse.data as any).status;
             if (approvalStatus !== 'approved') {
+              console.log('⚠️ Expert non approuvé');
               navigate('/expert-pending-approval');
               return;
             }
@@ -212,68 +173,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         admin: '/admin/dashboard-optimized',
         apporteur: '/apporteur/dashboard'
       };
+      console.log('🔀 [login] Redirection:', routes[userData.type]);
       navigate(routes[userData.type] || '/dashboard/client');
 
     } catch (error) {
-      console.error('❌ Erreur login:', error);
+      console.error('❌ [login] Erreur:', error);
       toast.error(error instanceof Error ? error.message : "Erreur de connexion");
       throw error;
     } finally {
       setIsLoading(false);
+      console.log('✅ [login] setIsLoading(false)');
     }
   };
 
   // ============================================================================
-  // FONCTION D'INSCRIPTION - LOGIQUE INTÉGRÉE DIRECTEMENT
+  // INSCRIPTION - 100% SUPABASE
   // ============================================================================
   const register = async (data: any) => {
+    console.log('📝 [register] Début inscription:', data.email);
     setIsLoading(true);
+    
     try {
-      console.log('📝 Inscription Supabase...');
-      
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
           data: {
             type: data.type,
+            username: data.username,
+            first_name: data.first_name,
+            last_name: data.last_name,
+            name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+            company_name: data.company_name,
+            phone: data.phone,
+            phone_number: data.phone,
             ...data.user_metadata
           }
         }
       });
 
       if (error || !authData.user) {
+        console.error('❌ [register] Erreur:', error?.message);
         throw new Error(error?.message || "Erreur d'inscription");
       }
+
+      console.log('✅ [register] Inscription réussie');
 
       if (!authData.session) {
         toast.success("Vérifiez votre email pour confirmer votre compte");
         return;
       }
 
-      // Récupérer le profil si session disponible
-      try {
-        const profileResponse = await fetch(`${config.API_URL}/api/auth/me`, {
-          headers: {
-            'Authorization': `Bearer ${authData.session.access_token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (profileResponse.ok) {
-          const profileData = await profileResponse.json();
-          if (profileData.success && profileData.data?.user) {
-            const userData: UserType = {
-              ...profileData.data.user,
-              experience: profileData.data.user.experience?.toString()
-            };
-            setUser(userData);
-          }
-        }
-      } catch (error) {
-        console.error('⚠️ Erreur récupération profil (non bloquant):', error);
-      }
-
+      // Créer user depuis metadata
+      const supabaseUser = authData.user;
+      const userData: UserType = {
+        id: supabaseUser.id,
+        auth_user_id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        type: data.type,
+        username: data.username || supabaseUser.email?.split('@')[0],
+        first_name: data.first_name,
+        last_name: data.last_name,
+        company_name: data.company_name,
+        phone: data.phone,
+        database_id: supabaseUser.id,
+        ...data.user_metadata
+      };
+      
+      setUser(userData);
       toast.success("Inscription réussie !");
       
       const routes: Record<string, string> = {
@@ -285,6 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       navigate(routes[data.type] || '/dashboard/client');
 
     } catch (error) {
+      console.error('❌ [register] Erreur:', error);
       toast.error(error instanceof Error ? error.message : "Erreur d'inscription");
       throw error;
     } finally {
@@ -293,48 +261,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // ============================================================================
-  // FONCTION DE DÉCONNEXION - LOGIQUE INTÉGRÉE DIRECTEMENT
+  // DÉCONNEXION - 100% SUPABASE
   // ============================================================================
   const logout = async () => {
     try {
-      console.log('👋 Déconnexion...');
+      console.log('👋 [logout] Déconnexion...');
       await supabase.auth.signOut();
       setUser(null);
       navigate("/");
       toast.success("Déconnexion réussie !");
+      console.log('✅ [logout] Terminé');
     } catch (error) {
-      console.error('❌ Erreur logout:', error);
+      console.error('❌ [logout] Erreur:', error);
     }
   };
 
   // ============================================================================
-  // INITIALISATION AU CHARGEMENT - AVEC TIMEOUT DE SÉCURITÉ
+  // INITIALISATION AU CHARGEMENT
   // ============================================================================
   useEffect(() => {
+    console.log('🚀 [useEffect:init] DÉBUT Initialisation authentification...');
+    
     const initializeAuth = async () => {
-      console.log('🚀 [use-auth] Initialisation authentification...');
-      
       try {
-        // Petit délai pour laisser Supabase restaurer la session
+        console.log('⏳ [init] Attente 100ms pour restauration session...');
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        // Vérifier session avec timeout de sécurité
+        console.log('🔍 [init] Vérification session Supabase...');
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          console.log('✅ [init] Session trouvée:', session.user?.email);
+        } else {
+          console.log('⚠️ [init] Pas de session');
+        }
+        
+        // Vérifier auth avec timeout de sécurité
+        console.log('🔍 [init] Appel checkAuth(false)...');
         const checkPromise = checkAuth(false);
         const timeoutPromise = new Promise<boolean>((resolve) => {
           setTimeout(() => {
-            console.error('⏱️ TIMEOUT 8s sur checkAuth! Forçage fin');
+            console.error('⏱️ [init] TIMEOUT 5s sur checkAuth!');
             resolve(false);
-          }, 8000);
+          }, 5000);
         });
         
         await Promise.race([checkPromise, timeoutPromise]);
-        console.log('✅ Check auth terminé');
+        console.log('✅ [init] checkAuth terminé');
         
       } catch (error) {
-        console.error('❌ Erreur initialisation:', error);
+        console.error('❌ [init] Erreur:', error);
       } finally {
         setIsLoading(false);
-        console.log('✅ setIsLoading(false) - Init terminée');
+        console.log('✅ [init] setIsLoading(false) - FIN INITIALISATION');
       }
     };
 
@@ -346,19 +325,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // LISTENER ÉVÉNEMENTS SUPABASE
   // ============================================================================
   useEffect(() => {
-    console.log('👂 Configuration listener Supabase...');
+    console.log('👂 [useEffect:listener] Configuration listener Supabase...');
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔔 Event Supabase:', event, { hasSession: !!session });
+      console.log('🔔 [onAuthStateChange] Event:', event, { hasSession: !!session });
       
       switch (event) {
         case 'SIGNED_IN':
-          console.log('✅ SIGNED_IN');
+          console.log('✅ [onAuthStateChange] SIGNED_IN - checkAuth...');
           await checkAuth(false);
           break;
           
         case 'SIGNED_OUT':
-          console.log('👋 SIGNED_OUT');
+          console.log('👋 [onAuthStateChange] SIGNED_OUT');
           setUser(null);
           if (typeof window !== 'undefined' && (window as any).updatePWAManifest) {
             (window as any).updatePWAManifest('client');
@@ -367,19 +346,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           break;
           
         case 'TOKEN_REFRESHED':
-          console.log('🔄 TOKEN_REFRESHED');
+          console.log('🔄 [onAuthStateChange] TOKEN_REFRESHED - checkAuth...');
           await checkAuth(false);
           break;
           
         case 'USER_UPDATED':
-          console.log('👤 USER_UPDATED');
+          console.log('👤 [onAuthStateChange] USER_UPDATED - checkAuth...');
           await checkAuth(false);
           break;
+          
+        default:
+          console.log('ℹ️ [onAuthStateChange] Event non géré:', event);
       }
     });
 
     return () => {
-      console.log('🧹 Cleanup listener Supabase');
+      console.log('🧹 [useEffect:listener] Cleanup listener');
       subscription.unsubscribe();
     };
   }, []);
@@ -398,6 +380,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [user?.type]);
+
+  console.log('🏁 [AuthProvider] Rendu Provider, isLoading:', isLoading, 'user:', user?.email || 'null');
 
   return (
     <AuthContext.Provider
