@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Eye, EyeOff, Loader2, Shield, AlertCircle, CheckCircle } from "lucide-react";
 import Button from "@/components/ui/design-system/Button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/design-system/Card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -80,20 +79,20 @@ export default function ConnectAdmin() {
           <p className="text-slate-600">Espace de gestion sécurisé</p>
         </div>
 
-        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm animate-scale-in">
-          <CardHeader className="text-center pb-4">
+        <div className="shadow-xl border-0 bg-white/80 backdrop-blur-sm animate-scale-in rounded-2xl">
+          <div className="text-center pb-4 p-6">
             <div className="mx-auto w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mb-4 shadow-lg">
               <Shield className="w-6 h-6 text-white" />
             </div>
-            <CardTitle className="text-xl font-semibold text-slate-900">
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">
               Connexion Administrateur
-            </CardTitle>
-            <CardDescription className="text-slate-600">
+            </h2>
+            <p className="text-slate-600">
               Accédez à votre espace de gestion
-            </CardDescription>
-          </CardHeader>
+            </p>
+          </div>
 
-          <CardContent className="space-y-6">
+          <div className="space-y-6 p-6 pt-0">
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email */}
               <div className="space-y-2">
@@ -218,8 +217,8 @@ export default function ConnectAdmin() {
                 ← Retour à l'accueil
               </Link>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
