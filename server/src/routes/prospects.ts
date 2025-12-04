@@ -6,6 +6,10 @@ import { ProspectEmailService } from '../services/ProspectEmailService';
 import { ProspectReportService } from '../services/ProspectReportService';
 import { ProspectRepliesService } from '../services/ProspectRepliesService';
 import { ProspectFilters, ProspectEnrichmentData, Prospect } from '../types/prospects';
+import { EmailStep } from '../types/enrichment-v4';
+import ProspectEnrichmentServiceV4 from '../services/ProspectEnrichmentServiceV4';
+import { ProspectEnrichmentServiceV4 as ProspectEnrichmentServiceV4Class } from '../services/ProspectEnrichmentServiceV4';
+import SequenceGeneratorServiceV4 from '../services/SequenceGeneratorServiceV4';
 
 // Configuration multer pour upload de fichiers
 const upload = multer({
@@ -1206,377 +1210,154 @@ router.post('/generate-ai-sequence-v2', async (req, res) => {
     }
 
     const companyName = prospectInfo.company_name || prospectInfo.name || 'l\'entreprise';
-    const firstName = prospectInfo.firstname || prospectInfo.first_name || '';
-    const lastName = prospectInfo.lastname || prospectInfo.last_name || '';
-    const fullName = prospectInfo.name || `${firstName} ${lastName}`.trim() || 'le décisionnaire';
-    const siren = prospectInfo.siren || '';
-    
-    let enrichedData: ProspectEnrichmentData | null = null;
+    console.log(`🚀 Génération V4 pour ${companyName}...`);
 
     // ========================================================================
-    // ÉTAPE 1 : ENRICHISSEMENT DU PROSPECT
+    // ÉTAPE 1 : ENRICHISSEMENT COMPLET V4 (LinkedIn + Site Web + Opérationnel + Timing)
     // ========================================================================
     
-    // Vérifier si le prospect a déjà été enrichi
-    const hasExistingEnrichment = prospectInfo.enrichment_status === 'completed' 
-      && prospectInfo.enrichment_data 
-      && !forceReenrichment;
+    // Normaliser les données du prospect pour le format Prospect
+    const normalizedProspect: Prospect = {
+      id: prospectInfo.id,
+      company_name: prospectInfo.company_name || prospectInfo.name,
+      email: prospectInfo.email,
+      firstname: prospectInfo.firstname || prospectInfo.first_name,
+      lastname: prospectInfo.lastname || prospectInfo.last_name,
+      job_title: prospectInfo.job_title,
+      naf_code: prospectInfo.naf_code,
+      naf_label: prospectInfo.naf_label,
+      siren: prospectInfo.siren,
+      linkedin_company: prospectInfo.linkedin_company || prospectInfo.linkedin_company_url || null,
+      linkedin_profile: prospectInfo.linkedin_profile || prospectInfo.linkedin_profile_url || null,
+      company_website: prospectInfo.company_website || prospectInfo.website || null,
+      phone_direct: prospectInfo.phone_direct || prospectInfo.phone || null,
+      phone_standard: prospectInfo.phone_standard || null,
+      adresse: prospectInfo.adresse || prospectInfo.address || null,
+      city: prospectInfo.city,
+      postal_code: prospectInfo.postal_code,
+      email_validity: prospectInfo.email_validity || null,
+      source: prospectInfo.source || 'manuel',
+      created_at: prospectInfo.created_at || new Date().toISOString(),
+      enrichment_status: prospectInfo.enrichment_status || 'pending',
+      enrichment_data: prospectInfo.enrichment_data || null,
+      enriched_at: prospectInfo.enriched_at || null,
+      ai_status: prospectInfo.ai_status || 'pending',
+      emailing_status: prospectInfo.emailing_status || 'not_sent',
+      score_priority: prospectInfo.score_priority || 0,
+      ai_summary: prospectInfo.ai_summary || null,
+      ai_trigger_points: prospectInfo.ai_trigger_points || null,
+      ai_product_match: prospectInfo.ai_product_match || null,
+      ai_email_personalized: prospectInfo.ai_email_personalized || null,
+      metadata: prospectInfo.metadata || null,
+      import_batch_id: prospectInfo.import_batch_id || null,
+      employee_range: prospectInfo.employee_range || null,
+      updated_at: prospectInfo.updated_at || new Date().toISOString()
+    };
 
-    if (hasExistingEnrichment) {
-      console.log(`✅ Utilisation de l'enrichissement existant pour ${companyName}`);
-      enrichedData = prospectInfo.enrichment_data;
-    } else {
-      console.log(`🔍 Enrichissement du prospect : ${companyName}...`);
-      
-      // Mettre à jour le statut à 'in_progress'
-      if (prospectInfo.id) {
-        await supabase
-          .from('prospects')
-          .update({ enrichment_status: 'in_progress', updated_at: new Date().toISOString() })
-          .eq('id', prospectInfo.id);
-      }
+    // Utiliser l'enrichissement V4 avec cache intelligent
+    const enrichedDataV4 = await ProspectEnrichmentServiceV4.enrichProspectComplete(
+      normalizedProspect,
+      steps.length, // Nombre d'emails pour analyse temporelle
+      forceReenrichment
+    );
 
-      try {
-        const enrichmentPrompt = `Tu es un analyste d'entreprise expert spécialisé dans l'identification d'opportunités d'optimisation financière pour les entreprises françaises.
+    console.log(`✅ Enrichissement V4 terminé pour ${companyName}`);
 
-📊 INFORMATIONS DU PROSPECT :
-- Entreprise : ${companyName}
-- SIREN : ${siren || 'non disponible'}
-- Contact : ${fullName}
-- Prénom : ${firstName || 'non disponible'}
-- Nom : ${lastName || 'non disponible'}
-- Code NAF : ${prospectInfo.naf_code || 'non disponible'}
-- Libellé NAF : ${prospectInfo.naf_label || 'non disponible'}
-- Secteur : ${prospectInfo.naf_label || 'à déterminer'}
-
-🎯 CONTEXTE : PROFITUM
-Profitum est une plateforme SaaS (marketplace B2B) spécialisée dans l'optimisation financière pour les entreprises françaises. 
-
-Domaines d'activité principaux :
-- **Optimisation Fiscale** : TICPE (taxe carburants), TVA, CIR (Crédit Impôt Recherche), optimisation fiscalité foncière
-- **Optimisation Sociale** : URSSAF (charges sociales), MSA (Mutuelle Sociale Agricole), DFS (Déduction Forfaitaire Spécifique)
-- **Optimisation Énergétique** : CEE (Certificats d'Économies d'Énergie), optimisation contrats électricité/gaz
-
-📋 TA MISSION :
-En te basant sur les informations fournies et tes connaissances générales sur les entreprises françaises, fournis une analyse structurée au format JSON suivant :
-
-{
-  "secteur_activite": {
-    "description": "Description précise du secteur d'activité de l'entreprise",
-    "tendances_profitum": "Comment ce secteur peut bénéficier spécifiquement des services Profitum (TICPE, URSSAF, DFS, CEE, etc.). Sois concret et pertinent."
-  },
-  "actualites_entreprise": {
-    "recentes": [
-      "Liste des actualités pertinentes si connues, sinon actualités sectorielles générales"
-    ],
-    "pertinence_profitum": "En quoi le contexte actuel de l'entreprise ou du secteur crée des opportunités pour Profitum"
-  },
-  "signaux_operationnels": {
-    "recrutements_en_cours": false,
-    "locaux_physiques": true,
-    "parc_vehicules_lourds": false,
-    "consommation_gaz_importante": false,
-    "details": "Détails supplémentaires sur les signaux détectés"
-  },
-  "profil_eligibilite": {
-    "ticpe": {
-      "eligible": true,
-      "raison": "Explication claire de l'éligibilité ou non-éligibilité",
-      "potentiel_economie": "Estimation si possible (ex: '5 000€ à 20 000€/an') ou 'À évaluer'"
-    },
-    "cee": {
-      "eligible": false,
-      "raison": "Explication",
-      "potentiel_economie": "À évaluer"
-    },
-    "optimisation_sociale": {
-      "eligible": true,
-      "raison": "Explication",
-      "potentiel_economie": "À évaluer"
-    }
-  },
-  "resume_strategique": "Synthèse en 2-3 phrases des opportunités principales pour ce prospect. Sois concret et actionnable."
-}
-
-⚠️ RÈGLES IMPORTANTES :
-1. Si tu manques d'informations précises (pas de SIREN, entreprise inconnue), base-toi sur le secteur NAF et fais des déductions raisonnables
-2. Évite les incohérences : si c'est un cabinet d'avocats, ne mentionne pas de parc de camions
-3. Sois pragmatique : mieux vaut une analyse générique cohérente qu'une analyse spéculative incohérente
-4. Pour l'éligibilité TICPE : nécessite un parc de véhicules professionnels (camions +7.5t, engins TP, etc.)
-5. Pour l'éligibilité CEE : nécessite des locaux physiques et une consommation énergétique significative
-6. Pour l'optimisation sociale : presque toutes les entreprises avec des salariés sont éligibles
-
-Retourne UNIQUEMENT le JSON, sans texte avant ou après.`;
-
-        const enrichmentCompletion = await openai.chat.completions.create({
-          model: 'gpt-4o',
-          messages: [{
-            role: 'user',
-            content: enrichmentPrompt
-          }],
-          response_format: { type: 'json_object' },
-          temperature: 0.5
-        });
-
-        const enrichmentContent = enrichmentCompletion.choices[0]?.message?.content;
-        if (!enrichmentContent) {
-          throw new Error('Pas de réponse de l\'IA pour l\'enrichissement');
-        }
-
-        const parsedData = JSON.parse(enrichmentContent);
-        
-        // Ajouter les métadonnées
-        enrichedData = {
-          ...parsedData,
-          enriched_at: new Date().toISOString(),
-          enrichment_version: 'v2.0'
-        };
-
-        // Sauvegarder l'enrichissement en base
-        if (prospectInfo.id && enrichedData) {
-          await supabase
-            .from('prospects')
-            .update({
-              enrichment_status: 'completed',
-              enrichment_data: enrichedData,
-              enriched_at: enrichedData.enriched_at,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', prospectInfo.id);
-          console.log(`✅ Enrichissement sauvegardé pour ${companyName}`);
-        }
-
-      } catch (enrichmentError: any) {
-        console.error('❌ Erreur lors de l\'enrichissement:', enrichmentError);
-        
-        // Fallback : créer un enrichissement standardisé basique
-        enrichedData = createFallbackEnrichment(prospectInfo);
-        
-        // Marquer comme 'failed' mais continuer quand même
-        if (prospectInfo.id) {
-          await supabase
-            .from('prospects')
-            .update({
-              enrichment_status: 'failed',
-              enrichment_data: enrichedData,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', prospectInfo.id);
-        }
-      }
-    }
-
-    // ========================================================================
-    // ÉTAPE 2 : GÉNÉRATION DES SÉQUENCES AVEC DONNÉES ENRICHIES
-    // ========================================================================
-    
-    console.log(`✍️ Génération de la séquence pour ${companyName}...`);
-
-    const numSteps = steps.length;
-    const stepsInfo = steps.map((step: any, index: number) => {
-      let stepType = '';
-      if (index === 0) {
-        stepType = 'Email 1 — Prise de contact (objectif : point téléphonique)';
-      } else if (index === numSteps - 1) {
-        stepType = `Email ${index + 1} — Dernière tentative courtoise`;
-      } else {
-        stepType = `Email ${index + 1} — Relance`;
-      }
-      return `Étape ${step.stepNumber}: ${stepType} (délai: ${step.delayDays} jour${step.delayDays > 1 ? 's' : ''})`;
-    }).join('\n');
-
-    // Construire le prompt système (rôle : ENRICHIR, pas REMPLACER)
-    const systemPrompt = `Tu es un expert en prospection B2B et en rédaction d'emails commerciaux pour Profitum, plateforme SaaS d'optimisation financière pour entreprises françaises.
-
-🎯 TON RÔLE EXACT
-
-Tu dois STRICTEMENT respecter les instructions de l'utilisateur concernant :
-- Le style demandé
-- Le ton demandé
-- Les angles d'approche demandés
-- Les bénéfices à mettre en avant
-- Le type de relance souhaité
-
-⚠️ RÈGLE D'OR : Si une instruction utilisateur est claire, tu ne la modifies PAS.
-Tu l'appliques et tu l'enrichis avec les données du prospect.
-
-Ton rôle est UNIQUEMENT d'ENRICHIR ces instructions avec :
-1. Les données d'enrichissement du prospect (secteur, actualités, signaux, éligibilité)
-2. Les meilleures pratiques d'emailing (taux d'ouverture, anti-spam, délivrabilité)
-3. Les principes de neuroscience et psychologie du consommateur/prospect
-4. Les techniques de conversion et vente B2B
-
-📊 DONNÉES D'ENRICHISSEMENT DU PROSPECT
-
-${JSON.stringify(enrichedData, null, 2)}
-
-💡 MEILLEURES PRATIQUES (à appliquer sans modifier l'intention utilisateur)
-
-**Neuroscience & Psychologie :**
-- Personnalisation (nom, entreprise, secteur) → augmente engagement de 26%
-- Preuve sociale ("vos homologues dans le secteur...") → crédibilité
-- Rareté/Urgence douce (sans agressivité) → action
-- Réciprocité (donner de la valeur avant de demander)
-
-**Anti-Spam & Délivrabilité :**
-- Éviter le mot "gratuit" → préférer "sans engagement", "sans frais", "complémentaire"
-- Limiter les emojis (max 1-2 par email)
-- Pas de CAPS LOCK ou points d'exclamation multiples
-- Éviter les call-to-action agressifs ("Cliquez maintenant!", "Offre limitée!")
-
-**Conversion B2B :**
-- CTA clairs et simples (ex: "Échanger 15 min par téléphone?")
-- Bénéfices concrets et chiffrés quand possible
-- Questions ouvertes qui invitent au dialogue
-- Ton consultatif plutôt que commercial
-
-**Structure Recommandée (adaptable selon contexte utilisateur) :**
-- Email 1 : Accroche personnalisée + valeur Profitum + CTA simple
-- Relances : Rappel doux + nouveau bénéfice/angle + CTA
-- Dernier email : Ton respectueux + clôture élégante
-
-STRUCTURE DE LA SÉQUENCE :
-${stepsInfo}`;
-
-    // Construire le prompt utilisateur (priorité absolue)
-    let userPrompt = '';
-    
-    if (context && context.trim()) {
-      userPrompt = `🎯 OBJECTIF DE LA SÉQUENCE (INSTRUCTIONS UTILISATEUR - PRIORITÉ ABSOLUE)
-
-${context.trim()}
-
-📋 TA TÂCHE
-
-En te basant STRICTEMENT sur ces instructions utilisateur :
-
-1. **Respecte à 100%** le style, ton, et approche demandés par l'utilisateur
-2. **Enrichis intelligemment** avec les données du prospect fournies dans le prompt système
-3. **Applique les meilleures pratiques** (anti-spam, neuroscience, conversion) sans dénaturer l'intention
-4. **Personnalise** chaque email avec les informations spécifiques du prospect (nom, entreprise, secteur, signaux opérationnels, éligibilité produits)
-
-Génère EXACTEMENT ${numSteps} email${numSteps > 1 ? 's' : ''} au format JSON suivant :
-
-{
-  "steps": [
-    {
-      "stepNumber": 1,
-      "subject": "Sujet de l'email (personnalisé avec le nom de l'entreprise)",
-      "body": "Corps de l'email (peut contenir des \\n pour les sauts de ligne)",
-      "personalization_notes": "Brève explication de comment tu as respecté l'intention utilisateur ET intégré les données d'enrichissement"
-    }
-  ]
-}
-
-⚠️ IMPORTANT :
-- Génère EXACTEMENT ${numSteps} email${numSteps > 1 ? 's' : ''} 
-- Les delayDays sont déjà définis, ne les modifie pas
-- Retourne UNIQUEMENT le JSON, sans texte avant ou après
-- Corps en français, professionnel, adapté au contexte
-- Utilise les données d'enrichissement pour personnaliser (secteur, signaux, éligibilité)`;
-    } else {
-      userPrompt = `🎯 GÉNÉRATION STANDARD PROFESSIONNELLE
-
-Aucune instruction spécifique n'a été fournie par l'utilisateur. 
-
-Génère une séquence d'emails professionnelle et personnalisée pour ${companyName} en te basant sur :
-1. Les données d'enrichissement (secteur, signaux, éligibilité) fournies dans le prompt système
-2. Les meilleures pratiques d'emailing B2B
-3. Les principes de neuroscience et conversion
-
-Ton objectif : créer une séquence efficace qui :
-- Capte l'attention avec une personnalisation secteur/entreprise
-- Met en avant les bénéfices Profitum les plus pertinents selon l'éligibilité
-- Adopte un ton consultatif et professionnel
-- Incite à un échange téléphonique de 15 minutes
-
-Génère EXACTEMENT ${numSteps} email${numSteps > 1 ? 's' : ''} au format JSON suivant :
-
-{
-  "steps": [
-    {
-      "stepNumber": 1,
-      "subject": "Sujet de l'email",
-      "body": "Corps de l'email (\\n pour sauts de ligne)",
-      "personalization_notes": "Comment tu as personnalisé cet email selon les données du prospect"
-    }
-  ]
-}
-
-⚠️ IMPORTANT : Retourne UNIQUEMENT le JSON.`;
-    }
-
-    // Appeler GPT-4 pour la génération
-    const generationCompletion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.6,
-      response_format: { type: 'json_object' }
-    });
-
-    const generationContent = generationCompletion.choices[0]?.message?.content;
-    if (!generationContent) {
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur lors de la génération par IA'
-      });
-    }
-
-    // Parser la réponse
-    let generatedSteps;
-    try {
-      generatedSteps = JSON.parse(generationContent);
-    } catch (parseError) {
-      const jsonMatch = generationContent.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        generatedSteps = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('Format de réponse invalide');
-      }
-    }
-
-    if (!generatedSteps.steps || !Array.isArray(generatedSteps.steps)) {
-      return res.status(500).json({
-        success: false,
-        error: 'Format de réponse IA invalide'
-      });
-    }
-
-    // Mapper les résultats avec les délais originaux
-    const result = generatedSteps.steps.map((generatedStep: any, index: number) => {
-      const originalStep = steps.find((s: any) => s.stepNumber === generatedStep.stepNumber);
-      return {
-        stepNumber: generatedStep.stepNumber,
-        delayDays: originalStep?.delayDays || steps[index]?.delayDays || 0,
-        subject: generatedStep.subject || '',
-        body: generatedStep.body?.replace(/\\n/g, '\n') || '',
-        personalization_notes: generatedStep.personalization_notes || ''
-      };
-    });
-
-    // Mettre à jour ai_status à 'completed'
-    if (prospectInfo.id) {
+    // Sauvegarder l'enrichissement V4 en base
+    if (normalizedProspect.id) {
       await supabase
         .from('prospects')
-        .update({ ai_status: 'completed', updated_at: new Date().toISOString() })
-        .eq('id', prospectInfo.id);
+        .update({
+          enrichment_status: 'completed',
+          enrichment_data: enrichedDataV4,
+          enriched_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', normalizedProspect.id);
+      console.log(`💾 Enrichissement V4 sauvegardé pour prospect ${normalizedProspect.id}`);
     }
 
-    console.log(`✅ Séquence générée avec succès pour ${companyName}`);
+    // ========================================================================
+    // ÉTAPE 2 : GÉNÉRATION DES SÉQUENCES AVEC DONNÉES ENRICHIES V4
+    // ========================================================================
+    
+    console.log(`✍️ Génération de la séquence avec SequenceGeneratorServiceV4...`);
+
+    // Préparer les steps avec leurs délais
+    const adjustedSteps: EmailStep[] = steps.map((step: any) => ({
+      stepNumber: step.stepNumber,
+      delayDays: step.delayDays,
+      subject: '',
+      body: ''
+    }));
+
+    // Utiliser le générateur V4 pour créer la séquence
+    const { sequence, adjustment } = await SequenceGeneratorServiceV4.generateOptimalSequence(
+      normalizedProspect,
+      enrichedDataV4,
+      context || '',
+      steps.length
+    );
+
+    // Mettre à jour ai_status à 'completed'
+    if (normalizedProspect.id) {
+      await supabase
+        .from('prospects')
+        .update({ 
+          ai_status: 'completed', 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', normalizedProspect.id);
+    }
+
+    console.log(`✅ Séquence V4 générée avec succès pour ${companyName}`);
+    if (adjustment.adjusted && adjustment.adjustment) {
+      console.log(`📊 Ajustement timing: ${adjustment.adjustment > 0 ? '+' : ''}${adjustment.adjustment} emails (${adjustment.rationale || adjustment.message})`);
+    }
+
+    // Générer la synthèse complète V4
+    const synthesis = ProspectEnrichmentServiceV4Class.generateEnrichmentSynthesis(
+      enrichedDataV4,
+      companyName
+    );
+    console.log(`📝 Synthèse V4 générée : ${synthesis.points_cles.length} points clés, ${synthesis.recommandations_action.length} recommandations`);
 
     return res.json({
       success: true,
       data: {
-        enrichment: enrichedData,
-        steps: result
+        enrichment: enrichedDataV4,
+        steps: sequence.steps,
+        adjustment: adjustment,
+        prospect_insights: {
+          potentiel_economies: enrichedDataV4.operational_data?.potentiel_global_profitum?.economies_annuelles_totales,
+          score_attractivite: enrichedDataV4.operational_data?.potentiel_global_profitum?.score_attractivite_prospect,
+          timing_score: enrichedDataV4.timing_analysis?.scoring_opportunite?.score_global_timing
+        },
+        synthese_v4: {
+          synthese_complete: synthesis.synthese_complete,
+          synthese_html: synthesis.synthese_html,
+          points_cles: synthesis.points_cles,
+          recommandations_action: synthesis.recommandations_action,
+          score_global: synthesis.score_global
+        }
       }
     });
 
   } catch (error: any) {
-    console.error('❌ Erreur génération IA V2:', error);
+    console.error('❌ Erreur génération IA V4:', error);
+    
+    // En cas d'erreur, marquer le prospect comme failed
+    if (req.body.prospectInfo?.id) {
+      await supabase
+        .from('prospects')
+        .update({
+          enrichment_status: 'failed',
+          ai_status: 'failed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', req.body.prospectInfo.id);
+    }
+    
     return res.status(500).json({
       success: false,
       error: error.message || 'Erreur lors de la génération par IA'
@@ -2238,8 +2019,6 @@ Réponds UNIQUEMENT au format JSON suivant (sans texte avant ou après) :
 // ENDPOINTS V4 - SYSTÈME OPTIMISÉ COMPLET
 // ============================================================================
 
-import ProspectEnrichmentServiceV4 from '../services/ProspectEnrichmentServiceV4';
-import SequenceGeneratorServiceV4 from '../services/SequenceGeneratorServiceV4';
 import SequenceSchedulerService from '../services/SequenceSchedulerService';
 import SequencePerformanceTracker from '../services/SequencePerformanceTracker';
 import ProspectCacheService from '../services/ProspectCacheService';
@@ -2315,6 +2094,13 @@ router.post('/generate-optimal-sequence-v4', async (req, res) => {
       }
     };
 
+    // Générer la synthèse complète V4
+    const synthesis = ProspectEnrichmentServiceV4Class.generateEnrichmentSynthesis(
+      enrichedData,
+      prospectInfo.company_name || prospectInfo.email || 'Prospect'
+    );
+    console.log(`📝 Synthèse V4 générée : ${synthesis.points_cles.length} points clés`);
+
     return res.json({
       success: true,
       data: {
@@ -2327,7 +2113,14 @@ router.post('/generate-optimal-sequence-v4', async (req, res) => {
           change: adjustment.adjustment || 0,
           rationale: adjustment.rationale || 'Aucun ajustement nécessaire'
         },
-        prospect_insights: prospectInsights
+        prospect_insights: prospectInsights,
+        synthese_v4: {
+          synthese_complete: synthesis.synthese_complete,
+          synthese_html: synthesis.synthese_html,
+          points_cles: synthesis.points_cles,
+          recommandations_action: synthesis.recommandations_action,
+          score_global: synthesis.score_global
+        }
       },
       message: adjustment.adjusted 
         ? `Séquence générée avec ${sequence.steps.length} emails (ajustée depuis ${adjustment.originalNum})`
@@ -2418,6 +2211,12 @@ router.post('/generate-optimal-sequence-batch-v4', async (req, res) => {
           adjustments.unchanged++;
         }
 
+        // Générer la synthèse V4
+        const synthesis = ProspectEnrichmentServiceV4Class.generateEnrichmentSynthesis(
+          enrichedData,
+          prospect.company_name || prospect.email || 'Prospect'
+        );
+
         results.push({
           success: true,
           prospect: {
@@ -2427,7 +2226,13 @@ router.post('/generate-optimal-sequence-batch-v4', async (req, res) => {
           },
           sequence,
           enrichment: enrichedData,
-          adjustment
+          adjustment,
+          synthese_v4: {
+            synthese_complete: synthesis.synthese_complete,
+            points_cles: synthesis.points_cles,
+            recommandations_action: synthesis.recommandations_action,
+            score_global: synthesis.score_global
+          }
         });
 
         // Pause pour ne pas surcharger l'API

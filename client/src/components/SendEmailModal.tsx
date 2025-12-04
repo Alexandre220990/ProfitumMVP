@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Sparkles, Send } from 'lucide-react';
+import { Loader2, Sparkles, Send, Eye, Code } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
 import { getSupabaseToken } from '@/lib/auth-helpers';
@@ -33,6 +33,7 @@ export default function SendEmailModal({
   const [aiContext, setAiContext] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
 
   const handleClose = () => {
     if (!isGenerating && !isSending) {
@@ -205,15 +206,47 @@ export default function SendEmailModal({
             </div>
 
             <div>
-              <Label>Message *</Label>
-              <Textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="Contenu de l'email (HTML supporté)"
-                rows={12}
-                disabled={isGenerating || isSending}
-                className="font-mono text-sm"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <Label>Message *</Label>
+                {body && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPreviewMode(!previewMode)}
+                    className="h-7 text-xs"
+                  >
+                    {previewMode ? (
+                      <>
+                        <Code className="h-3 w-3 mr-1" />
+                        Éditer le code
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-3 w-3 mr-1" />
+                        Prévisualiser
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+              {previewMode && body ? (
+                <div className="border rounded-md p-4 bg-white min-h-[300px] max-h-[500px] overflow-y-auto">
+                  <div 
+                    className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: body }}
+                  />
+                </div>
+              ) : (
+                <Textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="Contenu de l'email (HTML supporté)"
+                  rows={12}
+                  disabled={isGenerating || isSending}
+                  className="font-mono text-sm"
+                />
+              )}
               <p className="text-xs text-gray-500 mt-1">
                 HTML supporté. Utilisez l'IA pour un contenu optimisé et personnalisé.
               </p>

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, Calendar, Plus, Trash2, Mail } from 'lucide-react';
+import { Loader2, Sparkles, Calendar, Plus, Trash2, Mail, Eye, Code } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
 import { getSupabaseToken } from '@/lib/auth-helpers';
@@ -59,6 +59,14 @@ export default function ScheduleSequenceModal({
   const [aiContext, setAiContext] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
+  const [previewMode, setPreviewMode] = useState<Record<string, boolean>>({});
+
+  const togglePreview = (stepId: string) => {
+    setPreviewMode(prev => ({
+      ...prev,
+      [stepId]: !prev[stepId]
+    }));
+  };
 
   const handleClose = () => {
     if (!isGenerating && !isScheduling) {
@@ -374,15 +382,47 @@ export default function ScheduleSequenceModal({
                   </div>
 
                   <div>
-                    <Label className="text-xs sm:text-sm">Message *</Label>
-                    <Textarea
-                      value={step.body}
-                      onChange={(e) => updateStep(step.id, 'body', e.target.value)}
-                      placeholder="Contenu de l'email (HTML supporté)"
-                      rows={6}
-                      disabled={isGenerating || isScheduling}
-                      className="font-mono text-xs sm:text-sm mt-1 leading-relaxed"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-xs sm:text-sm">Message *</Label>
+                      {step.body && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => togglePreview(step.id)}
+                          className="h-6 text-xs"
+                        >
+                          {previewMode[step.id] ? (
+                            <>
+                              <Code className="h-3 w-3 mr-1" />
+                              Éditer le code
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-3 w-3 mr-1" />
+                              Prévisualiser
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                    {previewMode[step.id] && step.body ? (
+                      <div className="border rounded-md p-3 bg-white min-h-[150px] max-h-[300px] overflow-y-auto">
+                        <div 
+                          className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: step.body }}
+                        />
+                      </div>
+                    ) : (
+                      <Textarea
+                        value={step.body}
+                        onChange={(e) => updateStep(step.id, 'body', e.target.value)}
+                        placeholder="Contenu de l'email (HTML supporté)"
+                        rows={6}
+                        disabled={isGenerating || isScheduling}
+                        className="font-mono text-xs sm:text-sm leading-relaxed"
+                      />
+                    )}
                   </div>
                 </div>
               </div>

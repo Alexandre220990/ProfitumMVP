@@ -22,6 +22,334 @@ const openai = new OpenAI({
 export class ProspectEnrichmentServiceV4 {
   
   /**
+   * Générer une synthèse complète de l'enrichissement V4
+   * Résume toutes les étapes : LinkedIn, Web, Opérationnel, Timing
+   */
+  static generateEnrichmentSynthesis(enrichedData: EnrichedProspectDataV4, prospectName: string): {
+    synthese_complete: string;
+    synthese_html: string;
+    points_cles: string[];
+    recommandations_action: string[];
+    score_global: {
+      completude: number;
+      attractivite: number;
+      timing: number;
+      qualite_donnees: number;
+    };
+  } {
+    const { linkedin_data, web_data, operational_data, timing_analysis } = enrichedData;
+    
+    // ============ POINTS CLÉS ============
+    const points_cles: string[] = [];
+    
+    // LinkedIn
+    if (linkedin_data) {
+      const iceBreakerCount = linkedin_data.ice_breakers_generes?.filter(ib => ib.score >= 7).length || 0;
+      if (iceBreakerCount > 0) {
+        points_cles.push(`${iceBreakerCount} ice breaker(s) haute qualité identifié(s) sur LinkedIn`);
+      }
+      if (linkedin_data.decisionnaire_linkedin?.anciennete_poste) {
+        points_cles.push(`Décisionnaire en poste depuis ${linkedin_data.decisionnaire_linkedin.anciennete_poste}`);
+      }
+    }
+    
+    // Opérationnel
+    if (operational_data) {
+      const eligibilites = operational_data.donnees_operationnelles.signaux_eligibilite_profitum;
+      const dispositifsEligibles = [];
+      if (eligibilites.ticpe?.eligible && eligibilites.ticpe.score_certitude >= 7) {
+        dispositifsEligibles.push(`TICPE (${eligibilites.ticpe.potentiel_economie_annuelle})`);
+      }
+      if (eligibilites.cee?.eligible && eligibilites.cee.score_certitude >= 7) {
+        dispositifsEligibles.push(`CEE (${eligibilites.cee.potentiel_economie_annuelle})`);
+      }
+      if (eligibilites.optimisation_sociale?.eligible && eligibilites.optimisation_sociale.score_certitude >= 7) {
+        dispositifsEligibles.push(`Optim. Sociale (${eligibilites.optimisation_sociale.potentiel_economie_annuelle})`);
+      }
+      
+      if (dispositifsEligibles.length > 0) {
+        points_cles.push(`Éligible à ${dispositifsEligibles.length} dispositif(s) : ${dispositifsEligibles.join(', ')}`);
+      }
+      
+      const potentiel = operational_data.potentiel_global_profitum;
+      if (potentiel.economies_annuelles_totales.moyenne > 0) {
+        points_cles.push(`Potentiel économies : ${potentiel.economies_annuelles_totales.minimum.toLocaleString()}€ - ${potentiel.economies_annuelles_totales.maximum.toLocaleString()}€/an`);
+      }
+      
+      points_cles.push(`Score attractivité prospect : ${potentiel.score_attractivite_prospect}/10`);
+    }
+    
+    // Timing
+    if (timing_analysis) {
+      const timingScore = timing_analysis.scoring_opportunite.score_global_timing;
+      const action = timing_analysis.scoring_opportunite.action_recommandee;
+      points_cles.push(`Timing : ${timingScore}/10 - Action : ${action}`);
+    }
+    
+    // ============ RECOMMANDATIONS ACTION ============
+    const recommandations_action: string[] = [];
+    
+    // Priorité selon score attractivité
+    if (operational_data) {
+      const scoreAttractivite = operational_data.potentiel_global_profitum.score_attractivite_prospect;
+      if (scoreAttractivite >= 8) {
+        recommandations_action.push('⭐ PRIORITÉ HAUTE : Prospect à forte valeur, contacter rapidement');
+      } else if (scoreAttractivite >= 6) {
+        recommandations_action.push('✓ Prospect qualifié, bon potentiel de conversion');
+      } else if (scoreAttractivite >= 4) {
+        recommandations_action.push('→ Prospect moyen, nécessite qualification approfondie');
+      } else {
+        recommandations_action.push('⚠ Faible potentiel, évaluer la pertinence d\'une approche');
+      }
+    }
+    
+    // Recommandations timing
+    if (timing_analysis) {
+      const nbEmailsRecommande = timing_analysis.recommandations_sequence.nombre_emails_recommande;
+      const ajustement = timing_analysis.recommandations_sequence.ajustement_vs_defaut;
+      
+      if (ajustement > 0) {
+        recommandations_action.push(`Augmenter la séquence à ${nbEmailsRecommande} emails (contexte favorable)`);
+      } else if (ajustement < 0) {
+        recommandations_action.push(`Réduire la séquence à ${nbEmailsRecommande} emails (période moins propice)`);
+      }
+      
+      if (timing_analysis.scoring_opportunite.action_recommandee === 'ENVOYER_MAINTENANT') {
+        recommandations_action.push('✉ Envoyer immédiatement, contexte optimal');
+      } else if (timing_analysis.scoring_opportunite.action_recommandee === 'ENVOYER_AVEC_PRUDENCE') {
+        recommandations_action.push('⏰ Envoyer avec prudence, ajuster le ton');
+      } else if (timing_analysis.scoring_opportunite.action_recommandee === 'REPORTER') {
+        recommandations_action.push('⏸ Reporter l\'envoi, période peu favorable');
+      }
+    }
+    
+    // Recommandations ice breakers
+    if (linkedin_data?.ice_breakers_generes) {
+      const topIceBreakers = linkedin_data.ice_breakers_generes
+        .filter(ib => ib.score >= 7)
+        .slice(0, 2);
+      
+      if (topIceBreakers.length > 0) {
+        recommandations_action.push(`Utiliser les ice breakers : "${topIceBreakers.map(ib => ib.type).join('", "')}"`);
+      }
+    }
+    
+    // Recommandations données manquantes
+    if (operational_data?.synthese_enrichissement) {
+      const donneesManquantes = operational_data.synthese_enrichissement.donnees_manquantes_critiques;
+      if (donneesManquantes.length > 0) {
+        recommandations_action.push(`⚠ Qualifier ces données : ${donneesManquantes.slice(0, 3).join(', ')}`);
+      }
+    }
+    
+    // ============ SYNTHÈSE MARKDOWN ============
+    let synthese_complete = `# Synthèse Enrichissement V4 - ${prospectName}\n\n`;
+    
+    // Section 1: Résumé exécutif
+    synthese_complete += `## 📊 Résumé Exécutif\n\n`;
+    if (operational_data) {
+      const potentiel = operational_data.potentiel_global_profitum;
+      synthese_complete += `**Score Attractivité** : ${potentiel.score_attractivite_prospect}/10\n`;
+      synthese_complete += `**Potentiel Économies** : ${potentiel.economies_annuelles_totales.minimum.toLocaleString()}€ - ${potentiel.economies_annuelles_totales.maximum.toLocaleString()}€/an (moy. ${potentiel.economies_annuelles_totales.moyenne.toLocaleString()}€)\n`;
+      synthese_complete += `**Justification** : ${potentiel.justification}\n\n`;
+    }
+    
+    // Section 2: LinkedIn
+    synthese_complete += `## 🔗 Enrichissement LinkedIn\n\n`;
+    if (linkedin_data) {
+      synthese_complete += `### Entreprise\n`;
+      if (linkedin_data.entreprise_linkedin) {
+        const ent = linkedin_data.entreprise_linkedin;
+        if (ent.followers) {
+          synthese_complete += `- **Followers** : ${ent.followers}\n`;
+        }
+        if (ent.posts_recents && ent.posts_recents.length > 0) {
+          synthese_complete += `- **Activité récente** : ${ent.posts_recents.length} post(s) identifié(s)\n`;
+        }
+        if (ent.evenements_participation && ent.evenements_participation.length > 0) {
+          synthese_complete += `- **Événements** : ${ent.evenements_participation.length} événement(s)\n`;
+        }
+      }
+      
+      synthese_complete += `\n### Décisionnaire\n`;
+      if (linkedin_data.decisionnaire_linkedin) {
+        const dec = linkedin_data.decisionnaire_linkedin;
+        if (dec.anciennete_poste) {
+          synthese_complete += `- **Ancienneté au poste** : ${dec.anciennete_poste}\n`;
+        }
+        if (dec.style_communication) {
+          synthese_complete += `- **Style** : ${dec.style_communication}\n`;
+        }
+        if (dec.niveau_activite) {
+          synthese_complete += `- **Activité LinkedIn** : ${dec.niveau_activite}\n`;
+        }
+      }
+      
+      synthese_complete += `\n### Ice Breakers\n`;
+      if (linkedin_data.ice_breakers_generes && linkedin_data.ice_breakers_generes.length > 0) {
+        const topIceBreakers = linkedin_data.ice_breakers_generes
+          .filter(ib => ib.score >= 6)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3);
+        
+        topIceBreakers.forEach((ib, index) => {
+          synthese_complete += `${index + 1}. **[${ib.type}]** (Score: ${ib.score}/10) - Statut: ${ib.statut_temporel}\n`;
+          synthese_complete += `   "${ib.phrase}"\n`;
+        });
+      } else {
+        synthese_complete += `Aucun ice breaker de haute qualité identifié.\n`;
+      }
+    } else {
+      synthese_complete += `Données LinkedIn non disponibles.\n`;
+    }
+    
+    // Section 3: Site Web
+    synthese_complete += `\n## 🌐 Analyse Site Web\n\n`;
+    if (web_data) {
+      if (web_data.site_web_analyse) {
+        const site = web_data.site_web_analyse;
+        synthese_complete += `**Activités principales** : ${site.activites_principales?.join(', ') || 'Non renseignées'}\n`;
+        if (site.actualites_site && site.actualites_site.length > 0) {
+          synthese_complete += `**Actualités récentes** : ${site.actualites_site.length} actualité(s)\n`;
+        }
+        if (site.certifications_labels && site.certifications_labels.length > 0) {
+          synthese_complete += `**Certifications** : ${site.certifications_labels.join(', ')}\n`;
+        }
+      }
+      
+      if (web_data.opportunites_profitum) {
+        const opp = web_data.opportunites_profitum;
+        synthese_complete += `\n**Opportunités Profitum détectées** :\n`;
+        if (opp.signaux_eligibilite_ticpe && opp.signaux_eligibilite_ticpe.score >= 7) {
+          synthese_complete += `- ✓ TICPE : ${opp.signaux_eligibilite_ticpe.raison}\n`;
+        }
+        if (opp.signaux_eligibilite_cee && opp.signaux_eligibilite_cee.score >= 7) {
+          synthese_complete += `- ✓ CEE : ${opp.signaux_eligibilite_cee.raison}\n`;
+        }
+        if (opp.signaux_optimisation_sociale && opp.signaux_optimisation_sociale.score >= 7) {
+          synthese_complete += `- ✓ Optim. Sociale : ${opp.signaux_optimisation_sociale.raison}\n`;
+        }
+      }
+    } else {
+      synthese_complete += `Données site web non disponibles.\n`;
+    }
+    
+    // Section 4: Données Opérationnelles
+    synthese_complete += `\n## 📋 Données Opérationnelles\n\n`;
+    if (operational_data) {
+      const donnees = operational_data.donnees_operationnelles;
+      
+      synthese_complete += `### Ressources Humaines\n`;
+      if (donnees.ressources_humaines?.nombre_salaries_total) {
+        const rh = donnees.ressources_humaines.nombre_salaries_total;
+        synthese_complete += `- **Salariés** : ${rh.valeur} (Confiance: ${rh.confiance}/10, Source: ${rh.source})\n`;
+      }
+      if (donnees.ressources_humaines?.nombre_chauffeurs) {
+        const chauffeurs = donnees.ressources_humaines.nombre_chauffeurs;
+        synthese_complete += `- **Chauffeurs** : ${chauffeurs.valeur} (Confiance: ${chauffeurs.confiance}/10)\n`;
+      }
+      
+      synthese_complete += `\n### Parc Véhicules\n`;
+      if (donnees.parc_vehicules?.poids_lourds_plus_7_5T) {
+        const pl = donnees.parc_vehicules.poids_lourds_plus_7_5T;
+        synthese_complete += `- **Poids Lourds +7.5T** : ${pl.valeur} (Confiance: ${pl.confiance}/10, Source: ${pl.source})\n`;
+      }
+      
+      synthese_complete += `\n### Infrastructures\n`;
+      if (donnees.infrastructures?.locaux_principaux?.surface_m2) {
+        const surf = donnees.infrastructures.locaux_principaux.surface_m2;
+        const statut = donnees.infrastructures.locaux_principaux.statut_propriete?.proprietaire_ou_locataire || 'INCONNU';
+        synthese_complete += `- **Surface** : ${surf.valeur}m² (${statut})\n`;
+      }
+      
+      synthese_complete += `\n### Éligibilité Profitum\n`;
+      const eligibilites = donnees.signaux_eligibilite_profitum;
+      
+      // TICPE
+      synthese_complete += `**TICPE**\n`;
+      synthese_complete += `- Éligible : ${eligibilites.ticpe.eligible ? 'OUI' : 'NON'} (Certitude: ${eligibilites.ticpe.score_certitude}/10)\n`;
+      synthese_complete += `- Potentiel : ${eligibilites.ticpe.potentiel_economie_annuelle}\n`;
+      synthese_complete += `- Priorité : ${eligibilites.ticpe.priorite}\n`;
+      
+      // CEE
+      synthese_complete += `\n**CEE**\n`;
+      synthese_complete += `- Éligible : ${eligibilites.cee.eligible ? 'OUI' : 'NON'} (Certitude: ${eligibilites.cee.score_certitude}/10)\n`;
+      synthese_complete += `- Potentiel : ${eligibilites.cee.potentiel_economie_annuelle}\n`;
+      synthese_complete += `- Priorité : ${eligibilites.cee.priorite}\n`;
+      
+      // Optimisation Sociale
+      synthese_complete += `\n**Optimisation Sociale**\n`;
+      synthese_complete += `- Éligible : ${eligibilites.optimisation_sociale.eligible ? 'OUI' : 'NON'} (Certitude: ${eligibilites.optimisation_sociale.score_certitude}/10)\n`;
+      synthese_complete += `- Potentiel : ${eligibilites.optimisation_sociale.potentiel_economie_annuelle}\n`;
+      synthese_complete += `- Dispositifs : ${eligibilites.optimisation_sociale.dispositifs_applicables.join(', ')}\n`;
+      
+      synthese_complete += `\n### Complétude des Données\n`;
+      const synthese_enrich = operational_data.synthese_enrichissement;
+      synthese_complete += `- **Score complétude** : ${synthese_enrich.score_completude_donnees}/100\n`;
+      if (synthese_enrich.donnees_manquantes_critiques.length > 0) {
+        synthese_complete += `- **Données manquantes** : ${synthese_enrich.donnees_manquantes_critiques.join(', ')}\n`;
+      }
+      if (synthese_enrich.donnees_haute_confiance.length > 0) {
+        synthese_complete += `- **Données fiables** : ${synthese_enrich.donnees_haute_confiance.join(', ')}\n`;
+      }
+    }
+    
+    // Section 5: Analyse Temporelle
+    synthese_complete += `\n## ⏰ Analyse Temporelle\n\n`;
+    if (timing_analysis) {
+      const periode = timing_analysis.analyse_periode;
+      synthese_complete += `**Période actuelle** : ${periode.periode_actuelle}\n`;
+      synthese_complete += `**Charge mentale prospects** : ${periode.contexte_business.charge_mentale_prospects}\n`;
+      synthese_complete += `**Réceptivité estimée** : ${periode.contexte_business.receptivite_estimee}/10\n`;
+      synthese_complete += `**Score attention** : ${periode.contexte_business.score_attention}/10\n\n`;
+      
+      const scoring = timing_analysis.scoring_opportunite;
+      synthese_complete += `**Score Global Timing** : ${scoring.score_global_timing}/10\n`;
+      synthese_complete += `**Action recommandée** : ${scoring.action_recommandee}\n`;
+      synthese_complete += `**Justification** : ${scoring.justification_detaillee}\n\n`;
+      
+      const reco = timing_analysis.recommandations_sequence;
+      synthese_complete += `**Séquence recommandée** : ${reco.nombre_emails_recommande} email(s)\n`;
+      synthese_complete += `**Ajustement** : ${reco.ajustement_vs_defaut > 0 ? '+' : ''}${reco.ajustement_vs_defaut}\n`;
+      synthese_complete += `**Raison** : ${reco.rationale_detaillee}\n`;
+    }
+    
+    // Section 6: Recommandations
+    synthese_complete += `\n## 💡 Recommandations d'Action\n\n`;
+    recommandations_action.forEach(reco => {
+      synthese_complete += `- ${reco}\n`;
+    });
+    
+    // ============ SYNTHÈSE HTML ============
+    let synthese_html = synthese_complete
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^\*\*(.+?)\*\* : (.+)$/gm, '<p><strong>$1</strong> : $2</p>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+      .replace(/\n/g, '<br/>');
+    
+    // ============ SCORES GLOBAUX ============
+    const score_global = {
+      completude: operational_data?.synthese_enrichissement?.score_completude_donnees || 0,
+      attractivite: operational_data?.potentiel_global_profitum?.score_attractivite_prospect || 0,
+      timing: timing_analysis?.scoring_opportunite?.score_global_timing || 0,
+      qualite_donnees: operational_data ? Math.round(
+        operational_data.synthese_enrichissement.donnees_haute_confiance.length * 10
+      ) : 0
+    };
+    
+    return {
+      synthese_complete,
+      synthese_html,
+      points_cles,
+      recommandations_action,
+      score_global
+    };
+  }
+  
+  /**
    * ÉTAPE 1 : Enrichissement LinkedIn (avec cache)
    */
   async enrichLinkedIn(

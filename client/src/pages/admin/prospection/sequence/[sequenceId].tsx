@@ -206,6 +206,12 @@ export default function ProspectSequencePage() {
   });
   const [isSavingScheduled, setIsSavingScheduled] = useState(false);
 
+  // États pour le rapport du prospect
+  const [prospectReport, setProspectReport] = useState<any>(null);
+  const [reportContent, setReportContent] = useState('');
+  const [isSavingReport, setIsSavingReport] = useState(false);
+  const [isEnrichingReport, setIsEnrichingReport] = useState(false);
+
   useEffect(() => {
     if (user && sequenceId) {
       fetchData();
@@ -293,6 +299,22 @@ export default function ProspectSequencePage() {
         const receivedResult = await receivedResponse.json();
         receivedData = receivedResult.data || [];
         setReceivedEmails(receivedData);
+      }
+
+      // Récupérer le rapport du prospect
+      const reportResponse = await fetch(`${config.API_URL}/api/prospects/${sequenceId}/report`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (reportResponse.ok) {
+        const reportResult = await reportResponse.json();
+        if (reportResult.data) {
+          setProspectReport(reportResult.data);
+          setReportContent(reportResult.data.report_content || '');
+        }
       }
 
       // Construire la conversation (emails envoyés + réponses reçues)
@@ -404,6 +426,88 @@ export default function ProspectSequencePage() {
       toast.error('Erreur lors de la sauvegarde du commentaire');
     } finally {
       setSavingComment(false);
+    }
+  };
+
+  const saveReport = async () => {
+    if (!sequenceId) return;
+
+    try {
+      setIsSavingReport(true);
+      const token = await getSupabaseToken();
+
+      const response = await fetch(`${config.API_URL}/api/prospects/${sequenceId}/report`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          report_content: reportContent,
+          prospect_id: sequenceId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la sauvegarde du rapport');
+      }
+
+      const result = await response.json();
+      if (result.data) {
+        setProspectReport(result.data);
+      }
+
+      toast.success('Rapport sauvegardé');
+    } catch (error) {
+      console.error('Erreur sauvegarde rapport:', error);
+      toast.error('Erreur lors de la sauvegarde du rapport');
+    } finally {
+      setIsSavingReport(false);
+    }
+  };
+
+  const enrichReportWithAI = async () => {
+    if (!sequenceId) return;
+
+    try {
+      setIsEnrichingReport(true);
+      const token = await getSupabaseToken();
+
+      const response = await fetch(`${config.API_URL}/api/prospects/${sequenceId}/report/enrich`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de l\'enrichissement du rapport');
+      }
+
+      await response.json();
+      
+      // Recharger le rapport
+      const reportResponse = await fetch(`${config.API_URL}/api/prospects/${sequenceId}/report`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (reportResponse.ok) {
+        const reportResult = await reportResponse.json();
+        if (reportResult.data) {
+          setProspectReport(reportResult.data);
+        }
+      }
+
+      toast.success('Rapport enrichi avec succès');
+    } catch (error) {
+      console.error('Erreur enrichissement rapport:', error);
+      toast.error('Erreur lors de l\'enrichissement du rapport');
+    } finally {
+      setIsEnrichingReport(false);
     }
   };
 
@@ -835,6 +939,116 @@ export default function ProspectSequencePage() {
           </div>
         </div>
       </div>
+
+      {/* Rapport du prospect */}
+      <Card className="bg-white border border-gray-200 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              Rapport du prospect
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {prospectReport && (
+                <Button
+                  onClick={enrichReportWithAI}
+                  disabled={isEnrichingReport || !reportContent.trim()}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
+                >
+                  {isEnrichingReport ? (
+                    <>
+                      <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                      Optimisation en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="h-3 w-3 mr-1.5" />
+                      Optimiser avec l'IA
+                    </>
+                  )}
+                </Button>
+              )}
+              <Button
+                onClick={saveReport}
+                disabled={isSavingReport}
+                size="sm"
+                className="h-8 px-3 text-xs"
+              >
+                {isSavingReport ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                    Sauvegarde...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-3 w-3 mr-1.5" />
+                    Sauvegarder
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Zone de texte pour le rapport utilisateur */}
+          <div>
+            <Label htmlFor="report-content" className="text-sm font-medium text-gray-700 mb-2 block">
+              Informations complémentaires
+              <span className="text-xs text-gray-500 ml-2 font-normal">
+                (Ajoutez toute information utile pour la prospection - ces notes seront prises en compte par l'IA)
+              </span>
+            </Label>
+            <Textarea
+              id="report-content"
+              value={reportContent}
+              onChange={(e) => setReportContent(e.target.value)}
+              placeholder="Ajoutez vos notes, observations et informations complémentaires sur ce prospect...&#10;&#10;Exemples :&#10;- Contexte de la prise de contact&#10;- Besoins identifiés&#10;- Objections potentielles&#10;- Priorité et timing&#10;- Points clés à mentionner dans les prochains échanges"
+              className="min-h-[120px] resize-y text-sm"
+            />
+          </div>
+
+          {/* Contenu enrichi par l'IA */}
+          {prospectReport?.enriched_content && (
+            <div className="border-t pt-4">
+              <div className="mb-2 flex items-center gap-2">
+                <Brain className="h-4 w-4 text-purple-600" />
+                <h4 className="text-sm font-semibold text-gray-900">Rapport optimisé par l'IA</h4>
+                <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                  Dernière mise à jour : {new Date(prospectReport.enriched_at).toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </Badge>
+              </div>
+              <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-100">
+                <div className="prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap">
+                  {prospectReport.enriched_content}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Plan d'action */}
+          {prospectReport?.action_plan && (
+            <div className="border-t pt-4">
+              <div className="mb-2 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-green-600" />
+                <h4 className="text-sm font-semibold text-gray-900">Plan d'action suggéré</h4>
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-100">
+                <div className="prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap">
+                  {prospectReport.action_plan}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
         {/* Colonne principale - Conversation (emails envoyés + réponses) */}
