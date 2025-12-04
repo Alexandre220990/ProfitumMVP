@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Calendar as CalendarIcon, Clock, MapPin, Video, Phone, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config';
+import { supabase } from '@/lib/supabase';
 
 // ============================================================================
 // TYPES
@@ -235,7 +236,9 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
 
   const loadContacts = async () => {
     try {
-      const token = localStorage.getItem('token');
+      // ✅ Utiliser le token Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const response = await fetch(`${config.API_URL}/api/unified-messaging/contacts`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -328,7 +331,9 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
         }
       };
 
-      const token = localStorage.getItem('token');
+      // ✅ Utiliser le token Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       
       // URL correcte : inclure l'ID pour PUT
       const url = editMode && formData.id

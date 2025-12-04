@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ContactsModal } from './ContactsModal';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -220,7 +221,9 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
       const otherParticipantId = conversation.participant_ids?.find(id => id !== userId);
       if (!otherParticipantId) return;
 
-      const token = localStorage.getItem('token');
+      // ✅ Utiliser le token Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const response = await fetch(`/api/unified-messaging/user-status/${otherParticipantId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -282,7 +285,9 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
           console.log('🆕 Aucune conversation existante, création...');
           
           // Récupérer les infos du contact via l'API
-          const token = localStorage.getItem('token');
+          // ✅ Utiliser le token Supabase
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
           let contactInfo = null;
           
           try {

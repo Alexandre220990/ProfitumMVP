@@ -17,6 +17,7 @@ import {
 import { config } from '@/config';
 import { useAuth } from '@/hooks/use-auth';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
 
 // ============================================================================
 // TYPES
@@ -91,9 +92,11 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
   const loadContacts = async () => {
     try {
       setLoading(true);
+      // ✅ Utiliser le token Supabase
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(`${config.API_URL}/api/unified-messaging/contacts`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json'
         }
       });

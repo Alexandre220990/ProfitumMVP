@@ -189,9 +189,11 @@ export default function ExpertSelectionModal({
       if (filters.rating && filters.rating !== 'all') params.append('rating', filters.rating);
       if (filters.availability && filters.availability !== 'all') params.append('availability', filters.availability);
       
+      // ✅ Utiliser le token Supabase
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(`${config.API_URL}/api/client/experts?${params.toString()}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${session?.access_token}`
         }
       });
 
@@ -245,7 +247,9 @@ export default function ExpertSelectionModal({
         expert_id: tempSelectedExpert.id
       };
       
-      const token = localStorage.getItem('token');
+      // ✅ Utiliser le token Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       console.log('🔍 [DEBUG] Envoi requête sélection expert:', {
         url: `${config.API_URL}/api/dossier-steps/expert/select`,
         body: requestBody,
@@ -257,7 +261,7 @@ export default function ExpertSelectionModal({
       const fetchOptions = {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
