@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Force la vérification du cache pour éviter les versions obsolètes -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Profitum</title>
     <!-- Manifest sera chargé dynamiquement par le script ci-dessous -->
     <link rel="manifest" id="pwa-manifest" />
@@ -186,6 +190,74 @@
             }
           }
         }
+      })();
+    </script>
+    
+    <!-- 🔧 CORRECTIF : Détection de chargement bloqué et cache stale -->
+    <script>
+      (function() {
+        // Timer de sécurité : Si l'app ne démarre pas dans 10s, c'est probablement un problème de cache
+        let appStarted = false;
+        let reloadAttempts = parseInt(sessionStorage.getItem('reload_attempts') || '0');
+        const MAX_RELOAD_ATTEMPTS = 2;
+        
+        // Marquer que l'app a démarré (sera appelé par React)
+        window.__APP_STARTED__ = function() {
+          appStarted = true;
+          console.log('✅ Application démarrée avec succès');
+          sessionStorage.removeItem('reload_attempts');
+        };
+        
+        // Vérifier après 10 secondes si l'app a démarré
+        setTimeout(function() {
+          if (!appStarted && reloadAttempts < MAX_RELOAD_ATTEMPTS) {
+            console.warn('⚠️ Application bloquée après 10s - Probable problème de cache');
+            console.warn('🔄 Nettoyage du cache et rechargement...');
+            
+            // Incrémenter le compteur
+            sessionStorage.setItem('reload_attempts', (reloadAttempts + 1).toString());
+            
+            // Nettoyer tout le cache
+            if ('caches' in window) {
+              caches.keys().then(function(names) {
+                names.forEach(function(name) { 
+                  caches.delete(name);
+                });
+              });
+            }
+            
+            // Hard reload
+            setTimeout(function() {
+              window.location.reload();
+            }, 500);
+          } else if (!appStarted && reloadAttempts >= MAX_RELOAD_ATTEMPTS) {
+            console.error('❌ L\'application ne peut pas démarrer après plusieurs tentatives');
+            // Afficher un message d'erreur à l'utilisateur
+            const root = document.getElementById('root');
+            if (root) {
+              root.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; font-family: system-ui, -apple-system, sans-serif;">
+                  <div style="max-width: 500px; padding: 30px; background: #fee; border: 2px solid #c33; border-radius: 12px; text-align: center;">
+                    <h2 style="color: #c33; margin-bottom: 16px;">⚠️ Problème de chargement</h2>
+                    <p style="color: #333; margin-bottom: 20px;">
+                      L'application ne peut pas démarrer. Cela peut être dû à un problème de cache.
+                    </p>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 24px;">
+                      Veuillez essayer de vider votre cache manuellement :
+                      <br><strong>Mac :</strong> Cmd + Shift + R
+                      <br><strong>Windows :</strong> Ctrl + Shift + R
+                    </p>
+                    <button 
+                      onclick="sessionStorage.clear(); localStorage.clear(); window.location.reload();" 
+                      style="padding: 12px 24px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 500;">
+                      Vider le cache et réessayer
+                    </button>
+                  </div>
+                </div>
+              `;
+            }
+          }
+        }, 10000); // 10 secondes
       })();
     </script>
     

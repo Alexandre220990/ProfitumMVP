@@ -50,10 +50,16 @@ const handleChunkLoadError = () => {
   
   // Vérifier si on a déjà tenté un rechargement récemment pour éviter les boucles infinies
   const lastReload = sessionStorage.getItem('lastChunkReload');
+  const reloadCount = parseInt(sessionStorage.getItem('chunkReloadCount') || '0');
   const now = Date.now();
   
-  if (!lastReload || (now - parseInt(lastReload)) > 10000) {
+  // Autoriser jusqu'à 3 rechargements dans les 30 dernières secondes
+  if (!lastReload || (now - parseInt(lastReload)) > 30000) {
+    // Reset le compteur si plus de 30 secondes se sont écoulées
+    sessionStorage.setItem('chunkReloadCount', '1');
     sessionStorage.setItem('lastChunkReload', now.toString());
+    
+    console.log('🧹 Nettoyage du cache...');
     
     // Vider le cache et recharger
     if ('caches' in window) {
@@ -63,9 +69,56 @@ const handleChunkLoadError = () => {
     }
     
     // Hard reload pour forcer le rechargement sans cache
-    window.location.reload();
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  } else if (reloadCount < 3) {
+    // Incrémenter le compteur
+    sessionStorage.setItem('chunkReloadCount', (reloadCount + 1).toString());
+    sessionStorage.setItem('lastChunkReload', now.toString());
+    
+    console.log(`🔄 Tentative ${reloadCount + 1}/3 de rechargement...`);
+    
+    // Vider le cache et recharger
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
+    
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   } else {
     console.error('❌ Trop de rechargements détectés, veuillez vider votre cache manuellement');
+    console.error('💡 Sur Mac: Cmd + Shift + R | Sur Windows: Ctrl + Shift + R');
+    
+    // Afficher un message à l'utilisateur
+    const root = document.getElementById('root');
+    if (root && !root.hasChildNodes()) {
+      root.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; font-family: system-ui, sans-serif;">
+          <div style="max-width: 500px; padding: 30px; background: #fee; border: 2px solid #c33; border-radius: 12px; text-align: center;">
+            <h2 style="color: #c33; margin-bottom: 16px;">⚠️ Problème de cache persistant</h2>
+            <p style="color: #333; margin-bottom: 20px;">
+              L'application ne peut pas charger certains fichiers. Ceci est souvent causé par un cache obsolète.
+            </p>
+            <p style="color: #666; font-size: 14px; margin-bottom: 24px;">
+              <strong>Solution :</strong> Effectuez un rechargement forcé :
+              <br><br>
+              <strong>Sur Mac :</strong> Cmd + Shift + R
+              <br>
+              <strong>Sur Windows :</strong> Ctrl + Shift + R
+            </p>
+            <button 
+              onclick="sessionStorage.clear(); localStorage.clear(); if('caches' in window){ caches.keys().then(n => n.forEach(name => caches.delete(name))); } setTimeout(() => window.location.reload(), 500);" 
+              style="padding: 12px 24px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 500;">
+              Vider tout le cache et réessayer
+            </button>
+          </div>
+        </div>
+      `;
+    }
   }
 };
 
@@ -118,7 +171,16 @@ try { const reactRoot = ReactDOM.createRoot(root);
     </React.StrictMode>
   );
   
-  console.log("Rendu initial terminé"); } catch (error) { console.error("Erreur lors de l'initialisation de React: ", error);
+  console.log("Rendu initial terminé");
+  
+  // ✅ Marquer que l'application a démarré avec succès
+  // Cela désactive le timer de sécurité dans index.html
+  if (typeof window !== 'undefined' && typeof window.__APP_STARTED__ === 'function') {
+    setTimeout(() => {
+      window.__APP_STARTED__?.();
+    }, 100);
+  }
+} catch (error) { console.error("Erreur lors de l'initialisation de React: ", error);
   
   // Afficher un message d'erreur directement dans le DOM
   root.innerHTML = `

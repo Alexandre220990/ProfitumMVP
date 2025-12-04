@@ -32,4 +32,13 @@ declare module 'react' {
   }
 }
 
+// Étendre l'interface Window pour les fonctions personnalisées
+declare global {
+  interface Window {
+    __APP_STARTED__?: () => void;
+    updatePWAManifest?: (userType: string) => void;
+    __SUPABASE_CLIENT__?: any;
+  }
+}
+
 export {}; 
