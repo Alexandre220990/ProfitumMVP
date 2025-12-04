@@ -3,6 +3,8 @@
  * Utilise les routes API existantes au lieu des vues SQL inexistantes
  */
 
+import { getSupabaseToken } from '@/lib/auth-helpers';
+
 interface ApporteurKPIs {
   mesProspects: number;
   prospectsQualifies: number;
@@ -51,10 +53,8 @@ interface AlertItem {
 }
 
 export class ApporteurSimpleService {
-  private apporteurId: string;
-
-  constructor(apporteurId: string) {
-    this.apporteurId = apporteurId;
+  constructor(_apporteurId: string) {
+    // apporteurId non utilisé - authentification via JWT
   }
 
   /**
@@ -117,7 +117,7 @@ export class ApporteurSimpleService {
    */
   async getPersonalProspects(): Promise<{ success: boolean; data?: ProspectDetail[]; error?: string }> {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) {
         throw new Error('Token d\'authentification manquant');
       }

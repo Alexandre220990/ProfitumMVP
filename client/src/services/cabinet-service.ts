@@ -5,6 +5,7 @@ import {
   CabinetTeamRole,
   CabinetTeamStatsRow
 } from '@/types';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 type ApiSuccess<T> = {
   success: true;
@@ -38,18 +39,19 @@ export type CabinetMemberUpdatePayload = Partial<{
 class ExpertCabinetService {
   private baseUrl = `${import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app'}/api/expert/cabinet`;
 
-  private getAuthHeaders() {
+  private async getAuthHeaders() {
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+      'Authorization': `Bearer ${await getSupabaseToken() || ''}`
     };
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const authHeaders = await this.getAuthHeaders();
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...options,
       headers: {
-        ...this.getAuthHeaders(),
+        ...authHeaders,
         ...(options.headers || {})
       }
     });
@@ -104,8 +106,9 @@ class ExpertCabinetService {
     if (search) params.append('search', search);
     
     const endpoint = type === 'apporteur' ? '/apporteurs/available' : '/experts/available';
+    const headers = await this.getAuthHeaders();
     const response = await fetch(`${adminUrl}${endpoint}?${params}`, {
-      headers: this.getAuthHeaders()
+      headers
     });
     
     if (!response.ok) {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 import { NOTIFICATION_SLA_CONFIG } from '@/utils/notification-sla';
 
@@ -72,7 +73,7 @@ export function useNotificationPreferences() {
   const loadPreferences = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) {
         throw new Error('Non authentifié');
       }
@@ -142,7 +143,7 @@ export function useNotificationPreferences() {
   const savePreferences = useCallback(async () => {
     try {
       setSaving(true);
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       if (!token) {
         throw new Error('Non authentifié');
       }

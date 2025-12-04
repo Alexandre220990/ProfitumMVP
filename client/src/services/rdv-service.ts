@@ -3,6 +3,8 @@
  * Remplace les anciens services ClientRDV et CalendarEvent pour les RDV
  */
 
+import { getSupabaseToken } from '@/lib/auth-helpers';
+
 // ============================================================================
 // TYPES ET INTERFACES
 // ============================================================================
@@ -121,8 +123,8 @@ export interface RDVFilters {
 class RDVService {
   private baseUrl = `${import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app'}/api/rdv`;
 
-  private getHeaders(): HeadersInit {
-    const token = localStorage.getItem('token');
+  private async getHeaders(): Promise<HeadersInit> {
+    const token = await getSupabaseToken();
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
@@ -145,7 +147,7 @@ class RDVService {
 
       const response = await fetch(`${this.baseUrl}?${params}`, {
         method: 'GET',
-        headers: this.getHeaders()
+        headers: await this.getHeaders()
       });
 
       if (!response.ok) {
@@ -175,7 +177,7 @@ class RDVService {
     try {
       const response = await fetch(`${this.baseUrl}/${id}`, {
         method: 'GET',
-        headers: this.getHeaders()
+        headers: await this.getHeaders()
       });
 
       if (!response.ok) {
@@ -200,7 +202,7 @@ class RDVService {
     try {
       const response = await fetch(`${this.baseUrl}/pending/validation`, {
         method: 'GET',
-        headers: this.getHeaders()
+        headers: await this.getHeaders()
       });
 
       if (!response.ok) {
@@ -226,7 +228,7 @@ class RDVService {
       
       const response = await fetch(this.baseUrl, {
         method: 'POST',
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
         body: JSON.stringify(rdvData)
       });
 
@@ -267,7 +269,7 @@ class RDVService {
     try {
       const response = await fetch(`${this.baseUrl}/${id}`, {
         method: 'PUT',
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
         body: JSON.stringify(updates)
       });
 
@@ -299,7 +301,7 @@ class RDVService {
     try {
       const response = await fetch(`${this.baseUrl}/${id}/validate`, {
         method: 'PUT',
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
         body: JSON.stringify({
           action,
           ...options
@@ -355,7 +357,7 @@ class RDVService {
     try {
       const response = await fetch(`${this.baseUrl}/${id}`, {
         method: 'DELETE',
-        headers: this.getHeaders()
+        headers: await this.getHeaders()
       });
 
       if (!response.ok) {

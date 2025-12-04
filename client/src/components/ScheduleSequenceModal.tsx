@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Calendar, Plus, Trash2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface ScheduleSequenceModalProps {
   prospectId: string;
@@ -109,7 +110,7 @@ export default function ScheduleSequenceModal({
   const generateWithAI = async () => {
     try {
       setIsGenerating(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
 
       // Préparer les informations du prospect
       const prospectInfo = {
@@ -183,7 +184,7 @@ export default function ScheduleSequenceModal({
 
     try {
       setIsScheduling(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
 
       // Calculer les dates d'envoi
       const now = new Date();

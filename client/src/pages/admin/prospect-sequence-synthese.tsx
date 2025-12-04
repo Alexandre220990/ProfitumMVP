@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { config } from "@/config/env";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 import { toast } from "sonner";
 import { 
   Mail, 
@@ -94,7 +95,7 @@ export default function ProspectSequenceSynthese() {
     
     setLoading(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       // Charger le prospect
       const prospectResponse = await fetch(`${config.API_URL}/api/prospects/${prospectId}`, {
@@ -131,7 +132,7 @@ export default function ProspectSequenceSynthese() {
     if (!prospectId) return;
     
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/scheduled-emails`, {
         headers: {
@@ -154,7 +155,7 @@ export default function ProspectSequenceSynthese() {
     if (!prospectId) return;
     
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/emails`, {
         headers: {
@@ -182,7 +183,7 @@ export default function ProspectSequenceSynthese() {
 
     try {
       setIsPausingSequence(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/pause-sequence`, {
         method: 'PUT',
@@ -213,7 +214,7 @@ export default function ProspectSequenceSynthese() {
     
     try {
       setIsPausingSequence(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/resume-sequence`, {
         method: 'PUT',
@@ -243,7 +244,7 @@ export default function ProspectSequenceSynthese() {
     if (!prospectId) return;
     
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/scheduled-emails`, {
         headers: {
@@ -272,7 +273,7 @@ export default function ProspectSequenceSynthese() {
 
   const updateEmailDelay = async (emailId: string, delayDays: number) => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/scheduled-emails/${emailId}/delay`, {
         method: 'PUT',
@@ -300,7 +301,7 @@ export default function ProspectSequenceSynthese() {
 
   const updateEmailSubjectAndDate = async (emailId: string, subject?: string, scheduledFor?: string) => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const body: any = {};
       if (subject !== undefined) body.subject = subject;

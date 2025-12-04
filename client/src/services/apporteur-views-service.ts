@@ -3,6 +3,8 @@
  * Accès aux vues SQL via le backend Railway (évite les problèmes CORS)
  * Utilise les 16 vues disponibles dans Supabase
  */
+import { getSupabaseToken } from '@/lib/auth-helpers';
+
 export class ApporteurViewsService {
   private baseUrl: string;
 
@@ -11,7 +13,7 @@ export class ApporteurViewsService {
   }
 
   private async fetchFromBackend(endpoint: string) {
-    const token = localStorage.getItem('token');
+    const token = await getSupabaseToken();
     const response = await fetch(`${this.baseUrl}/api/apporteur/${endpoint}`, {
       headers: {
         'Authorization': `Bearer ${token}`,

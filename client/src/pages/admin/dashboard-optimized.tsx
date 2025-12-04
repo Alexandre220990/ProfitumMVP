@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/use-auth";
 import { useNotificationSSE } from "@/hooks/use-notification-sse";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 import { toast } from "sonner";
 import { get } from "@/lib/api";
 import { config } from "@/config/env";
@@ -766,7 +767,7 @@ const AdminDashboardOptimized: React.FC = () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         credentials: 'include',
         body: JSON.stringify({ statut: newStatut })
@@ -819,7 +820,7 @@ const AdminDashboardOptimized: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         credentials: 'include',
         body: JSON.stringify({ expert_id: expertId })
@@ -883,7 +884,7 @@ const AdminDashboardOptimized: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -918,7 +919,7 @@ const AdminDashboardOptimized: React.FC = () => {
       const response = await fetch(`${config.API_URL}/admin/dossiers/${selectedDossierForHistoire.id}/commentaires/${commentId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         credentials: 'include'
       });
@@ -1152,7 +1153,7 @@ const AdminDashboardOptimized: React.FC = () => {
                   try {
                     const response = await fetch(`${config.API_URL}/api/admin/documents/process?client_produit_id=${dossierId}`, {
                       headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${await getSupabaseToken()}`
                       }
                     });
                     if (response.ok) {
@@ -1714,7 +1715,7 @@ const AdminDashboardOptimized: React.FC = () => {
       const response = await fetch(`${config.API_URL}/api/admin/dossiers/${dossierId}/validate-eligibility`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -1760,7 +1761,7 @@ const AdminDashboardOptimized: React.FC = () => {
       const response = await fetch(`${config.API_URL}/api/admin/dossiers/${dossierId}/validate-eligibility`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -4110,7 +4111,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                               await fetch(`${config.API_URL}/api/admin/clients/${client.id}/approve`, {
                                                 method: 'PUT',
                                                 headers: {
-                                                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                                  'Authorization': `Bearer ${await getSupabaseToken()}`,
                                                   'Content-Type': 'application/json'
                                                 }
                                               });
@@ -4134,7 +4135,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                               await fetch(`${config.API_URL}/api/admin/clients/${client.id}/reject`, {
                                                 method: 'PUT',
                                                 headers: {
-                                                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                                  'Authorization': `Bearer ${await getSupabaseToken()}`,
                                                   'Content-Type': 'application/json'
                                                 },
                                                 body: JSON.stringify({ reason })
@@ -4840,7 +4841,7 @@ const AdminDashboardOptimized: React.FC = () => {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${await getSupabaseToken()}`
                   },
                   credentials: 'include',
                   body: JSON.stringify({
@@ -5066,7 +5067,7 @@ const AdminDashboardOptimized: React.FC = () => {
                   method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${await getSupabaseToken()}`
                   },
                   credentials: 'include',
                   body: JSON.stringify({
@@ -5120,7 +5121,7 @@ const AdminDashboardOptimized: React.FC = () => {
                 const response = await fetch(`${config.API_URL}/api/admin/produits/${selectedProduit.id}`, {
                   method: 'DELETE',
                   headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${await getSupabaseToken()}`
                   },
                   credentials: 'include'
                 });

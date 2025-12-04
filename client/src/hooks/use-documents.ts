@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { config } from '@/config';
 
 // ============================================================================
@@ -104,7 +105,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
     try {
       setLoading(true);
       
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const params = new URLSearchParams();
       
       Object.entries(filters).forEach(([key, value]) => {
@@ -149,7 +150,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
    */
   const loadFolders = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(
         `${config.API_URL}/api/documents/folders`,
@@ -184,7 +185,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
    */
   const loadStats = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(
         `${config.API_URL}/api/documents/stats`,
@@ -228,7 +229,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
       formData.append('document_type', options.document_type);
       if (options.metadata) formData.append('metadata', JSON.stringify(options.metadata));
       
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(
         `${config.API_URL}/api/documents/upload`,
@@ -271,7 +272,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
    */
   const downloadDocument = useCallback(async (documentId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(
         `${config.API_URL}/api/documents/${documentId}/download`,
@@ -310,7 +311,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
    */
   const deleteDocument = useCallback(async (documentId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(
         `${config.API_URL}/api/documents/${documentId}`,
@@ -354,7 +355,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
     notes?: string
   ) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(
         `${config.API_URL}/api/documents/${documentId}/validate`,
@@ -399,7 +400,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
     reason: string
   ) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(
         `${config.API_URL}/api/documents/${documentId}/reject`,
@@ -441,7 +442,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
    */
   const toggleFavorite = useCallback(async (documentId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(
         `${config.API_URL}/api/documents/${documentId}/favorite`,
@@ -482,7 +483,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
     shareWith: { email: string; can_download: boolean; expires_at?: Date }
   ) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(
         `${config.API_URL}/api/documents/${documentId}/share`,
@@ -520,7 +521,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
    */
   const getPreviewUrl = useCallback(async (documentId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(
         `${config.API_URL}/api/documents/${documentId}/preview`,
@@ -554,7 +555,7 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
    */
   const getVersions = useCallback(async (documentId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(
         `${config.API_URL}/api/documents/${documentId}/versions`,

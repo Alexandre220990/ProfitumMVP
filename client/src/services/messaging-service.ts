@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // @ts-nocheck - Suppression temporaire des erreurs TypeScript Supabase
 import { supabase } from '@/lib/supabase';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { getUserDisplayName } from '../../../shared/utils/user-display';
 import { 
@@ -276,7 +277,7 @@ class MessagingService {
     try {
       console.log('📥 Chargement conversations via API HTTP...');
       
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(`${apiUrl}/api/unified-messaging/conversations`, {
@@ -359,7 +360,7 @@ class MessagingService {
 
   async getExpertConversations(clientId: string): Promise<Conversation[]> {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(`${apiUrl}/api/unified-messaging/expert-conversations/${clientId}`, {
@@ -384,7 +385,7 @@ class MessagingService {
 
   private async getExistingConversation(clientId: string, expertId: string): Promise<Conversation | null> {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(
@@ -412,7 +413,7 @@ class MessagingService {
     if (!this.currentUserId || (this.currentUserType !== 'client' && this.currentUserType !== 'expert' && this.currentUserType !== 'apporteur')) return;
 
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       // Créer ou récupérer conversation admin via API
@@ -441,7 +442,7 @@ class MessagingService {
 
   private async createAutoConversation(assignment: any): Promise<Conversation> {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(`${apiUrl}/api/unified-messaging/conversations`, {
@@ -644,7 +645,7 @@ class MessagingService {
 
   async reportConversation(reportData: ReportConversationRequest): Promise<void> {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/${reportData.conversation_id}/report`, {
@@ -677,7 +678,7 @@ class MessagingService {
     try {
       console.error('📨 Chargement messages via API HTTP pour conversation:', conversationId);
       
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/${conversationId}/messages?limit=${limit}&offset=${offset}`, {
@@ -743,7 +744,7 @@ class MessagingService {
       console.error('📤 Envoi message via API HTTP...');
       console.error('📋 Request:', JSON.stringify(request, null, 2));
       
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       // ✅ FIX CRITIQUE : Utiliser la bonne route avec conversation_id dans l'URL
@@ -790,7 +791,7 @@ class MessagingService {
       console.error('🚀 SERVICE: Début création conversation');
       console.error('📋 REQUEST:', JSON.stringify(request, null, 2));
       
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       console.error('🔑 Token présent:', !!token);
@@ -847,7 +848,7 @@ class MessagingService {
 
   async markMessageAsRead(messageId: string): Promise<void> {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(`${apiUrl}/api/unified-messaging/messages/${messageId}/read`, {
@@ -870,7 +871,7 @@ class MessagingService {
 
   async markConversationAsRead(conversationId: string): Promise<void> {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/${conversationId}/read`, {
@@ -893,7 +894,7 @@ class MessagingService {
 
   async sendTypingIndicator(conversationId: string, isTyping: boolean): Promise<void> {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       await fetch(`${apiUrl}/api/unified-messaging/typing`, {
@@ -914,7 +915,7 @@ class MessagingService {
 
   async uploadFile(file: File, conversationId: string): Promise<FileAttachment> {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const formData = new FormData();
@@ -955,7 +956,7 @@ class MessagingService {
     }
 
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/ids`, {
@@ -983,7 +984,7 @@ class MessagingService {
     }
 
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(`${apiUrl}/api/unified-messaging/user-info/${userId}`, {
@@ -1027,7 +1028,7 @@ class MessagingService {
 
   private async getUnreadCount(conversationId: string): Promise<number> {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
       const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/${conversationId}/unread-count`, {
@@ -1249,7 +1250,7 @@ class MessagingService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         body: JSON.stringify({
           event_id: event.id,

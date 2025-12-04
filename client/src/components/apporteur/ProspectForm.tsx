@@ -21,6 +21,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { config } from '@/config';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 
 // Nouveaux composants simulation
@@ -154,7 +155,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
     try {
       const response = await fetch(`${config.API_URL}/api/produits-eligibles`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -185,7 +186,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
     try {
       const response = await fetch(`${config.API_URL}/api/apporteur/clients/${prospectId}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -322,7 +323,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
       const response = await fetch(`${config.API_URL}/api/apporteur/prospects/${clientId}/assign-experts`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ expert_assignments: updates })
@@ -358,7 +359,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
       const response = await fetch(`${config.API_URL}/api/apporteur/prospects/${clientId}/schedule-meetings`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -393,7 +394,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
     try {
       const response = await fetch(`${config.API_URL}/api/apporteur/experts`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -427,7 +428,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
       const response = await fetch(`${config.API_URL}/api/apporteur/experts/by-products`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ productIds: selectedProductIds })
@@ -512,7 +513,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
       const response: Response = await fetch(url, {
         method,
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(clientData)
@@ -566,7 +567,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${await getSupabaseToken()}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ emailType })

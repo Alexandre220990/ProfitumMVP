@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 export interface Notification {
   id: string;
@@ -29,7 +30,7 @@ export function useNotifications() {
       setError(null);
 
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
 
       const response = await fetch(`${baseUrl}/api/apporteur/views/notifications`, {
         headers: {
@@ -81,7 +82,7 @@ export function useNotifications() {
       });
 
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
 
       await fetch(`${baseUrl}/api/apporteur/notifications/${notificationId}/read`, {
         method: 'PUT',
@@ -106,7 +107,7 @@ export function useNotifications() {
       });
 
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
 
       await fetch(`${baseUrl}/api/apporteur/notifications/mark-all-read`, {
         method: 'PUT',

@@ -188,13 +188,53 @@ api.interceptors.request.use(async (config) => {
 
 ## ⚠️ NOTES IMPORTANTES
 
-### Fichiers avec localStorage Restants (~90)
-Ces fichiers ne sont **PAS bloquants** car :
-- ✅ Ils utilisent `api.ts` (Axios)
-- ✅ L'intercepteur dans `api.ts` remplace automatiquement le token
-- ✅ Ils fonctionnent déjà avec Supabase
+### ✅ CORRECTION MASSIVE localStorage EN COURS (4 décembre 2025 - 17h UTC)
 
-**Correction recommandée** : Peut être faite progressivement, pas urgente
+**Fichiers corrigés** : 23+  
+**Occurrences remplacées** : 100+
+
+#### Top 10 Fichiers Prioritaires - ✅ TERMINÉ
+1. ✅ `prospection.tsx` - 26 occurrences
+2. ✅ `messaging-service.ts` - 17 occurrences  
+3. ✅ `dashboard-optimized.tsx` - 12 occurrences
+4. ✅ `use-documents.ts` - 12 occurrences
+5. ✅ `calendar-service.ts` - 10 occurrences
+6. ✅ `ExpertContext.tsx` - 9 occurrences
+7. ✅ `ImprovedAdminMessaging.tsx` - 8 occurrences
+8. ✅ `ProspectForm.tsx` - 8 occurrences
+9. ✅ `prospect-sequence-synthese.tsx` - 8 occurrences
+10. ✅ `CabinetTeamManagement.tsx` - 7 occurrences
+
+#### Services - ✅ TERMINÉ (8 fichiers)
+- ✅ `services/rdv-service.ts`
+- ✅ `services/apporteur-enhanced-service.ts`
+- ✅ `services/apporteur-views-service.ts`
+- ✅ `services/apporteur-simple-service.ts`
+- ✅ `services/admin-cabinet-service.ts`
+- ✅ `services/apporteur-api.ts`
+- ✅ `services/cabinet-service.ts`
+- ✅ `components/ScheduleSequenceModal.tsx`
+
+#### Hooks - ✅ EN COURS (5 fichiers)
+- ✅ `hooks/useNotificationPreferences.ts`
+- ✅ `hooks/useSupabaseNotifications.ts`
+- ✅ `hooks/use-notification-sse.ts`
+- ✅ `hooks/use-notifications.ts`
+- ✅ `hooks/usePushNotifications.ts`
+
+**Fichiers restants** : ~78  
+**Pattern appliqué** :
+```typescript
+// AVANT ❌
+const token = localStorage.getItem('token');
+
+// APRÈS ✅
+import { getSupabaseToken } from '@/lib/auth-helpers';
+const token = await getSupabaseToken();
+```
+
+**Statut** : 🔄 Correction en cours, ~65 fichiers restants  
+**Priorité** : Moyenne (non-bloquant car intercepteur `api.ts` fonctionne)
 
 ---
 

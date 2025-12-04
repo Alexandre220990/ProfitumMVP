@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { config } from "@/config/env";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 import { toast } from "sonner";
 import { 
   Mail, 
@@ -270,7 +271,7 @@ export default function ProspectionAdmin() {
   const fetchProspects = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const params = new URLSearchParams({
         page: page.toString(),
@@ -312,7 +313,7 @@ export default function ProspectionAdmin() {
 
   const fetchImportBatches = async () => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/import-batches`, {
         headers: {
@@ -341,7 +342,7 @@ export default function ProspectionAdmin() {
         return;
       }
 
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/import-batches/${batchId}`, {
         method: 'PATCH',
@@ -376,7 +377,7 @@ export default function ProspectionAdmin() {
 
     try {
       setLoadingBatchIds(prev => new Set(prev).add(batchId));
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/import-batches/${batchId}/prospects?limit=100`, {
         headers: {
@@ -409,7 +410,7 @@ export default function ProspectionAdmin() {
   const fetchScheduledSequencesProspects = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const params = new URLSearchParams({
         page: page.toString(),
@@ -450,7 +451,7 @@ export default function ProspectionAdmin() {
   const fetchCompletedSequencesProspects = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const params = new URLSearchParams({
         page: page.toString(),
@@ -490,7 +491,7 @@ export default function ProspectionAdmin() {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/stats`, {
         headers: {
@@ -511,7 +512,7 @@ export default function ProspectionAdmin() {
 
   const fetchProspectEmails = async (prospectId: string) => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/emails`, {
         headers: {
@@ -532,7 +533,7 @@ export default function ProspectionAdmin() {
 
   const fetchScheduledEmails = async (prospectId: string) => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/scheduled-emails`, {
         headers: {
@@ -553,7 +554,7 @@ export default function ProspectionAdmin() {
 
   const updateEmailDelay = async (emailId: string, delayDays: number) => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/scheduled-emails/${emailId}/delay`, {
         method: 'PUT',
@@ -599,7 +600,7 @@ export default function ProspectionAdmin() {
 
     setCreatingProspect(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects`, {
         method: 'POST',
@@ -664,7 +665,7 @@ export default function ProspectionAdmin() {
   // Fonctions pour la programmation de séquences
   const fetchEmailTemplates = async () => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       // Pour l'instant, on récupère les séquences existantes comme templates
       const response = await fetch(`${config.API_URL}/api/prospects/sequences/list`, {
@@ -861,7 +862,7 @@ export default function ProspectionAdmin() {
     try {
       setGeneratingAI(true);
       setShowAIContextModal(false);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
 
       // Préparer les informations du prospect (avec toutes les données pour l'enrichissement)
       const prospectInfo = {
@@ -957,7 +958,7 @@ export default function ProspectionAdmin() {
     try {
       setGeneratingAIGeneric(true);
       setShowAIContextModalGeneric(false);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
 
       // Pour une séquence générique, on n'a pas de prospect spécifique
       // On utilise des informations génériques
@@ -1058,7 +1059,7 @@ export default function ProspectionAdmin() {
       setShowAIContextModalBatch(false);
       setBatchGenerationProgress({ current: 0, total: selectedIds.length });
 
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
 
       // Préparer les informations de tous les prospects
       const prospectsInfo = selectedIds.map(id => {
@@ -1174,7 +1175,7 @@ export default function ProspectionAdmin() {
     try {
       setGeneratingBulkEmail(true);
 
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
 
       // Préparer les informations des prospects sélectionnés
       const selectedIds = Array.from(selectedProspectIds);
@@ -1305,7 +1306,7 @@ export default function ProspectionAdmin() {
 
   const scheduleAllSequences = async (startNow: boolean = false) => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const readyConfigs = Array.from(sequenceConfigs.entries()).filter(([_, config]) => config.ready);
       
       if (readyConfigs.length === 0) {
@@ -1400,7 +1401,7 @@ export default function ProspectionAdmin() {
   const fetchSavedSequences = async () => {
     try {
       setLoadingSequences(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/sequences/list`, {
         headers: {
@@ -1506,7 +1507,7 @@ export default function ProspectionAdmin() {
     }
 
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/sequences/${sequenceId}`, {
         method: 'DELETE',
@@ -1542,7 +1543,7 @@ export default function ProspectionAdmin() {
   const handleResumeSequence = async (prospectId: string) => {
     try {
       setIsPausingSequence(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/prospects/${prospectId}/resume-sequence`, {
         method: 'PUT',
@@ -1581,7 +1582,7 @@ export default function ProspectionAdmin() {
   const handleRestartSequence = async (prospect: Prospect, scheduledEmails?: any[]) => {
     try {
       setIsRestartingSequence(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       // Si des emails modifiés sont fournis, les utiliser, sinon récupérer les emails existants
       let emailsToSchedule = scheduledEmails;
@@ -1711,7 +1712,7 @@ export default function ProspectionAdmin() {
 
     try {
       setLoadingSequences(true);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       const payload = {
         name: sequenceForm.name,
@@ -1879,7 +1880,7 @@ export default function ProspectionAdmin() {
               onClick={async () => {
                 setCheckingGmail(true);
                 try {
-                  const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                  const token = await getSupabaseToken();
                   
                   const response = await fetch(`${config.API_URL}/api/gmail/check-replies`, {
                     method: 'POST',
@@ -2813,7 +2814,7 @@ export default function ProspectionAdmin() {
                   onClick={async () => {
                     if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${selectedProspectIds.size} prospect${selectedProspectIds.size > 1 ? 's' : ''} ?\n\nCette action est irréversible.`)) {
                       try {
-                        const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                        const token = await getSupabaseToken();
                         
                         const response = await fetch(`${config.API_URL}/api/prospects/bulk-delete`, {
                           method: 'DELETE',
@@ -3943,7 +3944,7 @@ export default function ProspectionAdmin() {
 
                     setSendingEmails(true);
                     try {
-                      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                      const token = await getSupabaseToken();
                       
                       const response = await fetch(`${config.API_URL}/api/prospects/send-bulk`, {
                         method: 'POST',
@@ -5007,7 +5008,7 @@ Ces instructions seront la base de génération. L'IA les adaptera automatiqueme
                           if (!editingProspectSequence) return;
                           await handleResumeSequence(editingProspectSequence.id);
                           // Recharger les emails après reprise
-                          const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                          const token = await getSupabaseToken();
                           const response = await fetch(`${config.API_URL}/api/prospects/${editingProspectSequence.id}/scheduled-emails`, {
                             headers: {
                               'Authorization': `Bearer ${token}`,

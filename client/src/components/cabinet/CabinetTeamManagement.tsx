@@ -16,6 +16,7 @@ import { Plus, RefreshCw, Users, Shield, UserCheck, ExternalLink } from 'lucide-
 import { useCabinetContext } from '@/hooks/useCabinetContext';
 import { CabinetHierarchyNode, CabinetPermissions } from '@/types';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 const ROLE_BADGES: Record<string, string> = {
   OWNER: 'bg-blue-600 text-white',
@@ -152,7 +153,7 @@ function ProductMinCommissionEditor({ produit, onUpdate }: { produit: ProduitEli
       // Trouver l'ID du CabinetProduitEligible
       const response = await fetch(`${config.API_URL}/api/expert/cabinet/products`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -173,7 +174,7 @@ function ProductMinCommissionEditor({ produit, onUpdate }: { produit: ProduitEli
       const updateResponse = await fetch(`${config.API_URL}/api/expert/cabinet/products/${cabinetProduct.id}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -203,7 +204,7 @@ function ProductMinCommissionEditor({ produit, onUpdate }: { produit: ProduitEli
       // Trouver l'ID du CabinetProduitEligible
       const response = await fetch(`${config.API_URL}/api/expert/cabinet/products`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -224,7 +225,7 @@ function ProductMinCommissionEditor({ produit, onUpdate }: { produit: ProduitEli
       const updateResponse = await fetch(`${config.API_URL}/api/expert/cabinet/products/${cabinetProduct.id}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -478,7 +479,7 @@ export const CabinetTeamManagement = () => {
         // Récupérer les produits du cabinet via l'API
         const response = await fetch(`${config.API_URL}/api/expert/cabinet/products`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${await getSupabaseToken()}`,
             'Content-Type': 'application/json'
           }
         });
@@ -641,7 +642,7 @@ L'équipe Profitum`);
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         body: JSON.stringify({
           first_name: formState.first_name.trim(),
@@ -1257,7 +1258,7 @@ L'équipe Profitum`);
                           try {
                             const response = await fetch(`${config.API_URL}/api/expert/cabinet/products`, {
                               headers: {
-                                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                'Authorization': `Bearer ${await getSupabaseToken()}`,
                                 'Content-Type': 'application/json'
                               }
                             });

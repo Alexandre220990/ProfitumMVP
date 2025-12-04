@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 
 interface SSENotification {
@@ -58,7 +59,7 @@ export function useNotificationSSE(options?: {
         }
 
         // Essayer de récupérer un token frais depuis Supabase
-        let token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+        let token = await getSupabaseToken() || localStorage.getItem('supabase_token');
         
         // Toujours essayer de récupérer une session fraîche depuis Supabase pour s'assurer que le token n'est pas expiré
         console.log('🔄 Vérification session Supabase pour SSE...');

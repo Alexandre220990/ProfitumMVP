@@ -1,4 +1,5 @@
 import { CabinetMemberRole } from '@/types/cabinets';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 export interface CabinetPayload {
   name: string;
@@ -24,9 +25,9 @@ export interface CabinetMemberPayload {
 class AdminCabinetService {
   private baseUrl = `${import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app'}/api/admin/cabinets`;
 
-  private getAuthHeaders() {
+  private async getAuthHeaders() {
     // Récupérer le token JWT depuis localStorage (priorité au token direct)
-    const authToken = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+    const authToken = await getSupabaseToken() || localStorage.getItem('supabase_token');
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
@@ -47,7 +48,7 @@ class AdminCabinetService {
 
     const response = await fetch(`${this.baseUrl}?${query.toString()}`, {
       method: 'GET',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -60,7 +61,7 @@ class AdminCabinetService {
   async getCabinetDetail(id: string) {
     const response = await fetch(`${this.baseUrl}/${id}`, {
       method: 'GET',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -73,7 +74,7 @@ class AdminCabinetService {
   async getCabinetApporteurs(id: string) {
     const response = await fetch(`${this.baseUrl}/${id}/apporteurs`, {
       method: 'GET',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -86,7 +87,7 @@ class AdminCabinetService {
   async getCabinetClients(id: string) {
     const response = await fetch(`${this.baseUrl}/${id}/clients`, {
       method: 'GET',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -99,7 +100,7 @@ class AdminCabinetService {
   async getCabinetShares(id: string) {
     const response = await fetch(`${this.baseUrl}/${id}/shares`, {
       method: 'GET',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -118,7 +119,7 @@ class AdminCabinetService {
     const queryString = params.toString();
     const response = await fetch(`${this.baseUrl}/${id}/timeline${queryString ? `?${queryString}` : ''}`, {
       method: 'GET',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -136,7 +137,7 @@ class AdminCabinetService {
     const queryString = params.toString();
     const response = await fetch(`${this.baseUrl}/${id}/tasks${queryString ? `?${queryString}` : ''}`, {
       method: 'GET',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -149,7 +150,7 @@ class AdminCabinetService {
   async createCabinet(payload: CabinetPayload) {
     const response = await fetch(this.baseUrl, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify(payload)
     });
 
@@ -163,7 +164,7 @@ class AdminCabinetService {
   async updateCabinet(id: string, payload: Partial<CabinetPayload>) {
     const response = await fetch(`${this.baseUrl}/${id}`, {
       method: 'PUT',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify(payload)
     });
 
@@ -177,7 +178,7 @@ class AdminCabinetService {
   async updateCabinetProducts(id: string, products: CabinetProductPayload[]) {
     const response = await fetch(`${this.baseUrl}/${id}/products`, {
       method: 'PUT',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify({ products })
     });
 
@@ -191,7 +192,7 @@ class AdminCabinetService {
   async addCabinetMember(id: string, payload: CabinetMemberPayload) {
     const response = await fetch(`${this.baseUrl}/${id}/members`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify(payload)
     });
 
@@ -205,7 +206,7 @@ class AdminCabinetService {
   async removeCabinetMember(id: string, memberId: string) {
     const response = await fetch(`${this.baseUrl}/${id}/members/${memberId}`, {
       method: 'DELETE',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -218,7 +219,7 @@ class AdminCabinetService {
   async createCabinetShare(id: string, payload: { client_produit_eligible_id: string; expert_id?: string; permissions?: Record<string, boolean> }) {
     const response = await fetch(`${this.baseUrl}/${id}/shares`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify(payload)
     });
 
@@ -232,7 +233,7 @@ class AdminCabinetService {
   async deleteCabinetShare(id: string, shareId: string) {
     const response = await fetch(`${this.baseUrl}/${id}/shares/${shareId}`, {
       method: 'DELETE',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -249,7 +250,7 @@ class AdminCabinetService {
     const queryString = params.toString();
     const response = await fetch(`${this.baseUrl}/apporteurs/available${queryString ? `?${queryString}` : ''}`, {
       method: 'GET',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -266,7 +267,7 @@ class AdminCabinetService {
     const queryString = params.toString();
     const response = await fetch(`${this.baseUrl}/experts/available${queryString ? `?${queryString}` : ''}`, {
       method: 'GET',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -279,7 +280,7 @@ class AdminCabinetService {
   async setCabinetOwner(cabinetId: string, expertId: string): Promise<{ success: boolean; data?: any }> {
     const response = await fetch(`${this.baseUrl}/${cabinetId}/owner`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify({ expert_id: expertId })
     });
 
@@ -293,7 +294,7 @@ class AdminCabinetService {
   async assignCabinetManager(cabinetId: string, expertId: string): Promise<{ success: boolean; data?: any }> {
     const response = await fetch(`${this.baseUrl}/${cabinetId}/assign-manager`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify({ expert_id: expertId })
     });
 
@@ -307,7 +308,7 @@ class AdminCabinetService {
   async assignExpertToManager(cabinetId: string, payload: { expert_id: string; manager_member_id: string }): Promise<{ success: boolean; data?: any }> {
     const response = await fetch(`${this.baseUrl}/${cabinetId}/assign-expert`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify(payload)
     });
 
@@ -321,7 +322,7 @@ class AdminCabinetService {
   async refreshCabinetStats(cabinetId: string): Promise<{ success: boolean; data?: any }> {
     const response = await fetch(`${this.baseUrl}/${cabinetId}/refresh-stats`, {
       method: 'POST',
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -334,7 +335,7 @@ class AdminCabinetService {
   async updateCabinetMember(cabinetId: string, memberRecordId: string, payload: { status?: string; team_role?: string; manager_member_id?: string | null; products?: string[] }): Promise<{ success: boolean; data?: any }> {
     const response = await fetch(`${this.baseUrl}/${cabinetId}/members/${memberRecordId}`, {
       method: 'PATCH',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify(payload)
     });
 

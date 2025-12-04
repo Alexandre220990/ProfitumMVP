@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { config } from '@/config';
 import { toast } from 'sonner';
 
@@ -98,7 +99,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
       console.log('🔍 Chargement conversations admin...');
       const response = await fetch(`${config.API_URL}/api/unified-messaging/admin/conversations`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -182,7 +183,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
 
       const response = await fetch(`${config.API_URL}${endpoint}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -250,7 +251,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
         `${config.API_URL}/api/messaging/conversations/${conversation.id}/messages`,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${await getSupabaseToken()}`,
             'Content-Type': 'application/json'
           }
         }
@@ -277,7 +278,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
       const response = await fetch(`${config.API_URL}/api/unified-messaging/conversations/${selectedConversation.id}/messages`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -370,7 +371,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
       const response = await fetch(`${config.API_URL}/api/unified-messaging/conversations`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

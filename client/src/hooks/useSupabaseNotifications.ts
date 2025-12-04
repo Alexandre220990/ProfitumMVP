@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { supabaseNotificationService } from '@/services/supabase-notification-service';
 import { useAuth } from '@/hooks/use-auth';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 
 type NotificationStatus = 'unread' | 'read' | 'archived' | string;
@@ -90,13 +91,13 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
   }, [user?.type]);
 
   const buildActionRequest = useCallback(
-    (
+    async (
       notificationId: string,
       action: 'read' | 'unread' | 'archive' | 'unarchive' | 'delete'
     ) => {
       if (!notificationId) return null;
 
-      const token = localStorage.getItem('token') || '';
+      const token = await getSupabaseToken() || '';
       const defaultHeaders: Record<string, string> = {
         Authorization: `Bearer ${token}`,
       };
@@ -226,7 +227,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
     try {
         const response = await fetch(`${API_BASE}${getEndpoint()}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+          Authorization: `Bearer ${await getSupabaseToken() || ''}`,
         },
       });
 
@@ -275,7 +276,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
       }));
 
       try {
-        const request = buildActionRequest(notificationId, 'read');
+        const request = await buildActionRequest(notificationId, 'read');
 
         if (!request) {
           toast.info('Action indisponible pour ce rôle.');
@@ -313,7 +314,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
       }));
 
       try {
-        const request = buildActionRequest(notificationId, 'unread');
+        const request = await buildActionRequest(notificationId, 'unread');
 
         if (!request) {
           toast.info('Action indisponible pour ce rôle.');
@@ -345,7 +346,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
       }));
 
       try {
-        const request = buildActionRequest(notificationId, 'archive');
+        const request = await buildActionRequest(notificationId, 'archive');
 
         if (!request) {
           toast.info('Action indisponible pour ce rôle.');
@@ -377,7 +378,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
       }));
 
       try {
-        const request = buildActionRequest(notificationId, 'unarchive');
+        const request = await buildActionRequest(notificationId, 'unarchive');
 
         if (!request) {
           toast.info('Action indisponible pour ce rôle.');
@@ -405,7 +406,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
       setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
 
       try {
-        const request = buildActionRequest(notificationId, 'delete');
+        const request = await buildActionRequest(notificationId, 'delete');
 
         if (!request) {
           toast.info('Suppression indisponible pour ce rôle.');
@@ -427,7 +428,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
   );
 
   const markAllAsRead = useCallback(async () => {
-    const token = localStorage.getItem('token') || '';
+    const token = await getSupabaseToken() || '';
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -462,7 +463,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
   }, [user?.type, loadNotifications]);
 
   const deleteAllRead = useCallback(async () => {
-    const token = localStorage.getItem('token') || '';
+    const token = await getSupabaseToken() || '';
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
     };

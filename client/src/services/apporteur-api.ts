@@ -1,4 +1,5 @@
 import { config } from '@/config';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -46,17 +47,16 @@ export interface ApporteurNotificationsResponse {
 
 class ApporteurApiService {
   private baseUrl: string;
-  private token: string | null;
 
   constructor() {
     this.baseUrl = config.API_URL;
-    this.token = localStorage.getItem('token');
   }
 
-  private getHeaders(): HeadersInit {
+  private async getHeaders(): Promise<HeadersInit> {
+    const token = await getSupabaseToken();
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.token}`,
+      'Authorization': `Bearer ${token}`,
     };
   }
 
@@ -65,10 +65,11 @@ class ApporteurApiService {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
+      const headers = await this.getHeaders();
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
         headers: {
-          ...this.getHeaders(),
+          ...headers,
           ...options.headers,
         },
       });
@@ -273,14 +274,13 @@ class ApporteurApiService {
   }
 
   // ===== UTILITAIRES =====
-  updateToken(newToken: string) {
-    this.token = newToken;
-    localStorage.setItem('token', newToken);
+  // Ces méthodes ne sont plus utilisées car le token est récupéré dynamiquement via getSupabaseToken()
+  updateToken(_newToken: string) {
+    console.warn('updateToken() est obsolète avec getSupabaseToken()');
   }
 
   clearToken() {
-    this.token = null;
-    localStorage.removeItem('token');
+    // Nettoyage minimal - le token Supabase est géré automatiquement
     localStorage.removeItem('user_type');
     localStorage.removeItem('user_data');
   }

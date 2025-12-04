@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 export interface UsePushNotificationsReturn {
   // État
@@ -113,7 +114,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       const registration = await navigator.serviceWorker.ready;
       
       // Récupérer la clé VAPID publique
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const vapidResponse = await fetch(`${config.API_URL}/api/notifications/vapid-public-key`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -126,9 +127,10 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       const vapidPublicKey = data.publicKey;
       
       // S'abonner au push manager
+      const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        applicationServerKey: applicationServerKey as BufferSource
       });
       
       // Envoyer l'abonnement au serveur
@@ -169,7 +171,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       }
       
       // Informer le serveur
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       await fetch(`${config.API_URL}/api/notifications/push/unsubscribe`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -198,8 +200,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         body: 'Ceci est une notification de test',
         icon: '/logo.png',
         badge: '/badge.png',
-        tag: 'test',
-        vibrate: [200, 100, 200]
+        tag: 'test'
       });
     } catch (err) {
       console.error('❌ Erreur notification test:', err);
@@ -209,7 +210,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   // Mettre à jour les préférences
   const updatePreferences = useCallback(async (newPrefs: any): Promise<void> => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/notifications/preferences`, {
         method: 'PUT',
         headers: {

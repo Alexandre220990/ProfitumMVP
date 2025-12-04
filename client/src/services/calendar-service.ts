@@ -1,4 +1,4 @@
-
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 // ============================================================================
 // TYPES ET INTERFACES
@@ -125,7 +125,7 @@ class CalendarService {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -149,7 +149,7 @@ class CalendarService {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${await getSupabaseToken()}`
           }
         });
 
@@ -248,7 +248,7 @@ class CalendarService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         body: JSON.stringify(eventData)
       });
@@ -285,7 +285,7 @@ class CalendarService {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         body: JSON.stringify(updateData)
       });
@@ -312,7 +312,7 @@ class CalendarService {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -347,7 +347,7 @@ class CalendarService {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -417,7 +417,7 @@ class CalendarService {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -442,7 +442,7 @@ class CalendarService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         body: JSON.stringify(stepData)
       });
@@ -471,7 +471,7 @@ class CalendarService {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -500,7 +500,7 @@ class CalendarService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         },
         body: JSON.stringify(reminderData)
       });

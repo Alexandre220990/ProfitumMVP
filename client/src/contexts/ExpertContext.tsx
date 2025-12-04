@@ -1,5 +1,6 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from "react";
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 // Types pour l'interface expert
 interface ExpertAssignment { id: string;
@@ -161,7 +162,7 @@ export const ExpertProvider: React.FC<ExpertProviderProps> = ({ children }) => {
     try {
       const response = await fetch(`${config.API_URL}/api/expert/assignments`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -184,7 +185,7 @@ export const ExpertProvider: React.FC<ExpertProviderProps> = ({ children }) => {
     try {
       const response = await fetch(`${config.API_URL}/api/expert/notifications`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -214,7 +215,7 @@ export const ExpertProvider: React.FC<ExpertProviderProps> = ({ children }) => {
     try {
       const response = await fetch(`${config.API_URL}/api/expert/assignments`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -247,7 +248,7 @@ export const ExpertProvider: React.FC<ExpertProviderProps> = ({ children }) => {
     try {
       const response = await fetch(`${config.API_URL}/api/expert/analytics`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${await getSupabaseToken()}`
         }
       });
 
@@ -278,7 +279,7 @@ export const ExpertProvider: React.FC<ExpertProviderProps> = ({ children }) => {
       const response = await fetch(`${config.API_URL}/api/expert/assignments/${assignmentId}/accept`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -304,7 +305,7 @@ export const ExpertProvider: React.FC<ExpertProviderProps> = ({ children }) => {
       const response = await fetch(`${config.API_URL}/api/expert/assignments/${assignmentId}/reject`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ reason })
@@ -331,7 +332,7 @@ export const ExpertProvider: React.FC<ExpertProviderProps> = ({ children }) => {
       const response = await fetch(`${config.API_URL}/api/expert/assignments/${assignmentId}/progress`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ progress, notes })
@@ -358,7 +359,7 @@ export const ExpertProvider: React.FC<ExpertProviderProps> = ({ children }) => {
       const response = await fetch(`${config.API_URL}/api/expert/assignments/${assignmentId}/complete`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ documents })
@@ -385,7 +386,7 @@ export const ExpertProvider: React.FC<ExpertProviderProps> = ({ children }) => {
       const response = await fetch(`${config.API_URL}/api/expert/notifications/${notificationId}/read`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });

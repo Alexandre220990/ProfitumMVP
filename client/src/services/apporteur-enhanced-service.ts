@@ -2,6 +2,8 @@
  * Service Apporteur Enhanced
  * Utilise les vues SQL via le backend Railway pour éviter les problèmes CORS
  */
+import { getSupabaseToken } from '@/lib/auth-helpers';
+
 export class ApporteurEnhancedService {
   private baseUrl: string;
 
@@ -11,7 +13,7 @@ export class ApporteurEnhancedService {
   }
 
   private async fetchFromBackend(endpoint: string) {
-    const token = localStorage.getItem('token');
+    const token = await getSupabaseToken();
     const response = await fetch(`${this.baseUrl}/api/apporteur/${endpoint}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
