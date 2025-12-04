@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, Check, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface RequiredDocument {
   id: string;
@@ -58,7 +59,7 @@ export default function ClientDocumentUploadComplementary({
     try {
       setUploadingId(docId);
 
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         throw new Error('Token non trouvé');
@@ -129,7 +130,7 @@ export default function ClientDocumentUploadComplementary({
     try {
       setIsValidating(true);
 
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         throw new Error('Token non trouvé');

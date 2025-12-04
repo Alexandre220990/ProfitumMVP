@@ -10,6 +10,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { config } from '@/config';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -80,7 +81,7 @@ export function EmbeddedSimulator({
       // au lieu de /api/simulations/questions (route protégée)
       const response = await fetch(`${config.API_URL}/api/simulator/questions`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -182,7 +183,7 @@ export function EmbeddedSimulator({
       const response = await fetch(`${config.API_URL}/api/apporteur/prospects/${prospectId}/simulation`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

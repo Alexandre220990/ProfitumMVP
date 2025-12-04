@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Trash2, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface RDVReport {
   id?: string;
@@ -65,7 +66,7 @@ export function RDVReportModal({
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const url = `${config.API_URL}/api/rdv/${rdvId}/report`;
       const method = existingReport ? 'PUT' : 'POST';
 
@@ -108,7 +109,7 @@ export function RDVReportModal({
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/rdv/${rdvId}/report`, {
         method: 'DELETE',
         headers: {

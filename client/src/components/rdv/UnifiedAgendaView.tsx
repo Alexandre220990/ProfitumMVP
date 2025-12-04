@@ -23,6 +23,7 @@ import {
 import { RDVFormModal } from './RDVFormModal';
 import { useAuth } from '@/hooks/use-auth';
 import { config } from '@/config';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -114,7 +115,7 @@ export const UnifiedAgendaView = () => {
   const loadRDVs = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/rdv`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -167,7 +168,7 @@ export const UnifiedAgendaView = () => {
 
   const handleRDVAction = async (rdvId: string, action: 'accept' | 'refuse' | 'propose_alternative', data?: any) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/rdv/${rdvId}/respond`, {
         method: 'PUT',
         headers: {

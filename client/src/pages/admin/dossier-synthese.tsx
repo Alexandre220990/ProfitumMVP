@@ -34,6 +34,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface DossierData {
   id: string;
@@ -131,18 +132,7 @@ const DossierSynthese: React.FC = () => {
   // ========================================
 
   const getAuthToken = useCallback(async () => {
-    const localToken = localStorage.getItem('token');
-    if (localToken) {
-      return localToken;
-    }
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      return session?.access_token || null;
-    } catch (error) {
-      console.error('Erreur récupération session Supabase:', error);
-      return null;
-    }
+    return await getSupabaseToken();
   }, []);
 
   const handleValidateEligibility = async () => {
@@ -688,7 +678,7 @@ const DossierSynthese: React.FC = () => {
                         {dossier.documents_sent.map((doc: any, idx: number) => {
                           const handleViewDocument = async () => {
                             try {
-                              const token = localStorage.getItem('token');
+                              const token = await getSupabaseToken();
                               const response = await fetch(`${import.meta.env.VITE_API_URL}/api/documents-secure/download/${doc.id}`, {
                                 headers: {
                                   'Authorization': `Bearer ${token}`

@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface NotificationPreferences {
   // Canaux
@@ -109,7 +110,7 @@ export default function NotificationPreferencesPage() {
 
   const loadPreferences = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/notifications/preferences`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -131,7 +132,7 @@ export default function NotificationPreferencesPage() {
   const savePreferences = async () => {
     try {
       setSaving(true);
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       const response = await fetch(`${config.API_URL}/api/notifications/preferences`, {
         method: 'PUT',

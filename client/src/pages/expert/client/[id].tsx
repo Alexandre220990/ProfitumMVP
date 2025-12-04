@@ -27,6 +27,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { config } from '@/config';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 // ============================================================================
 // TYPES
@@ -278,7 +279,7 @@ export default function ExpertClientSynthese() {
   };
 
   const buildAuthorizedRequest = async (url: string) => {
-    const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+    const token = await getSupabaseToken();
     if (!token) {
       throw new Error('Session expirée, veuillez vous reconnecter');
     }
@@ -441,7 +442,7 @@ export default function ExpertClientSynthese() {
     if (!file) return;
     try {
       setUploadingDossierId(group.dossierId);
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       if (!token) {
         throw new Error('Session expirée, veuillez vous reconnecter');
       }

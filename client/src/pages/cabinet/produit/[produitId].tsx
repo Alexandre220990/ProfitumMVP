@@ -98,7 +98,7 @@ function ProductCommissionEditor({
       const response = await fetch(`${config.API_URL}/api/expert/cabinet/products/${cabinetProductId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -138,7 +138,7 @@ function ProductCommissionEditor({
       const response = await fetch(`${config.API_URL}/api/expert/cabinet/products/${cabinetProductId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

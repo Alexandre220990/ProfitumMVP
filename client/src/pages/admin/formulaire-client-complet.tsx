@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { ClientEmbeddedSimulator } from '@/components/ClientEmbeddedSimulator';
 
 interface ClientFormData {
@@ -213,7 +214,7 @@ export default function FormulaireClientComplet() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       // 1. Créer le client
       const response = await fetch(`${config.API_URL}/api/admin/clients`, {
@@ -283,7 +284,7 @@ export default function FormulaireClientComplet() {
       console.log('🧮 Calcul des produits éligibles pour le client:', clientId);
       toast.info('Calcul des produits éligibles...');
       
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       // Créer une simulation et calculer l'éligibilité
       const response = await fetch(`${config.API_URL}/api/admin/clients/${clientId}/simulation`, {
