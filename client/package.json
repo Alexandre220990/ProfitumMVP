@@ -13,7 +13,10 @@
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
     "test:report": "playwright show-report",
-    "test:install": "playwright install"
+    "test:install": "playwright install",
+    "pre-deploy": "node scripts/pre-deploy.cjs",
+    "deploy": "npm run pre-deploy && npm run build",
+    "clear-cache": "rm -rf node_modules/.vite && rm -rf dist"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

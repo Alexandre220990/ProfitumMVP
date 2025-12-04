@@ -10,6 +10,8 @@ import { Toaster } from "./components/ui/sonner";
 import ScrollToTop from './components/ScrollToTop';
 import LoadingScreen from './components/LoadingScreen';
 import { CookieBanner } from './components/CookieBanner';
+import ErrorBoundary from './components/ErrorBoundary';
+import { UpdateNotification } from './components/UpdateNotification';
 
 
 // Pages principales
@@ -165,10 +167,38 @@ function App() {
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
           console.log('✅ Service Worker enregistré:', registration);
+          
+          // Vérifier les mises à jour toutes les 60 secondes
+          setInterval(() => {
+            registration.update();
+          }, 60000);
+          
+          // Écouter les mises à jour du SW
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('🔄 Nouvelle version disponible');
+                  // La page sera rechargée automatiquement par le gestionnaire d'erreur
+                  // ou l'utilisateur pourra recharger manuellement
+                }
+              });
+            }
+          });
         })
         .catch((error) => {
           console.warn('⚠️ Erreur enregistrement Service Worker:', error);
         });
+      
+      // Écouter les messages du Service Worker
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SW_UPDATED') {
+          console.log('🔄 Service Worker mis à jour vers la version:', event.data.version);
+          // Nettoyer le flag de rechargement pour permettre un nouveau rechargement
+          sessionStorage.removeItem('chunk_reload_attempted');
+        }
+      });
     }
   }, []);
 
@@ -198,7 +228,7 @@ function App() {
   // Gérer les erreurs de chargement de chunks dynamiques (après déploiement)
   useEffect(() => {
     const handleChunkError = (event: ErrorEvent) => {
-      const chunkFailedMessage = /Failed to fetch dynamically imported module|Loading chunk/i;
+      const chunkFailedMessage = /Failed to fetch dynamically imported module|Loading chunk|Loading CSS chunk/i;
       
       if (chunkFailedMessage.test(event.message)) {
         console.warn('🔄 Erreur de chargement de module détectée, rechargement de la page...');
@@ -206,6 +236,28 @@ function App() {
         // Éviter les boucles infinies
         if (!sessionStorage.getItem('chunk_reload_attempted')) {
           sessionStorage.setItem('chunk_reload_attempted', 'true');
+          // Forcer le rechargement en vidant le cache
+          window.location.reload();
+        } else {
+          sessionStorage.removeItem('chunk_reload_attempted');
+          console.error('❌ Erreur persistante après rechargement');
+        }
+      }
+    };
+
+    // Gérer les erreurs de promesses rejetées (ex: import() échoué)
+    const handlePromiseRejection = (event: PromiseRejectionEvent) => {
+      const chunkFailedMessage = /Failed to fetch dynamically imported module|Loading chunk|Loading CSS chunk/i;
+      const errorMessage = event.reason?.message || event.reason?.toString() || '';
+      
+      if (chunkFailedMessage.test(errorMessage)) {
+        event.preventDefault(); // Empêcher l'erreur de se propager
+        console.warn('🔄 Erreur de promesse détectée (chunk), rechargement de la page...');
+        
+        // Éviter les boucles infinies
+        if (!sessionStorage.getItem('chunk_reload_attempted')) {
+          sessionStorage.setItem('chunk_reload_attempted', 'true');
+          // Forcer le rechargement en vidant le cache
           window.location.reload();
         } else {
           sessionStorage.removeItem('chunk_reload_attempted');
@@ -215,21 +267,24 @@ function App() {
     };
 
     window.addEventListener('error', handleChunkError);
+    window.addEventListener('unhandledrejection', handlePromiseRejection);
     
     return () => {
       window.removeEventListener('error', handleChunkError);
+      window.removeEventListener('unhandledrejection', handlePromiseRejection);
     };
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ClientProvider>
-          <AdminProvider>
-            <ScrollToTop />
-            <Suspense fallback={<LoadingScreen />}>
-              <div className="min-h-screen bg-gray-50">
-                <Routes>
+      <ErrorBoundary>
+        <AuthProvider>
+          <ClientProvider>
+            <AdminProvider>
+              <ScrollToTop />
+              <Suspense fallback={<LoadingScreen />}>
+                <div className="min-h-screen bg-gray-50">
+                  <Routes>
                     {/* Routes publiques */}
                     <Route path="/" element={<HomePage />} />
                     <Route path="/homepage-test" element={<HomepageTest />} />
@@ -477,10 +532,12 @@ function App() {
                 </div>
                 <Toaster />
                 <CookieBanner />
+                <UpdateNotification />
               </Suspense>
             </AdminProvider>
           </ClientProvider>
         </AuthProvider>
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }

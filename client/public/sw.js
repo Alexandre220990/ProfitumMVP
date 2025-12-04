@@ -1,37 +1,58 @@
 /**
  * ============================================================================
- * SERVICE WORKER - PUSH NOTIFICATIONS
+ * SERVICE WORKER - PUSH NOTIFICATIONS & CACHE MANAGEMENT
  * ============================================================================
  * 
  * Gère les notifications push même quand l'application est fermée.
  * Supporte les actions (voir, archiver, marquer lu).
+ * Gère le cache et force le rechargement après les mises à jour.
  * 
- * Date: 27 Octobre 2025
+ * Date: Décembre 2025
  */
 
-// Version du service worker
-const CACHE_VERSION = 'v1.0.0';
-const CACHE_NAME = `profitum-notifications-${CACHE_VERSION}`;
+// Version du service worker - INCRÉMENTER À CHAQUE DÉPLOIEMENT
+const CACHE_VERSION = 'v1.0.2';
+const CACHE_NAME = `profitum-cache-${CACHE_VERSION}`;
+const NOTIFICATION_CACHE = `profitum-notifications-${CACHE_VERSION}`;
 
 // Installation
 self.addEventListener('install', (event) => {
-  console.log('✅ Service Worker installé');
+  console.log('✅ Service Worker installé - Version:', CACHE_VERSION);
+  // Force l'activation immédiate du nouveau SW
   self.skipWaiting();
 });
 
 // Activation
 self.addEventListener('activate', (event) => {
-  console.log('✅ Service Worker activé');
+  console.log('✅ Service Worker activé - Version:', CACHE_VERSION);
+  
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
+    Promise.all([
+      // Nettoyer les anciens caches
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((name) => name !== CACHE_NAME && name !== NOTIFICATION_CACHE)
+            .map((name) => {
+              console.log('🗑️ Suppression ancien cache:', name);
+              return caches.delete(name);
+            })
+        );
+      }),
+      // Prendre le contrôle de tous les clients immédiatement
+      self.clients.claim()
+    ]).then(() => {
+      // Notifier tous les clients qu'une nouvelle version est disponible
+      return self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            version: CACHE_VERSION
+          });
+        });
+      });
     })
   );
-  return self.clients.claim();
 });
 
 // Réception d'une notification push
@@ -151,6 +172,70 @@ self.addEventListener('notificationclose', (event) => {
   console.log('✅ Notification fermée:', event.notification.tag);
 });
 
+// Interception des requêtes réseau
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Ne pas cacher les requêtes API
+  if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase')) {
+    return;
+  }
+
+  // Pour les assets JS/CSS, toujours fetch en priorité (Network First)
+  if (request.url.match(/\.(js|css)$/)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Si la requête réussit, mettre en cache
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // En cas d'échec, utiliser le cache
+          return caches.match(request);
+        })
+    );
+    return;
+  }
+
+  // Pour les images et assets statiques, utiliser le cache en priorité (Cache First)
+  if (request.url.match(/\.(png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot)$/)) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(request).then((response) => {
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Pour le document HTML principal, toujours fetch (éviter le cache du HTML)
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => {
+        return caches.match('/index.html');
+      })
+    );
+    return;
+  }
+});
+
 // Gestion des messages depuis l'application
 self.addEventListener('message', (event) => {
   console.log('📨 Message reçu:', event.data);
@@ -158,7 +243,19 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    event.waitUntil(
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((name) => caches.delete(name))
+        );
+      }).then(() => {
+        event.ports[0]?.postMessage({ success: true });
+      })
+    );
+  }
 });
 
-console.log('🚀 Service Worker Profitum Notifications prêt');
+console.log('🚀 Service Worker Profitum prêt - Version:', CACHE_VERSION);
 
