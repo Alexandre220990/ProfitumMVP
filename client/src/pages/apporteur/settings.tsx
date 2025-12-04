@@ -5,6 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Settings, User, Bell, Shield, Save, Edit, Eye, EyeOff, Download, Upload, Trash2 } from 'lucide-react';
 import { useAuth } from '../../hooks/use-auth';
+import { getSupabaseToken } from '../../lib/auth-helpers';
 import { toast } from 'sonner';
 import { config } from '../../config';
 import { useNavigate } from 'react-router-dom';
@@ -60,7 +61,7 @@ export default function SettingsPage() {
         // Charger le profil complet depuis l'API
         const response = await fetch(`${config.API_URL}/api/apporteur/profile`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${await getSupabaseToken()}`
           }
         });
 

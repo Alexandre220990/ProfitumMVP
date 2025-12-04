@@ -12,6 +12,7 @@ import { config } from '@/config/env';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 import { RDVReportModal } from '@/components/rdv/RDVReportModal';
 import {
@@ -125,7 +126,7 @@ export default function DossierTimeline({
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         throw new Error('Token non trouvé');
@@ -179,7 +180,7 @@ export default function DossierTimeline({
 
     setSubmittingComment(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         throw new Error('Token non trouvé');
@@ -233,7 +234,7 @@ export default function DossierTimeline({
 
     setSubmittingComment(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         throw new Error('Token non trouvé');
@@ -277,7 +278,7 @@ export default function DossierTimeline({
 
   const handleOpenReportModal = async (rdvId: string, rdvTitle?: string) => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/rdv/${rdvId}/report`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -311,7 +312,7 @@ export default function DossierTimeline({
 
     setSubmittingComment(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
       
       if (!token) {
         throw new Error('Token non trouvé');
