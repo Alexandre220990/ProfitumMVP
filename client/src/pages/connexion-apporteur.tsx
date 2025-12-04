@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Eye, EyeOff, Loader2, UserCheck, AlertCircle, CheckCircle, Building2, Handshake, ArrowRight } from "lucide-react";
 import Button from "@/components/ui/design-system/Button";
@@ -18,6 +18,22 @@ export default function ConnexionApporteur() {
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  
+  // Récupérer l'URL de redirection
+  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const redirectFromQuery = searchParams.get('redirect');
+    const redirectFromState = (location.state as any)?.from?.pathname;
+    const finalRedirect = redirectFromQuery || redirectFromState;
+    
+    if (finalRedirect) {
+      setRedirectUrl(finalRedirect);
+      console.log('🔀 [connexion-apporteur] URL de redirection détectée:', finalRedirect);
+    }
+  }, [searchParams, location]);
 
   const handleRedirect = (url: string) => {
     navigate(url);
@@ -60,10 +76,18 @@ export default function ConnexionApporteur() {
         email,
         password,
         type: "apporteur"
-      });
+      }, false);
 
       toast.success('Bienvenue dans votre espace apporteur d\'affaires');
       console.log('✅ Connexion apporteur réussie');
+      
+      // Rediriger vers l'URL demandée ou le dashboard par défaut
+      if (redirectUrl) {
+        console.log('🔀 [connexion-apporteur] Redirection vers:', redirectUrl);
+        navigate(redirectUrl, { replace: true });
+      } else {
+        navigate('/apporteur/dashboard', { replace: true });
+      }
 
     } catch (error: any) {
       console.error('❌ Erreur connexion apporteur:', error);

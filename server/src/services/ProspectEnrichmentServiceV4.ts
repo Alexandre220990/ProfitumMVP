@@ -104,7 +104,7 @@ export class ProspectEnrichmentServiceV4 {
     }
     
     // Recommandations timing
-    if (timing_analysis) {
+    if (timing_analysis && timing_analysis.recommandations_sequence) {
       const nbEmailsRecommande = timing_analysis.recommandations_sequence.nombre_emails_recommande;
       const ajustement = timing_analysis.recommandations_sequence.ajustement_vs_defaut;
       
@@ -113,7 +113,9 @@ export class ProspectEnrichmentServiceV4 {
       } else if (ajustement < 0) {
         recommandations_action.push(`Réduire la séquence à ${nbEmailsRecommande} emails (période moins propice)`);
       }
-      
+    }
+    
+    if (timing_analysis && timing_analysis.scoring_opportunite) {
       if (timing_analysis.scoring_opportunite.action_recommandee === 'ENVOYER_MAINTENANT') {
         recommandations_action.push('✉ Envoyer immédiatement, contexte optimal');
       } else if (timing_analysis.scoring_opportunite.action_recommandee === 'ENVOYER_AVEC_PRUDENCE') {
@@ -303,15 +305,19 @@ export class ProspectEnrichmentServiceV4 {
       synthese_complete += `**Réceptivité estimée** : ${periode.contexte_business.receptivite_estimee}/10\n`;
       synthese_complete += `**Score attention** : ${periode.contexte_business.score_attention}/10\n\n`;
       
-      const scoring = timing_analysis.scoring_opportunite;
-      synthese_complete += `**Score Global Timing** : ${scoring.score_global_timing}/10\n`;
-      synthese_complete += `**Action recommandée** : ${scoring.action_recommandee}\n`;
-      synthese_complete += `**Justification** : ${scoring.justification_detaillee}\n\n`;
+      if (timing_analysis.scoring_opportunite) {
+        const scoring = timing_analysis.scoring_opportunite;
+        synthese_complete += `**Score Global Timing** : ${scoring.score_global_timing}/10\n`;
+        synthese_complete += `**Action recommandée** : ${scoring.action_recommandee}\n`;
+        synthese_complete += `**Justification** : ${scoring.justification_detaillee}\n\n`;
+      }
       
-      const reco = timing_analysis.recommandations_sequence;
-      synthese_complete += `**Séquence recommandée** : ${reco.nombre_emails_recommande} email(s)\n`;
-      synthese_complete += `**Ajustement** : ${reco.ajustement_vs_defaut > 0 ? '+' : ''}${reco.ajustement_vs_defaut}\n`;
-      synthese_complete += `**Raison** : ${reco.rationale_detaillee}\n`;
+      if (timing_analysis.recommandations_sequence) {
+        const reco = timing_analysis.recommandations_sequence;
+        synthese_complete += `**Séquence recommandée** : ${reco.nombre_emails_recommande} email(s)\n`;
+        synthese_complete += `**Ajustement** : ${reco.ajustement_vs_defaut > 0 ? '+' : ''}${reco.ajustement_vs_defaut}\n`;
+        synthese_complete += `**Raison** : ${reco.rationale_detaillee}\n`;
+      }
     }
     
     // Section 6: Recommandations

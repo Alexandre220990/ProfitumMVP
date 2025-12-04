@@ -114,7 +114,7 @@ export const EnrichmentDisplayV4: React.FC<EnrichmentDisplayV4Props> = ({
             <div className="text-center p-3 bg-purple-50 rounded-lg">
               <Clock className="h-5 w-5 mx-auto mb-2 text-purple-600" />
               <div className="text-sm font-semibold text-purple-600">
-                {timingAnalysis.scoring_opportunite.score_global_timing}/10
+                {timingAnalysis?.scoring_opportunite?.score_global_timing || 'N/A'}/10
               </div>
               <div className="text-xs text-gray-600">Score timing</div>
             </div>
@@ -386,37 +386,43 @@ export const EnrichmentDisplayV4: React.FC<EnrichmentDisplayV4Props> = ({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <div className="font-semibold mb-2">Période actuelle</div>
-                  <div className="text-lg">{timingAnalysis.analyse_periode.periode_actuelle}</div>
-                  <div className="mt-2 text-sm text-gray-700">
-                    Charge mentale prospects: <Badge variant="secondary">
-                      {timingAnalysis.analyse_periode.contexte_business.charge_mentale_prospects}
+                {timingAnalysis?.analyse_periode && (
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <div className="font-semibold mb-2">Période actuelle</div>
+                    <div className="text-lg">{timingAnalysis.analyse_periode.periode_actuelle}</div>
+                    <div className="mt-2 text-sm text-gray-700">
+                      Charge mentale prospects: <Badge variant="secondary">
+                        {timingAnalysis.analyse_periode.contexte_business?.charge_mentale_prospects || 'N/A'}
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+
+                {timingAnalysis?.scoring_opportunite && (
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <div className="font-semibold mb-2">Action recommandée</div>
+                    <Badge variant="default" className="text-base px-3 py-1">
+                      {timingAnalysis.scoring_opportunite.action_recommandee}
                     </Badge>
+                    <div className="mt-2 text-sm text-gray-700">
+                      {timingAnalysis.scoring_opportunite.justification_detaillee}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="font-semibold mb-2">Action recommandée</div>
-                  <Badge variant="default" className="text-base px-3 py-1">
-                    {timingAnalysis.scoring_opportunite.action_recommandee}
-                  </Badge>
-                  <div className="mt-2 text-sm text-gray-700">
-                    {timingAnalysis.scoring_opportunite.justification_detaillee}
+                {timingAnalysis?.recommandations_sequence && (
+                  <div className="p-4 bg-purple-50 rounded-lg">
+                    <div className="font-semibold mb-2">Nombre d'emails recommandé</div>
+                    <div className="text-3xl font-bold text-purple-700">
+                      {timingAnalysis.recommandations_sequence.nombre_emails_recommande}
+                    </div>
+                    <div className="mt-2 text-sm text-gray-700">
+                      {timingAnalysis.recommandations_sequence.rationale_detaillee}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <div className="font-semibold mb-2">Nombre d'emails recommandé</div>
-                  <div className="text-3xl font-bold text-purple-700">
-                    {timingAnalysis.recommandations_sequence.nombre_emails_recommande}
-                  </div>
-                  <div className="mt-2 text-sm text-gray-700">
-                    {timingAnalysis.recommandations_sequence.rationale_detaillee}
-                  </div>
-                </div>
-
-                {timingAnalysis.recommandations_sequence.ajustements_contextuels.periodes_a_eviter_absolument.length > 0 && (
+                {timingAnalysis?.recommandations_sequence?.ajustements_contextuels?.periodes_a_eviter_absolument?.length > 0 && (
                   <div className="p-4 bg-red-50 rounded-lg border border-red-200">
                     <div className="font-semibold mb-2 flex items-center gap-2 text-red-700">
                       <AlertCircle className="h-5 w-5" />

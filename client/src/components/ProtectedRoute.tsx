@@ -30,15 +30,20 @@ export default function ProtectedRoute({ requiredType }: ProtectedRouteProps) {
 
   if (!user) {
     console.log('❌ ProtectedRoute - Aucun utilisateur, redirection vers connexion');
+    
+    // Construire l'URL de redirection avec le chemin actuel
+    const redirectPath = `${location.pathname}${location.search}${location.hash}`;
+    
     // Rediriger vers la bonne page de connexion selon le type requis
+    // En passant l'URL de redirection en query param
     if (requiredType === 'expert') {
-      return <Navigate to="/connexion-expert" state={{ from: location }} replace />;
+      return <Navigate to={`/connexion-expert?redirect=${encodeURIComponent(redirectPath)}`} replace />;
     } else if (requiredType === 'admin') {
-      return <Navigate to="/connect-admin" state={{ from: location }} replace />;
+      return <Navigate to={`/connect-admin?redirect=${encodeURIComponent(redirectPath)}`} replace />;
     } else if (requiredType === 'apporteur') {
-      return <Navigate to="/connexion-apporteur" state={{ from: location }} replace />;
+      return <Navigate to={`/connexion-apporteur?redirect=${encodeURIComponent(redirectPath)}`} replace />;
     } else {
-      return <Navigate to="/connexion-client" state={{ from: location }} replace />;
+      return <Navigate to={`/connexion-client?redirect=${encodeURIComponent(redirectPath)}`} replace />;
     }
   }
 

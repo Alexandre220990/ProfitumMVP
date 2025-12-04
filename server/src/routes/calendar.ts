@@ -205,6 +205,7 @@ function transformCalendarEventToRDV(eventData: any): any {
     ...(eventData.client_id && { client_id: eventData.client_id }),
     ...(eventData.expert_id && { expert_id: eventData.expert_id }),
     ...(eventData.apporteur_id && { apporteur_id: eventData.apporteur_id }),
+    ...(eventData.prospect_id && { prospect_id: eventData.prospect_id }),
     ...(eventData.dossier_id && { dossier_id: eventData.dossier_id })
   };
 
@@ -258,6 +259,7 @@ const eventSchema = Joi.object({
   client_id: Joi.string().uuid().optional(),
   expert_id: Joi.string().uuid().optional(),
   apporteur_id: Joi.string().uuid().optional(),
+  prospect_id: Joi.string().uuid().optional(),
   location: Joi.string().max(500).allow(null, '').optional(),
   is_online: Joi.boolean().default(false),
   meeting_url: Joi.string().max(500).allow(null, '').optional(),
@@ -268,7 +270,7 @@ const eventSchema = Joi.object({
   metadata: Joi.object().default({}),
   participants: Joi.array().items(Joi.object({
     user_id: Joi.string().uuid().required(),
-    user_type: Joi.string().valid('client', 'expert', 'apporteur', 'admin').required(),
+    user_type: Joi.string().valid('client', 'expert', 'apporteur', 'admin', 'prospect').required(),
     user_email: Joi.string().email().optional(),
     user_name: Joi.string().optional(),
     status: Joi.string().valid('pending', 'accepted', 'declined', 'tentative').optional()
@@ -710,6 +712,10 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
                 .eq('id', participant.user_id)
                 .single();
               authUserId = admin?.auth_user_id || null;
+            } else if (participant.user_type === 'prospect') {
+              // Les prospects n'ont généralement pas d'auth_user_id
+              // On va gérer l'envoi d'email directement après
+              authUserId = null;
             }
           } catch (error) {
             console.warn(`⚠️ Impossible de récupérer auth_user_id pour participant ${participant.user_id}:`, error);
@@ -772,6 +778,63 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
                 .eq('id', participant.user_id)
                 .single();
               authUserId = admin?.auth_user_id || null;
+            } else if (participant.user_type === 'prospect') {
+              // Pour les prospects, envoyer un email directement
+              const { data: prospect } = await supabase
+                .from('prospects')
+                .select('email, firstname, lastname, company_name')
+                .eq('id', participant.user_id)
+                .single();
+              
+              if (prospect && prospect.email) {
+                // Import dynamique du service email
+                const { EmailService } = await import('../services/EmailService');
+                const prospectName = prospect.firstname && prospect.lastname 
+                  ? `${prospect.firstname} ${prospect.lastname}` 
+                  : prospect.company_name || 'Prospect';
+                
+                const emailSubject = `📅 Invitation - ${event.title}`;
+                const emailHtml = `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #1a73e8;">Invitation à un événement</h2>
+                    <p>Bonjour ${prospectName},</p>
+                    <p>Vous êtes invité à l'événement suivant :</p>
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                      <h3 style="margin-top: 0; color: #333;">${event.title}</h3>
+                      <p><strong>📅 Date :</strong> ${eventDate.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      <p><strong>🕐 Heure :</strong> ${eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                      ${event.duration_minutes ? `<p><strong>⏱️ Durée :</strong> ${event.duration_minutes} minutes</p>` : ''}
+                      ${event.location ? `<p><strong>📍 Lieu :</strong> ${event.location}</p>` : ''}
+                      ${event.meeting_url ? `<p><strong>🔗 Lien :</strong> <a href="${event.meeting_url}">${event.meeting_url}</a></p>` : ''}
+                      ${event.description ? `<p><strong>📝 Description :</strong><br>${event.description}</p>` : ''}
+                    </div>
+                    <p>Organisé par : ${(authUser as any).name || 'Profitum'}</p>
+                    <p style="color: #666; font-size: 12px; margin-top: 30px;">
+                      Cet email a été envoyé automatiquement par Profitum. Si vous avez des questions, veuillez contacter votre interlocuteur.
+                    </p>
+                  </div>
+                `;
+                const emailText = `
+                  Invitation à un événement
+                  
+                  Bonjour ${prospectName},
+                  
+                  Vous êtes invité à l'événement suivant :
+                  
+                  ${event.title}
+                  Date : ${eventDate.toLocaleDateString('fr-FR')}
+                  Heure : ${eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  ${event.location ? `Lieu : ${event.location}` : ''}
+                  ${event.meeting_url ? `Lien : ${event.meeting_url}` : ''}
+                  ${event.description ? `Description : ${event.description}` : ''}
+                  
+                  Organisé par : ${(authUser as any).name || 'Profitum'}
+                `;
+                
+                await EmailService.sendDailyReportEmail(prospect.email, emailSubject, emailHtml, emailText);
+                console.log(`✅ Email envoyé au prospect ${prospect.email} pour l'événement: ${event.title}`);
+              }
+              continue; // Skip to next participant
             }
 
             if (authUserId && authUserId !== authUser.id) {

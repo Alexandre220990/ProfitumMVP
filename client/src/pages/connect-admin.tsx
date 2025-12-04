@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Eye, EyeOff, Loader2, Shield, AlertCircle, CheckCircle } from "lucide-react";
 import Button from "@/components/ui/design-system/Button";
@@ -15,6 +15,28 @@ export default function ConnectAdmin() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
   const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  
+  // Récupérer l'URL de redirection depuis différentes sources
+  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    // 1. Vérifier les query params (?redirect=/admin/...)
+    const redirectFromQuery = searchParams.get('redirect');
+    
+    // 2. Vérifier le state de navigation (depuis ProtectedRoute)
+    const redirectFromState = (location.state as any)?.from?.pathname;
+    
+    // 3. Déterminer l'URL de redirection finale
+    const finalRedirect = redirectFromQuery || redirectFromState;
+    
+    if (finalRedirect) {
+      setRedirectUrl(finalRedirect);
+      console.log('🔀 [connect-admin] URL de redirection détectée:', finalRedirect);
+    }
+  }, [searchParams, location]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -37,7 +59,7 @@ export default function ConnectAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🚀 [connect-admin] handleSubmit appelé', { email });
+    console.log('🚀 [connect-admin] handleSubmit appelé', { email, redirectUrl });
     
     if (!validateForm()) {
       console.log('❌ [connect-admin] Validation formulaire échouée');
@@ -50,13 +72,25 @@ export default function ConnectAdmin() {
     
     try {
       console.log('🔐 [connect-admin] Appel de login() avec:', { email, type: 'admin' });
+      
+      // Connexion sans navigation automatique (on va naviguer manuellement après)
       await login({
         email,
         password,
         type: 'admin'
-      });
+      }, false); // Désactiver la navigation automatique
+      
       console.log('✅ [connect-admin] login() terminé avec succès');
       toast.success('Connexion réussie ! Bienvenue dans l\'espace d\'administration');
+      
+      // Rediriger vers l'URL demandée ou le dashboard par défaut
+      if (redirectUrl) {
+        console.log('🔀 [connect-admin] Redirection vers:', redirectUrl);
+        navigate(redirectUrl, { replace: true });
+      } else {
+        console.log('🔀 [connect-admin] Redirection vers dashboard par défaut');
+        navigate('/admin/dashboard-optimized', { replace: true });
+      }
     } catch (error: any) {
       console.error("❌ [connect-admin] Erreur de connexion:", error);
       toast.error(error.message || 'Email ou mot de passe incorrect');

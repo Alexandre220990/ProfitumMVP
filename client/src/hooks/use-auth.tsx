@@ -17,7 +17,7 @@ console.log('📦 [use-auth.tsx] Module chargé - Version Supabase Native');
 interface AuthContextType {
   user: UserType | null;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials, shouldNavigate?: boolean) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => void;
   checkAuth: (shouldNavigate?: boolean) => Promise<boolean>;
@@ -100,8 +100,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ============================================================================
   // CONNEXION - 100% SUPABASE
   // ============================================================================
-  const login = async (credentials: LoginCredentials) => {
-    console.log('🎯 [login] Début connexion:', credentials.email);
+  const login = async (credentials: LoginCredentials, shouldNavigate: boolean = true) => {
+    console.log('🎯 [login] Début connexion:', credentials.email, 'shouldNavigate:', shouldNavigate);
     setIsLoading(true);
     
     try {
@@ -181,15 +181,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Redirection selon type
-      const routes: Record<string, string> = {
-        client: '/dashboard/client',
-        expert: '/expert/dashboard',
-        admin: '/admin/dashboard-optimized',
-        apporteur: '/apporteur/dashboard'
-      };
-      console.log('🔀 [login] Redirection:', routes[userData.type]);
-      navigate(routes[userData.type] || '/dashboard/client');
+      // Redirection selon type (seulement si demandé)
+      if (shouldNavigate) {
+        const routes: Record<string, string> = {
+          client: '/dashboard/client',
+          expert: '/expert/dashboard',
+          admin: '/admin/dashboard-optimized',
+          apporteur: '/apporteur/dashboard'
+        };
+        console.log('🔀 [login] Redirection:', routes[userData.type]);
+        navigate(routes[userData.type] || '/dashboard/client');
+      } else {
+        console.log('🔀 [login] Navigation automatique désactivée');
+      }
 
     } catch (error) {
       console.error('❌ [login] Erreur:', error);

@@ -1512,7 +1512,7 @@ const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
           )}
 
           {/* L'événement concerne */}
-          {(event.client_info || event.expert_info || (event as any).apporteur_info) && (
+          {(event.client_info || event.expert_info || (event as any).apporteur_info || (event as any).prospect_info) && (
             <div>
               <h4 className="font-semibold text-gray-900 mb-2">L'événement concerne :</h4>
               <p className="text-xs text-gray-500 mb-2">Ces informations permettent d'enrichir l'événement sans ajouter de participants officiels</p>
@@ -1550,6 +1550,17 @@ const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
                     </div>
                   </div>
                 )}
+                {(event as any).prospect_info && (
+                  <div className="text-sm">
+                    <div className="font-medium text-gray-900">🎯 Prospect</div>
+                    <div className="text-gray-700 ml-5">
+                      {(event as any).prospect_info.full_name || (event as any).prospect_info.company_name || (event as any).prospect_info.email}
+                      {(event as any).prospect_info.company_name && (event as any).prospect_info.full_name && (
+                        <span className="text-gray-500"> • {(event as any).prospect_info.company_name}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1570,6 +1581,7 @@ const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
                       {participant.type === 'expert' && '🎯'}
                       {participant.type === 'apporteur' && '🤝'}
                       {participant.type === 'admin' && '👨‍💼'}
+                      {participant.type === 'prospect' && '🔍'}
                       {' '}
                       {participant.name || participant.email || 'Participant'}
                     </div>
@@ -1636,7 +1648,7 @@ interface EventDialogProps {
   onCancel: () => void;
 }
 
-type ParticipantType = 'client' | 'expert' | 'apporteur' | 'admin' | 'user';
+type ParticipantType = 'client' | 'expert' | 'apporteur' | 'admin' | 'user' | 'prospect';
 
 interface ParticipantOption {
   id: string;
@@ -1647,7 +1659,7 @@ interface ParticipantOption {
 }
 
 
-const participantTypeOrder: ParticipantType[] = ['client', 'expert', 'apporteur', 'admin', 'user'];
+const participantTypeOrder: ParticipantType[] = ['client', 'expert', 'apporteur', 'admin', 'prospect', 'user'];
 
 const normalizeLabel = (value?: string | null) =>
   (value || '')
@@ -1748,6 +1760,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
         client_id: event.client_id || '',
         expert_id: event.expert_id || '',
         apporteur_id: (event as any)?.apporteur_id || '',
+        prospect_id: (event as any)?.prospect_id || '',
         dossier_id: (event as any)?.dossier_id || '',
         participants: event.participants || []
       };
@@ -1776,6 +1789,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
         client_id: prefill?.client_id || '',
         expert_id: '',
         apporteur_id: '',
+        prospect_id: '',
         dossier_id: prefill?.dossier_id || '',
         participants: []
       };
@@ -1788,11 +1802,13 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [participantSearchQuery, setParticipantSearchQuery] = useState('');
   const [openParticipantSections, setOpenParticipantSections] = useState<Record<string, boolean>>({
     client: false,
     expert: false,
     apporteur: false,
-    admin: false
+    admin: false,
+    prospect: false
   });
   const canAssignExpert = ['admin', 'apporteur'].includes(user?.type || '');
   const canAssignApporteur = user?.type === 'admin';
@@ -1803,6 +1819,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
       expert: [],
       apporteur: [],
       admin: [],
+      prospect: [],
       user: []
     };
 
@@ -1824,6 +1841,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
   const clientOptions = participantGroups.client;
   const expertOptions = participantGroups.expert;
   const apporteurOptions = participantGroups.apporteur;
+  const prospectOptions = participantGroups.prospect;
 
   React.useEffect(() => {
     if (open && ['admin', 'expert', 'apporteur', 'client'].includes(user?.type || '')) {
@@ -1874,7 +1892,8 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
           { type: 'client', url: `${config.API_URL}/api/admin/clients?limit=200` },
           { type: 'expert', url: `${config.API_URL}/api/admin/experts?limit=200` },
           { type: 'apporteur', url: `${config.API_URL}/api/admin/apporteurs?limit=200` },
-          { type: 'admin', url: `${config.API_URL}/api/calendar/admins?limit=200` }
+          { type: 'admin', url: `${config.API_URL}/api/calendar/admins?limit=200` },
+          { type: 'prospect', url: `${config.API_URL}/api/admin/prospects?limit=200` }
         );
       } else if (user?.type === 'expert') {
         requests.push(
@@ -1925,6 +1944,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
     if (Array.isArray(data.experts)) return data.experts;
     if (Array.isArray(data.apporteurs)) return data.apporteurs;
     if (Array.isArray(data.admins)) return data.admins;
+    if (Array.isArray(data.prospects)) return data.prospects;
     if (data.data) {
       if (Array.isArray(data.data.clients)) return data.data.clients;
       if (Array.isArray(data.data.experts)) return data.data.experts;
@@ -1939,7 +1959,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
 
   const mapParticipant = (item: any, type: ParticipantType): ParticipantOption | null => {
     if (!item?.id) return null;
-    const fallbackName = `${item.first_name || ''} ${item.last_name || ''}`.trim();
+    const fallbackName = `${item.first_name || item.firstname || ''} ${item.last_name || item.lastname || ''}`.trim();
     const displayName = item.company_name || item.full_name || fallbackName || item.name || item.email || 'Participant';
     const isTemporary = item.is_temporary === true || looksTemporary(displayName) || looksTemporary(item.email);
 
@@ -1987,6 +2007,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
     expert: 'Experts',
     apporteur: 'Apporteurs',
     admin: 'Administrateurs',
+    prospect: 'Prospects',
     user: 'Autres'
   };
 
@@ -2066,6 +2087,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
       client_id: formData.client_id || undefined,
       expert_id: formData.expert_id || undefined,
       apporteur_id: formData.apporteur_id || undefined,
+      prospect_id: formData.prospect_id || undefined,
       dossier_id: formData.dossier_id || undefined,
       color: formData.color || '#3B82F6',
       participants: formData.participants.length > 0 ? formData.participants.map((p: any) => ({
@@ -2197,7 +2219,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
             )}
 
             {canAssignApporteur && (
-              <div className="space-y-1 md:col-span-2">
+              <div className="space-y-1">
                 <Label htmlFor="apporteur_id" className="text-slate-900">
                   Apporteur <span className="text-xs text-gray-500">(optionnel)</span>
                 </Label>
@@ -2230,6 +2252,39 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
                 )}
               </div>
             )}
+
+            <div className="space-y-1">
+              <Label htmlFor="prospect_id" className="text-slate-900">
+                Prospect <span className="text-xs text-gray-500">(optionnel)</span>
+              </Label>
+              <Select
+                value={formData.prospect_id}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, prospect_id: value }))}
+                disabled={prospectOptions.length === 0}
+              >
+                <SelectTrigger className="bg-white flex-1">
+                  <SelectValue placeholder={prospectOptions.length === 0 ? 'Aucun prospect' : 'Sélectionner un prospect'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {prospectOptions.map((prospect) => (
+                    <SelectItem key={prospect.id} value={prospect.id}>
+                      {prospect.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formData.prospect_id && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFormData(prev => ({ ...prev, prospect_id: '' }))}
+                  className="mt-1"
+                >
+                  Retirer le prospect
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Participants optionnels */}
@@ -2363,7 +2418,10 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
         </form>
 
         {/* Modal de sélection de participants */}
-        <Dialog open={showParticipantsModal} onOpenChange={setShowParticipantsModal}>
+        <Dialog open={showParticipantsModal} onOpenChange={(open) => {
+          setShowParticipantsModal(open);
+          if (!open) setParticipantSearchQuery(''); // Reset search when closing
+        }}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Ajouter des participants</DialogTitle>
@@ -2372,10 +2430,30 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, se
               </DialogDescription>
             </DialogHeader>
             
+            {/* Champ de recherche */}
+            <div className="mt-4">
+              <Input
+                placeholder="Rechercher un participant par nom ou email..."
+                value={participantSearchQuery}
+                onChange={(e) => setParticipantSearchQuery(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            
             <div className="space-y-4 mt-4">
               {participantTypeOrder.map((type) => {
                 const group = participantGroups[type];
-                const visibleGroup = group?.filter(participant => !(participant.type === 'client' && participant.isTemporary)) || [];
+                // Filtrer par recherche et exclure les clients temporaires
+                const searchLower = participantSearchQuery.toLowerCase();
+                const visibleGroup = group?.filter(participant => {
+                  if (participant.type === 'client' && participant.isTemporary) return false;
+                  if (!participantSearchQuery) return true;
+                  
+                  const nameMatch = participant.name?.toLowerCase().includes(searchLower);
+                  const emailMatch = participant.email?.toLowerCase().includes(searchLower);
+                  return nameMatch || emailMatch;
+                }) || [];
+                
                 if (visibleGroup.length === 0) return null;
 
                 const isOpen = openParticipantSections[type] || false;

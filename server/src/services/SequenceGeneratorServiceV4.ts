@@ -26,6 +26,16 @@ export class SequenceGeneratorServiceV4 {
     timingAnalysis: TimingAnalysis,
     currentSteps: EmailStep[]
   ): SequenceAdjustment {
+    // Vérifier que recommandations_sequence existe
+    if (!timingAnalysis?.recommandations_sequence) {
+      console.warn('⚠️  recommandations_sequence manquant, pas d\'ajustement');
+      return {
+        adjusted: false,
+        steps: currentSteps,
+        message: 'Pas de recommandation disponible'
+      };
+    }
+
     const recommendedNum = timingAnalysis.recommandations_sequence.nombre_emails_recommande;
     const currentNum = currentSteps.length;
     
