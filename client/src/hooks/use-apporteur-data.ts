@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ApporteurViewsService } from '../services/apporteur-views-service';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { config } from '@/config';
 
 export interface ApporteurData {
@@ -48,7 +49,7 @@ export const useApporteurData = (apporteurId: string | null): UseApporteurDataRe
         service.getActiviteRecente(),
         fetch(`${config.API_URL}/api/apporteur/conversion-stats`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${await getSupabaseToken()}`,
             'Content-Type': 'application/json'
           }
         }).then(r => r.ok ? r.json() : null)
@@ -80,7 +81,7 @@ export const useApporteurData = (apporteurId: string | null): UseApporteurDataRe
     try {
       const response = await fetch(`${config.API_URL}/api/apporteur/dossiers`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });

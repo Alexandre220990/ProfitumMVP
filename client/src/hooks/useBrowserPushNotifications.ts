@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './use-auth';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 /**
  * Hook pour les notifications push BROWSER UNIQUEMENT
@@ -77,7 +78,7 @@ export function useBrowserPushNotifications(): UseBrowserPushNotificationsReturn
     
     const loadPreferences = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = await getSupabaseToken();
         const response = await fetch(`/api/user-preferences/${user.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -184,7 +185,7 @@ export function useBrowserPushNotifications(): UseBrowserPushNotificationsReturn
     if (!user?.id) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`/api/user-preferences/${user.id}`, {
         method: 'PUT',
         headers: {

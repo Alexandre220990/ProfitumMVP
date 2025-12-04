@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { useAuth } from "./use-auth";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 import { toast } from 'sonner';
 import { config } from "@/config/env";
 
@@ -218,7 +219,7 @@ export const useDocumentStorage = () => {
       if (filters?.offset) params.append('offset', filters.offset.toString());
 
       // Récupérer le token depuis localStorage
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
 
       const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       const response = await fetch(`${baseUrl}/api/client-documents/client/${clientId}?${params}`, {
@@ -257,7 +258,7 @@ export const useDocumentStorage = () => {
 
     try {
       // Récupérer le token depuis localStorage
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       // Utiliser l'URL relative correcte au lieu de l'URL hardcodée
       const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';

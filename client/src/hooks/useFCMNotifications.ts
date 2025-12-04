@@ -18,6 +18,7 @@ import {
   isFCMSupported 
 } from '@/config/firebase';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 
 export interface UseFCMNotificationsReturn {
@@ -130,7 +131,7 @@ export function useFCMNotifications(): UseFCMNotificationsReturn {
       setFcmToken(token);
 
       // Envoyer le token au backend pour le sauvegarder
-      const authToken = localStorage.getItem('token');
+      const authToken = await getSupabaseToken();
       if (!authToken) {
         console.error('❌ Token d\'authentification manquant');
         return false;
@@ -191,7 +192,7 @@ export function useFCMNotifications(): UseFCMNotificationsReturn {
 
       setIsLoading(true);
 
-      const authToken = localStorage.getItem('token');
+      const authToken = await getSupabaseToken();
       if (!authToken) {
         return false;
       }
