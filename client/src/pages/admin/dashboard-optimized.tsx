@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/use-auth";
-import { useNotificationSSE } from "@/hooks/use-notification-sse";
 import { getSupabaseToken } from "@/lib/auth-helpers";
 import { toast } from "sonner";
 import { get } from "@/lib/api";
@@ -370,21 +369,7 @@ const AdminDashboardOptimized: React.FC = () => {
   // CHARGEMENT DES DONNÉES
   // ========================================
 
-  // 📡 Connexion SSE pour notifications temps réel
-  // DÉSACTIVÉ pour éviter les erreurs 429 et les logs excessifs
-  // Les notifications sont récupérées via polling classique au lieu de SSE
-  useNotificationSSE({
-    silent: true, // Ne pas afficher les toasts d'erreur sur le dashboard
-    onNotification: (notification) => {
-      console.log('🔔 Nouvelle notification reçue via SSE:', notification);
-      // La notification toast est déjà gérée par le hook
-    },
-    onKPIRefresh: () => {
-      console.log('📊 Rafraîchissement KPI demandé via SSE');
-      loadKPIData();
-    },
-    enabled: false // DÉSACTIVÉ pour éviter les erreurs 429 et les logs excessifs
-  });
+  // SSE supprimé - utilisation des notifications normales du centre de notification
 
   useEffect(() => {
     loadKPIData();

@@ -3,7 +3,6 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
 import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
-import { useNotificationSSE } from '@/hooks/use-notification-sse';
 import { useFCMNotifications } from '@/hooks/useFCMNotifications';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import ApporteurAuthGuard from './ApporteurAuthGuard';
@@ -44,16 +43,9 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
   const { badgeCount } = useMessagingBadge();
   
   // Hook pour les notifications avec compteur en temps réel (compteur global du centre de notifications)
-  const { unreadCount: notificationsCount, reload: reloadNotifications } = useSupabaseNotifications();
+  const { unreadCount: notificationsCount } = useSupabaseNotifications();
 
   // 🔔 Activer les notifications en temps réel avec toasts
-  useNotificationSSE({
-    enabled: true,
-    onNotification: (notification) => {
-      console.log('🔔 Notification reçue (SSE - Apporteur):', notification);
-      reloadNotifications();
-    }
-  });
   useFCMNotifications();
   useRealtimeNotifications();
 

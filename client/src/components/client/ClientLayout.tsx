@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { TypeSwitcher } from '@/components/TypeSwitcher';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
 import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
-import { useNotificationSSE } from '@/hooks/use-notification-sse';
 import { useFCMNotifications } from '@/hooks/useFCMNotifications';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import { 
@@ -44,20 +43,9 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { badgeCount } = useMessagingBadge();
-  const { unreadCount: notificationsCount, reload: reloadNotifications } = useSupabaseNotifications();
+  const { unreadCount: notificationsCount } = useSupabaseNotifications();
 
   // 🔔 Activer les notifications en temps réel avec toasts
-  // SSE pour notifications serveur
-  useNotificationSSE({
-    enabled: true,
-    onNotification: (notification) => {
-      console.log('🔔 Notification reçue (SSE):', notification);
-      // Le toast est déjà affiché par le hook
-      // Rafraîchir la liste des notifications
-      reloadNotifications();
-    }
-  });
-
   // 📱 Notifications push FCM (Firebase Cloud Messaging)
   useFCMNotifications();
 
