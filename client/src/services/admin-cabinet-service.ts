@@ -27,7 +27,7 @@ class AdminCabinetService {
 
   private async getAuthHeaders() {
     // Récupérer le token JWT depuis localStorage (priorité au token direct)
-    const authToken = await getSupabaseToken() || localStorage.getItem('supabase_token');
+    const authToken = await getSupabaseToken();
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'

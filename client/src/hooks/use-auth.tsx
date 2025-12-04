@@ -323,7 +323,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('👂 [useEffect:listener] Configuration listener Supabase...');
     
+    // Flag pour éviter les actions après unmount
+    let isSubscribed = true;
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Ignorer les events si le composant est démonté
+      if (!isSubscribed) {
+        console.log('⚠️ [onAuthStateChange] Composant démonté, event ignoré');
+        return;
+      }
+      
       console.log('🔔 [onAuthStateChange] Event:', event, { hasSession: !!session });
       
       switch (event) {
@@ -358,6 +367,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       console.log('🧹 [useEffect:listener] Cleanup listener');
+      isSubscribed = false;
       subscription.unsubscribe();
     };
   }, []);

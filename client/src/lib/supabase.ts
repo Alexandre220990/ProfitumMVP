@@ -2,18 +2,76 @@ import { createClient } from "@supabase/supabase-js";
 import { Database } from "../types/supabase";
 import { config } from "../config/env";
 
-// Création du client Supabase avec la configuration optimisée pour la persistance
-export const supabase = createClient<Database>(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, { 
+// ============================================================================
+// SINGLETON AVEC HMR - Évite la réinitialisation lors du hot-reload
+// ============================================================================
+
+// Déclaration du type global pour le HMR
+declare global {
+  interface Window {
+    __SUPABASE_CLIENT__?: ReturnType<typeof createClient<Database>>;
+  }
+}
+
+// Fonction pour créer ou récupérer le client Supabase singleton
+function getSupabaseClient() {
+  // En développement avec HMR, utiliser window pour persister le client
+  if (import.meta.hot && typeof window !== 'undefined') {
+    if (!window.__SUPABASE_CLIENT__) {
+      console.log('🔧 [Supabase] Création du client singleton (HMR)');
+      window.__SUPABASE_CLIENT__ = createClient<Database>(
+        config.SUPABASE_URL, 
+        config.SUPABASE_ANON_KEY, 
+        { 
   auth: {
     persistSession: true, 
     autoRefreshToken: true, 
     detectSessionInUrl: true,
-    // Configuration du stockage pour garantir la persistance
     storage: window.localStorage,
-    storageKey: 'supabase.auth.token', // Clé explicite pour éviter les conflits
-    flowType: 'implicit' // Utiliser le flux implicite pour les PWA
+            storageKey: 'supabase.auth.token',
+            flowType: 'implicit'
+          }
+        }
+      );
+    } else {
+      console.log('♻️ [Supabase] Réutilisation du client singleton (HMR)');
+    }
+    return window.__SUPABASE_CLIENT__;
   }
-});
+
+  // En production, créer normalement
+  return createClient<Database>(
+    config.SUPABASE_URL, 
+    config.SUPABASE_ANON_KEY, 
+    { 
+      auth: {
+        persistSession: true, 
+        autoRefreshToken: true, 
+        detectSessionInUrl: true,
+        storage: window.localStorage,
+        storageKey: 'supabase.auth.token',
+        flowType: 'implicit'
+      }
+    }
+  );
+}
+
+// Export du client Supabase singleton
+export const supabase = getSupabaseClient();
+
+// ============================================================================
+// HMR - Préserver les données lors du hot-reload
+// ============================================================================
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {
+    console.log('🔥 [Supabase] HMR accepté, client préservé');
+  });
+  
+  // Éviter les fuites mémoire en nettoyant les anciens listeners
+  import.meta.hot.dispose(() => {
+    console.log('🧹 [Supabase] Nettoyage HMR (listeners préservés)');
+  });
+}
 
 // Fonction utilitaire pour les requêtes avec headers
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => { 

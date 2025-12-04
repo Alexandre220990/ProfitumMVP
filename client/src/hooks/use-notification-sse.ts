@@ -59,7 +59,7 @@ export function useNotificationSSE(options?: {
         }
 
         // Essayer de récupérer un token frais depuis Supabase
-        let token = await getSupabaseToken() || localStorage.getItem('supabase_token');
+        let token = await getSupabaseToken();
         
         // Toujours essayer de récupérer une session fraîche depuis Supabase pour s'assurer que le token n'est pas expiré
         console.log('🔄 Vérification session Supabase pour SSE...');

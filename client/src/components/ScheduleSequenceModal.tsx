@@ -110,7 +110,7 @@ export default function ScheduleSequenceModal({
   const generateWithAI = async () => {
     try {
       setIsGenerating(true);
-      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
 
       // Préparer les informations du prospect
       const prospectInfo = {
@@ -184,7 +184,7 @@ export default function ScheduleSequenceModal({
 
     try {
       setIsScheduling(true);
-      const token = await getSupabaseToken() || localStorage.getItem('supabase_token');
+      const token = await getSupabaseToken();
 
       // Calculer les dates d'envoi
       const now = new Date();
