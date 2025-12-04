@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { WorkflowConfig } from '@/types/import';
 import { toast } from 'sonner';
 import { config as envConfig } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface AdvancedConfigStepProps {
   onConfigured: (workflowConfig: WorkflowConfig) => void;
@@ -30,7 +31,7 @@ export default function AdvancedConfigStep({
   }, []);
 
   const loadData = async () => {
-    const token = localStorage.getItem('token');
+    const token = await getSupabaseToken();
     
     try {
       // Charger experts

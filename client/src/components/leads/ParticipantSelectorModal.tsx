@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { config } from '@/config';
 import { useAuth } from '@/hooks/use-auth';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ============================================================================
@@ -96,7 +97,7 @@ export const ParticipantSelectorModal: React.FC<ParticipantSelectorModalProps> =
       setLoading(true);
       const response = await fetch(`${config.API_URL}/api/unified-messaging/contacts`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${await getSupabaseToken()}`,
           'Content-Type': 'application/json'
         }
       });

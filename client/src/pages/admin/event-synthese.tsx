@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
 import { RDVReportModal } from '@/components/rdv/RDVReportModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -269,7 +270,7 @@ const EventSynthese: React.FC = () => {
     if (!event?.id) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/rdv/${event.id}/respond`, {
         method: 'PUT',
         headers: {

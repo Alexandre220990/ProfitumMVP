@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { ExcelFileData, MappingConfig, WorkflowConfig, PreviewData } from '@/types/import';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface PreviewTableProps {
   fileData: ExcelFileData;
@@ -32,7 +33,7 @@ export default function PreviewTable({
   const loadPreview = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/admin/import/preview`, {
         method: 'POST',
         headers: {

@@ -3,6 +3,7 @@ import { Progress } from '@/components/ui/progress';
 import { ExcelFileData, MappingConfig, WorkflowConfig, ImportResult } from '@/types/import';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 
 interface ImportProgressProps {
   fileData: ExcelFileData;
@@ -31,7 +32,7 @@ export default function ImportProgress({
       
       // Recréer le fichier depuis les données (simulation)
       // En production, on devrait garder le fichier original
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       
       // Pour l'instant, on simule l'import
       // Dans une vraie implémentation, on devrait re-uploader le fichier

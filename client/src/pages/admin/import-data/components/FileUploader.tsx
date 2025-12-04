@@ -3,6 +3,7 @@ import { Upload, File, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { ExcelFileData } from '@/types/import';
 
 interface FileUploaderProps {
@@ -67,7 +68,7 @@ export default function FileUploader({ onFileUploaded }: FileUploaderProps) {
       const formData = new FormData();
       formData.append('file', file);
 
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/admin/import/upload`, {
         method: 'POST',
         headers: {

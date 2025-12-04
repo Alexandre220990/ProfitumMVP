@@ -28,6 +28,7 @@ import InvoiceDisplay from './client/InvoiceDisplay';
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
 import { useDossierNotifications } from '@/hooks/useDossierNotifications';
 import { get, post } from '@/lib/api';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import { getProductConfig} from '@/config/productWorkflowConfigs';
 import { config } from '@/config/env';
 import CharterDialog from '@/components/CharterDialog';
@@ -783,7 +784,7 @@ const partnerRequestAttemptedRef = useRef(false);
 
     try {
       // Appeler l'API backend pour assigner l'expert
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/dossier-steps/expert/select`, {
         method: 'POST',
         headers: {

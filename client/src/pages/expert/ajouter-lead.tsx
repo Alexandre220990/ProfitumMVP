@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { config } from "@/config/env";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 
 export default function ExpertAjouterLeadPage() {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ export default function ExpertAjouterLeadPage() {
         return;
       }
 
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const response = await fetch(`${config.API_URL}/api/expert/leads`, {
         method: 'POST',
         headers: {

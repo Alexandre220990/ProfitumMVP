@@ -28,6 +28,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ContactsModal } from './ContactsModal';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { getSupabaseToken } from '@/lib/auth-helpers';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -356,7 +357,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
     if (!messaging.currentConversation) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getSupabaseToken();
       const isAdmin = user?.type === 'admin';
       const endpoint = isAdmin 
         ? `/api/unified-messaging/conversations/${messaging.currentConversation.id}/hard`
