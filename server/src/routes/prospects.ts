@@ -1,8 +1,19 @@
 import express from 'express';
+import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
 import { ProspectService } from '../services/ProspectService';
 import { ProspectEmailService } from '../services/ProspectEmailService';
+import { ProspectReportService } from '../services/ProspectReportService';
+import { ProspectRepliesService } from '../services/ProspectRepliesService';
 import { ProspectFilters, ProspectEnrichmentData } from '../types/prospects';
+
+// Configuration multer pour upload de fichiers
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB max
+  }
+});
 import OpenAI from 'openai';
 
 const router = express.Router();
@@ -1964,6 +1975,1054 @@ Réponds UNIQUEMENT au format JSON suivant (sans texte avant ou après) :
       success: false,
       error: error.message || 'Erreur lors de la génération par IA'
     });
+  }
+});
+
+// ============================================================================
+// ENDPOINTS V4 - SYSTÈME OPTIMISÉ COMPLET
+// ============================================================================
+
+import ProspectEnrichmentServiceV4 from '../services/ProspectEnrichmentServiceV4';
+import SequenceGeneratorServiceV4 from '../services/SequenceGeneratorServiceV4';
+import SequenceSchedulerService from '../services/SequenceSchedulerService';
+import SequencePerformanceTracker from '../services/SequencePerformanceTracker';
+import ProspectCacheService from '../services/ProspectCacheService';
+import DataCompletenessDetector from '../services/DataCompletenessDetector';
+
+/**
+ * POST /api/prospects/generate-optimal-sequence-v4
+ * Génération optimale avec enrichissement complet V4
+ */
+router.post('/generate-optimal-sequence-v4', async (req, res) => {
+  try {
+    const { prospectInfo, context, defaultNumEmails = 3, forceReenrichment = false } = req.body;
+
+    if (!prospectInfo) {
+      return res.status(400).json({
+        success: false,
+        error: 'Informations prospect requises'
+      });
+    }
+
+    if (!openai) {
+      return res.status(500).json({
+        success: false,
+        error: 'Service IA non configuré'
+      });
+    }
+
+    console.log(`🚀 Démarrage génération V4 pour ${prospectInfo.company_name || prospectInfo.email}`);
+
+    // Enrichissement complet V4 (avec cache intelligent)
+    const enrichedData = await ProspectEnrichmentServiceV4.enrichProspectComplete(
+      prospectInfo,
+      defaultNumEmails,
+      forceReenrichment
+    );
+
+    // Génération de séquence optimale
+    const { sequence, adjustment } = await SequenceGeneratorServiceV4.generateOptimalSequence(
+      prospectInfo,
+      enrichedData,
+      context || '',
+      defaultNumEmails
+    );
+
+    // Sauvegarder l'enrichissement en base si ID prospect disponible
+    if (prospectInfo.id) {
+      await supabase
+        .from('prospects')
+        .update({
+          enrichment_status: 'completed',
+          enrichment_data: enrichedData,
+          enriched_at: new Date().toISOString(),
+          ai_status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', prospectInfo.id);
+
+      console.log(`✅ Enrichissement V4 sauvegardé pour prospect ${prospectInfo.id}`);
+    }
+
+    // Construire les insights
+    const prospectInsights = {
+      potentiel_economies: `${enrichedData.operational_data.potentiel_global_profitum.economies_annuelles_totales.moyenne}€/an`,
+      score_attractivite: `${enrichedData.operational_data.potentiel_global_profitum.score_attractivite_prospect}/10`,
+      timing_strategy: enrichedData.timing_analysis.scoring_opportunite.action_recommandee,
+      donnees_operationnelles: {
+        poids_lourds: enrichedData.operational_data.donnees_operationnelles.parc_vehicules.poids_lourds_plus_7_5T.valeur,
+        chauffeurs: enrichedData.operational_data.donnees_operationnelles.ressources_humaines.nombre_chauffeurs.valeur,
+        salaries: enrichedData.operational_data.donnees_operationnelles.ressources_humaines.nombre_salaries_total.valeur,
+        ca: enrichedData.operational_data.donnees_operationnelles.donnees_financieres.chiffre_affaires.valeur,
+        surface_locaux: enrichedData.operational_data.donnees_operationnelles.infrastructures.locaux_principaux.surface_m2.valeur,
+        statut_propriete: enrichedData.operational_data.donnees_operationnelles.infrastructures.locaux_principaux.statut_propriete.proprietaire_ou_locataire
+      }
+    };
+
+    return res.json({
+      success: true,
+      data: {
+        sequence,
+        enrichment: enrichedData,
+        adjustment: {
+          adjusted: adjustment.adjusted,
+          original_num: adjustment.originalNum || defaultNumEmails,
+          new_num: adjustment.newNum || defaultNumEmails,
+          change: adjustment.adjustment || 0,
+          rationale: adjustment.rationale || 'Aucun ajustement nécessaire'
+        },
+        prospect_insights: prospectInsights
+      },
+      message: adjustment.adjusted 
+        ? `Séquence générée avec ${sequence.steps.length} emails (ajustée depuis ${adjustment.originalNum})`
+        : `Séquence générée avec ${sequence.steps.length} emails (optimal)`
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur génération V4:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur lors de la génération V4'
+    });
+  }
+});
+
+/**
+ * POST /api/prospects/generate-optimal-sequence-batch-v4
+ * Génération batch pour liste de prospects
+ */
+router.post('/generate-optimal-sequence-batch-v4', async (req, res) => {
+  try {
+    const { prospects, context, defaultNumEmails = 3, forceReenrichment = false } = req.body;
+
+    if (!prospects || !Array.isArray(prospects) || prospects.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Liste de prospects requise'
+      });
+    }
+
+    if (!openai) {
+      return res.status(500).json({
+        success: false,
+        error: 'Service IA non configuré'
+      });
+    }
+
+    console.log(`📋 Génération batch V4 pour ${prospects.length} prospects...`);
+
+    const results = [];
+    const adjustments = {
+      increased: 0,
+      decreased: 0,
+      unchanged: 0
+    };
+
+    for (const prospect of prospects) {
+      try {
+        console.log(`\n🔄 Traitement ${prospect.company_name || prospect.email}...`);
+
+        // Enrichissement (avec cache intelligent)
+        const enrichedData = await ProspectEnrichmentServiceV4.enrichProspectComplete(
+          prospect,
+          defaultNumEmails,
+          forceReenrichment
+        );
+
+        // Génération
+        const { sequence, adjustment } = await SequenceGeneratorServiceV4.generateOptimalSequence(
+          prospect,
+          enrichedData,
+          context || '',
+          defaultNumEmails
+        );
+
+        // Sauvegarder en base
+        if (prospect.id) {
+          await supabase
+            .from('prospects')
+            .update({
+              enrichment_status: 'completed',
+              enrichment_data: enrichedData,
+              enriched_at: new Date().toISOString(),
+              ai_status: 'completed',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+        }
+
+        // Tracking des ajustements
+        if (adjustment.adjusted) {
+          if (adjustment.adjustment && adjustment.adjustment > 0) {
+            adjustments.increased++;
+          } else {
+            adjustments.decreased++;
+          }
+        } else {
+          adjustments.unchanged++;
+        }
+
+        results.push({
+          success: true,
+          prospect: {
+            id: prospect.id,
+            company_name: prospect.company_name,
+            email: prospect.email
+          },
+          sequence,
+          enrichment: enrichedData,
+          adjustment
+        });
+
+        // Pause pour ne pas surcharger l'API
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+      } catch (error: any) {
+        console.error(`❌ Erreur pour ${prospect.company_name || prospect.email}:`, error);
+        results.push({
+          success: false,
+          prospect: {
+            id: prospect.id,
+            company_name: prospect.company_name,
+            email: prospect.email
+          },
+          error: error.message
+        });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+
+    console.log(`\n📊 RÉSUMÉ BATCH V4 :`);
+    console.log(`✅ Succès : ${successCount}/${prospects.length}`);
+    console.log(`📈 Augmentations : ${adjustments.increased}`);
+    console.log(`📉 Réductions : ${adjustments.decreased}`);
+    console.log(`➡️ Inchangés : ${adjustments.unchanged}`);
+
+    return res.json({
+      success: true,
+      total: prospects.length,
+      generated: successCount,
+      adjustments,
+      results,
+      message: `${successCount}/${prospects.length} séquences générées (${adjustments.increased} augmentées, ${adjustments.decreased} réduites)`
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur génération batch V4:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur lors de la génération batch V4'
+    });
+  }
+});
+
+/**
+ * POST /api/prospects/enrich-only-v4
+ * Enrichissement seul sans génération de séquence (avec cache intelligent)
+ */
+router.post('/enrich-only-v4', async (req, res) => {
+  try {
+    const { prospectInfo, forceReenrichment = false } = req.body;
+
+    if (!prospectInfo) {
+      return res.status(400).json({
+        success: false,
+        error: 'Informations prospect requises'
+      });
+    }
+
+    if (!openai) {
+      return res.status(500).json({
+        success: false,
+        error: 'Service IA non configuré'
+      });
+    }
+
+    console.log(`🔍 Enrichissement seul V4 pour ${prospectInfo.company_name || prospectInfo.email}`);
+
+    // Vérifier complétude si pas de force
+    let cacheHit = false;
+    if (!forceReenrichment && prospectInfo.id) {
+      const shouldSkip = DataCompletenessDetector.shouldSkipEnrichment(prospectInfo);
+      if (shouldSkip.skip) {
+        const existing = DataCompletenessDetector.createEnrichmentFromExisting(prospectInfo);
+        if (existing) {
+          cacheHit = true;
+          return res.json({
+            success: true,
+            data: existing,
+            cached: true,
+            completeness: shouldSkip.completeness,
+            message: `Enrichissement skip: ${shouldSkip.reason}`
+          });
+        }
+      }
+    }
+
+    // Enrichissement complet V4 (utilise cache automatiquement)
+    const enrichedData = await ProspectEnrichmentServiceV4.enrichProspectComplete(
+      prospectInfo,
+      3, // Par défaut pour l'analyse timing
+      forceReenrichment
+    );
+
+    // Sauvegarder en base si ID disponible (fait automatiquement par cache service)
+    // Mais on peut aussi le faire explicitement
+    if (prospectInfo.id) {
+      await supabase
+        .from('prospects')
+        .update({
+          enrichment_status: 'completed',
+          enrichment_data: enrichedData,
+          enriched_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', prospectInfo.id);
+    }
+
+    return res.json({
+      success: true,
+      data: enrichedData,
+      cached: cacheHit,
+      message: cacheHit 
+        ? 'Données récupérées du cache' 
+        : 'Enrichissement V4 terminé avec succès'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur enrichissement V4:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur lors de l\'enrichissement V4'
+    });
+  }
+});
+
+/**
+ * POST /api/prospects/:prospectId/invalidate-cache
+ * Invalider le cache d'un prospect (forcer re-enrichissement)
+ */
+router.post('/:prospectId/invalidate-cache', async (req, res) => {
+  try {
+    const { prospectId } = req.params;
+    const { cacheType } = req.body; // 'linkedin' | 'web' | 'operational' | 'timing' | 'full' | undefined
+
+    await ProspectCacheService.invalidateCache(
+      prospectId,
+      cacheType as any
+    );
+
+    return res.json({
+      success: true,
+      message: `Cache invalidé pour prospect ${prospectId}${cacheType ? ` (${cacheType})` : ' (tous)'}`
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur invalidation cache:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/prospects/:prospectId/completeness
+ * Obtenir le score de complétude d'un prospect
+ */
+router.get('/:prospectId/completeness', async (req, res) => {
+  try {
+    const { prospectId } = req.params;
+
+    const { data: prospect, error } = await supabase
+      .from('prospects')
+      .select('*')
+      .eq('id', prospectId)
+      .single();
+
+    if (error || !prospect) {
+      return res.status(404).json({
+        success: false,
+        error: 'Prospect non trouvé'
+      });
+    }
+
+    const completeness = DataCompletenessDetector.calculateCompleteness(prospect);
+    const fieldsToEnrich = DataCompletenessDetector.getFieldsToEnrich(completeness);
+
+    return res.json({
+      success: true,
+      data: {
+        completeness,
+        fields_to_enrich: fieldsToEnrich,
+        recommendation: completeness.recommendation
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur calcul complétude:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/prospects/cache/stats
+ * Statistiques du cache
+ */
+router.get('/cache/stats', async (req, res) => {
+  try {
+    const stats = ProspectCacheService.getCacheStats();
+
+    return res.json({
+      success: true,
+      data: stats
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur stats cache:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================================================
+// ENDPOINTS SCHEDULING ET TRACKING
+// ============================================================================
+
+/**
+ * POST /api/prospects/schedule-sequence
+ * Programmer l'envoi d'une séquence générée
+ */
+router.post('/schedule-sequence', async (req, res) => {
+  try {
+    const { prospectId, sequence, startDate, sequenceName } = req.body;
+
+    if (!prospectId || !sequence) {
+      return res.status(400).json({
+        success: false,
+        error: 'Prospect ID et séquence requis'
+      });
+    }
+
+    const result = await SequenceSchedulerService.scheduleSequence({
+      prospectId,
+      sequence,
+      startDate: startDate ? new Date(startDate) : undefined,
+      sequenceName
+    });
+
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        scheduled_emails: result.scheduledEmails,
+        total: result.scheduledEmails.length
+      },
+      message: `${result.scheduledEmails.length} emails programmés avec succès`
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur programmation séquence:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/prospects/schedule-sequence-batch
+ * Programmer plusieurs séquences
+ */
+router.post('/schedule-sequence-batch', async (req, res) => {
+  try {
+    const { prospects, startDate, sequenceName } = req.body;
+
+    if (!prospects || !Array.isArray(prospects)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Liste de prospects requise'
+      });
+    }
+
+    const result = await SequenceSchedulerService.scheduleSequenceBatch(
+      prospects,
+      startDate ? new Date(startDate) : undefined,
+      sequenceName
+    );
+
+    return res.json({
+      success: true,
+      data: result,
+      message: `${result.scheduled}/${result.total} séquences programmées`
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur programmation batch:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/prospects/:prospectId/cancel-sequence
+ * Annuler une séquence programmée
+ */
+router.post('/:prospectId/cancel-sequence', async (req, res) => {
+  try {
+    const { prospectId } = req.params;
+    const { reason } = req.body;
+
+    const result = await SequenceSchedulerService.cancelSequence(prospectId, reason);
+
+    return res.json({
+      success: true,
+      data: {
+        cancelled: result.cancelled
+      },
+      message: `${result.cancelled} email(s) annulé(s)`
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur annulation séquence:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/prospects/:prospectId/pause-sequence
+ * Mettre en pause une séquence
+ */
+router.post('/:prospectId/pause-sequence', async (req, res) => {
+  try {
+    const { prospectId } = req.params;
+
+    const result = await SequenceSchedulerService.pauseSequence(prospectId);
+
+    return res.json({
+      success: true,
+      data: {
+        paused: result.paused
+      },
+      message: `${result.paused} email(s) mis en pause`
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur pause séquence:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/prospects/:prospectId/resume-sequence
+ * Reprendre une séquence en pause
+ */
+router.post('/:prospectId/resume-sequence', async (req, res) => {
+  try {
+    const { prospectId } = req.params;
+
+    const result = await SequenceSchedulerService.resumeSequence(prospectId);
+
+    return res.json({
+      success: true,
+      data: {
+        resumed: result.resumed
+      },
+      message: `${result.resumed} email(s) repris`
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur reprise séquence:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/prospects/:prospectId/scheduled-sequence
+ * Récupérer la séquence programmée d'un prospect
+ */
+router.get('/:prospectId/scheduled-sequence', async (req, res) => {
+  try {
+    const { prospectId } = req.params;
+
+    const result = await SequenceSchedulerService.getScheduledSequence(prospectId);
+
+    return res.json({
+      success: true,
+      data: {
+        emails: result.emails
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur récupération séquence:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/prospects/performance/metrics
+ * Obtenir les métriques globales de performance
+ */
+router.get('/performance/metrics', async (req, res) => {
+  try {
+    const { dateFrom, dateTo } = req.query;
+
+    const metrics = await SequencePerformanceTracker.getGlobalMetrics(
+      dateFrom ? new Date(dateFrom as string) : undefined,
+      dateTo ? new Date(dateTo as string) : undefined
+    );
+
+    return res.json({
+      success: true,
+      data: metrics
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur métriques:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/prospects/performance/ice-breakers
+ * Analyser les performances par type d'ice breaker
+ */
+router.get('/performance/ice-breakers', async (req, res) => {
+  try {
+    const performance = await SequencePerformanceTracker.getIceBreakerPerformance();
+
+    return res.json({
+      success: true,
+      data: performance
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur analyse ice breakers:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/prospects/performance/adjustments
+ * Analyser les performances selon les ajustements
+ */
+router.get('/performance/adjustments', async (req, res) => {
+  try {
+    const performance = await SequencePerformanceTracker.getAdjustmentPerformance();
+
+    return res.json({
+      success: true,
+      data: performance
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur analyse ajustements:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/prospects/performance/score-correlation
+ * Analyser la corrélation score attractivité / conversion
+ */
+router.get('/performance/score-correlation', async (req, res) => {
+  try {
+    const correlation = await SequencePerformanceTracker.getScoreCorrelation();
+
+    return res.json({
+      success: true,
+      data: correlation
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur corrélation scores:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/prospects/performance/report
+ * Générer un rapport complet de performances
+ */
+router.get('/performance/report', async (req, res) => {
+  try {
+    const { dateFrom, dateTo } = req.query;
+
+    const report = await SequencePerformanceTracker.generatePerformanceReport(
+      dateFrom ? new Date(dateFrom as string) : undefined,
+      dateTo ? new Date(dateTo as string) : undefined
+    );
+
+    return res.json({
+      success: true,
+      data: report
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur rapport performances:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/prospects/performance/ab-testing-data
+ * Exporter les données pour A/B testing V4 vs Legacy
+ */
+router.get('/performance/ab-testing-data', async (req, res) => {
+  try {
+    const data = await SequencePerformanceTracker.exportABTestingData();
+
+    return res.json({
+      success: true,
+      data,
+      summary: {
+        v4_count: data.v4_prospects.length,
+        legacy_count: data.legacy_prospects.length,
+        v4_avg_reply_rate: data.v4_prospects.length > 0
+          ? data.v4_prospects.reduce((sum, p) => sum + p.reply_rate, 0) / data.v4_prospects.length
+          : 0,
+        legacy_avg_reply_rate: data.legacy_prospects.length > 0
+          ? data.legacy_prospects.reduce((sum, p) => sum + p.reply_rate, 0) / data.legacy_prospects.length
+          : 0
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur export A/B testing:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================================================
+// RAPPORTS PROSPECTS
+// ============================================================================
+
+/**
+ * GET /api/prospects/:id/report
+ * Récupérer le rapport d'un prospect
+ */
+router.get('/:id/report', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await ProspectReportService.getReport(id);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/prospects/:id/report
+ * Créer ou mettre à jour un rapport
+ */
+router.post('/:id/report', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.id || 'system';
+    
+    const result = await ProspectReportService.createOrUpdateReport(
+      id,
+      req.body,
+      userId
+    );
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/prospects/:id/report/enrich
+ * Enrichir le rapport avec l'IA
+ */
+router.post('/:id/report/enrich', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.id || 'system';
+
+    const result = await ProspectReportService.enrichReport({
+      prospect_id: id,
+      user_id: userId
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/prospects/:id/report/history
+ * Historique des versions du rapport
+ */
+router.get('/:id/report/history', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await ProspectReportService.getReportHistory(id);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/prospects/:id/report/restore
+ * Restaurer une version précédente
+ */
+router.post('/:id/report/restore', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { version } = req.body;
+    const userId = (req as any).user?.id || 'system';
+
+    const result = await ProspectReportService.restoreVersion(id, version, userId);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/prospects/:id/report/attachments
+ * Ajouter une pièce jointe au rapport
+ */
+router.post('/:id/report/attachments', upload.single('file'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.id || 'system';
+    
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Aucun fichier fourni' 
+      });
+    }
+
+    const result = await ProspectReportService.addAttachment(id, req.file, userId);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/prospects/:id/report/attachments
+ * Supprimer une pièce jointe
+ */
+router.delete('/:id/report/attachments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'URL du fichier requise' 
+      });
+    }
+
+    const result = await ProspectReportService.removeAttachment(id, url);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/prospects/:id/report
+ * Supprimer un rapport
+ */
+router.delete('/:id/report', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await ProspectReportService.deleteReport(id);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/prospects/reports/stats
+ * Statistiques sur les rapports
+ */
+router.get('/reports/stats', async (req, res) => {
+  try {
+    const result = await ProspectReportService.getReportStats();
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
+// RÉPONSES PROSPECTS
+// ============================================================================
+
+/**
+ * GET /api/prospects/replies
+ * Liste toutes les réponses avec filtres
+ */
+router.get('/replies', async (req, res) => {
+  try {
+    const filters = {
+      unread_only: req.query.unread === 'true',
+      sequence_id: req.query.sequence_id as string,
+      date_from: req.query.date_from as string,
+      date_to: req.query.date_to as string,
+      quick_reply_only: req.query.quick_reply === 'true'
+    };
+
+    const result = await ProspectRepliesService.getRepliesSummary(filters);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/prospects/replies/stats
+ * Statistiques globales des réponses
+ */
+router.get('/replies/stats', async (req, res) => {
+  try {
+    const result = await ProspectRepliesService.getGlobalStats();
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/prospects/replies/unread-count
+ * Nombre de réponses non lues (pour badge)
+ */
+router.get('/replies/unread-count', async (req, res) => {
+  try {
+    const result = await ProspectRepliesService.getUnreadCount();
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/prospects/:id/replies/mark-read
+ * Marquer toutes les réponses comme lues
+ */
+router.post('/:id/replies/mark-read', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await ProspectRepliesService.markProspectRepliesAsRead(id);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 

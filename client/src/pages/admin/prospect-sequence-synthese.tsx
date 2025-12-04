@@ -20,6 +20,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
+import ProspectReportSection from "@/components/admin/prospection/ProspectReportSection";
 
 interface Prospect {
   id: string;
@@ -758,6 +759,9 @@ export default function ProspectSequenceSynthese() {
           )}
         </CardContent>
       </Card>
+
+      {/* Section Rapport Prospect */}
+      {prospect && <ProspectReportSection prospectId={prospect.id} />}
 
       {/* Modal Modifier Séquence */}
       <Dialog open={showEditSequenceModal} onOpenChange={setShowEditSequenceModal}>

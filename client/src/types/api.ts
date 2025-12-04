@@ -117,3 +117,102 @@ export interface CharteSignatureResponse { signed: boolean;
 
 export type CharteSignatureApiResponse = ApiResponse<CharteSignature>;
 export type CharteSignatureCheckResponse = ApiResponse<CharteSignatureResponse>;
+
+// ============================================================================
+// TYPES RAPPORTS PROSPECTS
+// ============================================================================
+
+export interface ReportAttachment {
+  name: string;
+  url: string;
+  size: number;
+  type: string;
+  uploaded_at: string;
+}
+
+export interface ProspectReport {
+  id: string;
+  prospect_id: string;
+  report_content: string;
+  report_html: string | null;
+  enriched_content: string | null;
+  enriched_html: string | null;
+  action_plan: string | null;
+  created_by: string | null;
+  last_modified_by: string | null;
+  enriched_at: string | null;
+  enriched_by: string | null;
+  tags: string[] | null;
+  attachments: ReportAttachment[];
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReportEnrichmentAnalysis {
+  strengths: string[];
+  weaknesses: string[];
+  opportunities: string[];
+  threats: string[];
+  key_insights: string[];
+  potential_score: number;
+  urgency_score: number;
+  fit_score: number;
+  closing_probability: number;
+}
+
+export interface ReportEnrichmentResult {
+  enriched_content: string;
+  enriched_html: string;
+  action_plan: string;
+  analysis: ReportEnrichmentAnalysis;
+}
+
+// ============================================================================
+// TYPES RÉPONSES PROSPECTS
+// ============================================================================
+
+export interface ProspectReplySummary {
+  prospect_id: string;
+  prospect_email: string;
+  firstname: string | null;
+  lastname: string | null;
+  company_name: string | null;
+  emailing_status: string;
+  first_reply_at: string;
+  last_reply_at: string;
+  total_replies: number;
+  unread_replies: number;
+  sequence_start_date: string | null;
+  emails_sent_before_reply: number;
+  total_emails_sent: number;
+  sequence_id: string | null;
+  sequence_name: string | null;
+  last_activity_at: string;
+  is_quick_reply: boolean;
+  has_report: boolean;
+}
+
+export interface RepliesFilters {
+  unread_only?: boolean;
+  sequence_id?: string;
+  date_from?: string;
+  date_to?: string;
+  quick_reply_only?: boolean;
+}
+
+export interface RepliesGlobalStats {
+  total_replies: number;
+  response_rate: number;
+  avg_response_time_hours: number;
+  quick_replies_count: number;
+  replies_today: number;
+  replies_this_week: number;
+  replies_this_month: number;
+  best_sequence: {
+    sequence_id: string;
+    sequence_name: string;
+    response_rate: number;
+  } | null;
+  avg_emails_before_reply: number;
+}

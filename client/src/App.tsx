@@ -134,6 +134,7 @@ const AdminImportData = React.lazy(() => import('./pages/admin/import-data'));
 const ProspectionAdmin = React.lazy(() => import('./pages/admin/prospection'));
 const ProspectSequencePage = React.lazy(() => import('./pages/admin/prospection/sequence/[sequenceId]'));
 const EmailReplyPage = React.lazy(() => import('./pages/admin/prospection/email-reply/[prospectId]/[emailReceivedId]'));
+const ReponsesPage = React.lazy(() => import('./pages/admin/prospection/reponses'));
 
 // Expert pages
 const ExpertDashboard = React.lazy(() => import('./pages/expert/dashboard'));
@@ -425,6 +426,7 @@ function App() {
                         
                         {/* Prospection */}
                         <Route path="prospection" element={<ProspectionAdmin />} />
+                        <Route path="prospection/reponses" element={<ReponsesPage />} />
                         <Route path="prospection/sequence/:sequenceId" element={<ProspectSequencePage />} />
                         <Route path="prospection/email-reply/:prospectId/:emailReceivedId" element={<EmailReplyPage />} />
                         
