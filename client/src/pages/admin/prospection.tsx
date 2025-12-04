@@ -1177,7 +1177,7 @@ export default function ProspectionAdmin() {
 
       const token = await getSupabaseToken();
 
-      // Préparer les informations des prospects sélectionnés
+      // Préparer les informations des prospects sélectionnés avec enrichissement complet
       const selectedIds = Array.from(selectedProspectIds);
       const prospectsInfo = selectedIds.map(id => {
         const prospect = prospects.find(p => p.id === id);
@@ -1188,13 +1188,21 @@ export default function ProspectionAdmin() {
           firstname: prospect?.firstname,
           lastname: prospect?.lastname,
           email: prospect?.email,
+          job_title: prospect?.job_title,
           naf_code: prospect?.naf_code,
-          naf_label: prospect?.naf_label
+          naf_label: prospect?.naf_label,
+          linkedin_company_url: prospect?.linkedin_company,
+          linkedin_profile_url: prospect?.linkedin_profile,
+          website: prospect?.company_website,
+          phone: prospect?.phone_direct || prospect?.phone_standard,
+          address: prospect?.adresse,
+          city: prospect?.city,
+          postal_code: prospect?.postal_code
         };
       });
 
-      // Appeler l'API de génération d'email simple
-      const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-email`, {
+      // Appeler l'API de génération d'email enrichi V4 (avec LinkedIn, secteur, etc.)
+      const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-email-v4`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1202,7 +1210,8 @@ export default function ProspectionAdmin() {
         },
         body: JSON.stringify({
           prospects: prospectsInfo,
-          context: aiContextBulkEmail.trim()
+          context: aiContextBulkEmail.trim(),
+          forceReenrichment: false // Utiliser le cache si disponible
         })
       });
 
@@ -1213,11 +1222,23 @@ export default function ProspectionAdmin() {
         return;
       }
 
-      // Utiliser le premier résultat comme modèle (personnalisé pour le premier prospect)
+      // Utiliser le résultat enrichi (personnalisé avec LinkedIn, secteur, etc.)
       if (result.data && result.data.subject && result.data.body) {
         setEmailSubject(result.data.subject);
         setEmailBody(result.data.body);
-        toast.success('✨ Email généré par IA avec succès !');
+        
+        // Afficher les insights enrichis si disponibles
+        if (result.data.prospect_insights) {
+          const insights = result.data.prospect_insights;
+          console.log('📊 Insights enrichis V4:', insights);
+          toast.success(
+            `✨ Email enrichi V4 généré ! Score perso: ${result.data.meta?.score_personnalisation || '?'}/10 | ` +
+            `Potentiel: ${insights.potentiel_economies || '?'} | ` +
+            `${insights.ice_breakers_disponibles || 0} ice breakers LinkedIn`
+          );
+        } else {
+          toast.success('✨ Email enrichi V4 généré avec succès !');
+        }
       } else {
         toast.error('Aucun contenu généré');
       }
@@ -2641,12 +2662,12 @@ export default function ProspectionAdmin() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">IA Traités</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">SEQUENCES ENRICHIES</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.ai_processed_count}</div>
               <div className="text-xs text-gray-500">
-                {stats.enriched_count > 0 ? ((stats.ai_processed_count / stats.enriched_count) * 100).toFixed(1) : 0}%
+                {stats.total_prospects > 0 ? ((stats.ai_processed_count / stats.total_prospects) * 100).toFixed(1) : 0}%
               </div>
             </CardContent>
           </Card>

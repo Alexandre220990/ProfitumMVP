@@ -5,7 +5,7 @@ import { ProspectService } from '../services/ProspectService';
 import { ProspectEmailService } from '../services/ProspectEmailService';
 import { ProspectReportService } from '../services/ProspectReportService';
 import { ProspectRepliesService } from '../services/ProspectRepliesService';
-import { ProspectFilters, ProspectEnrichmentData } from '../types/prospects';
+import { ProspectFilters, ProspectEnrichmentData, Prospect } from '../types/prospects';
 
 // Configuration multer pour upload de fichiers
 const upload = multer({
@@ -1978,6 +1978,262 @@ Réponds UNIQUEMENT au format JSON suivant (sans texte avant ou après) :
   }
 });
 
+// POST /api/prospects/generate-ai-email-v4 - Générer un email simple ENRICHI (comme séquences V4)
+router.post('/generate-ai-email-v4', async (req, res) => {
+  try {
+    const { prospects, context, forceReenrichment = false } = req.body;
+
+    if (!prospects || prospects.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Au moins un prospect est requis'
+      });
+    }
+
+    if (!context) {
+      return res.status(400).json({
+        success: false,
+        error: 'Le contexte est requis pour la génération'
+      });
+    }
+
+    if (!openai) {
+      return res.status(500).json({
+        success: false,
+        error: 'Service IA non configuré'
+      });
+    }
+
+    // Utiliser le premier prospect comme base
+    const prospect = prospects[0];
+    const prospectInfo: Prospect = {
+      id: prospect.id,
+      company_name: prospect.company_name,
+      email: prospect.email,
+      firstname: prospect.firstname,
+      lastname: prospect.lastname,
+      job_title: prospect.job_title,
+      naf_code: prospect.naf_code,
+      naf_label: prospect.naf_label,
+      siren: prospect.siren,
+      linkedin_company: prospect.linkedin_company || prospect.linkedin_company_url || null,
+      linkedin_profile: prospect.linkedin_profile || prospect.linkedin_profile_url || null,
+      company_website: prospect.company_website || prospect.website || null,
+      phone_direct: prospect.phone_direct || prospect.phone || null,
+      phone_standard: prospect.phone_standard || null,
+      adresse: prospect.adresse || prospect.address || null,
+      city: prospect.city,
+      postal_code: prospect.postal_code,
+      // Champs requis par l'interface Prospect
+      email_validity: prospect.email_validity || null,
+      source: prospect.source || 'manuel',
+      created_at: prospect.created_at || new Date().toISOString(),
+      updated_at: prospect.updated_at || new Date().toISOString(),
+      enrichment_status: prospect.enrichment_status || 'pending',
+      enrichment_data: prospect.enrichment_data || null,
+      enriched_at: prospect.enriched_at || null,
+      ai_status: prospect.ai_status || 'pending',
+      emailing_status: prospect.emailing_status || 'not_sent',
+      score_priority: prospect.score_priority || 0,
+      ai_summary: prospect.ai_summary || null,
+      ai_trigger_points: prospect.ai_trigger_points || null,
+      ai_product_match: prospect.ai_product_match || null,
+      ai_email_personalized: prospect.ai_email_personalized || null,
+      metadata: prospect.metadata || null,
+      import_batch_id: prospect.import_batch_id || null,
+      employee_range: prospect.employee_range || null
+    };
+
+    console.log(`🚀 Génération email enrichi V4 pour ${prospectInfo.company_name || prospectInfo.email}`);
+
+    // ✨ ENRICHISSEMENT COMPLET V4 (comme pour les séquences)
+    const enrichedData = await ProspectEnrichmentServiceV4.enrichProspectComplete(
+      prospectInfo,
+      1, // Un seul email
+      forceReenrichment
+    );
+
+    console.log(`✅ Enrichissement V4 terminé pour ${prospectInfo.company_name}`);
+
+    // Sauvegarder l'enrichissement en base si ID prospect disponible
+    if (prospectInfo.id) {
+      await supabase
+        .from('prospects')
+        .update({
+          enrichment_status: 'completed',
+          enrichment_data: enrichedData,
+          enriched_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', prospectInfo.id);
+
+      console.log(`💾 Enrichissement V4 sauvegardé pour prospect ${prospectInfo.id}`);
+    }
+
+    // 📝 CONSTRUIRE UN PROMPT SYSTÈME ENRICHI
+    const currentDate = new Date().toISOString().split('T')[0];
+    const systemPrompt = `Tu es un expert en prospection B2B ultra-personnalisée pour Profitum, plateforme SaaS d'optimisation financière pour entreprises françaises.
+
+🎯 IDENTITÉ CLAIRE ET ABSOLUE :
+- TU REPRÉSENTES : Profitum (l'expéditeur de l'email)
+- TU ÉCRIS À : ${prospectInfo.company_name} (le prospect/destinataire)
+- TU N'ES JAMAIS : L'entreprise du prospect
+- TOUJOURS se présenter au nom de Profitum
+
+📊 DONNÉES ENRICHIES DISPONIBLES :
+
+**DATE ACTUELLE : ${currentDate}**
+
+**PROFIL PROSPECT :**
+- Entreprise : ${prospectInfo.company_name}
+- Secteur : ${prospectInfo.naf_label || 'Non renseigné'}
+- Contact : ${prospectInfo.firstname} ${prospectInfo.lastname}
+- Poste : ${prospectInfo.job_title || 'Non renseigné'}
+
+**ICE BREAKERS LINKEDIN (AVEC GESTION TEMPORELLE) :**
+${enrichedData.linkedin_data ? JSON.stringify(enrichedData.linkedin_data.ice_breakers_generes, null, 2).substring(0, 1500) : 'Non disponibles'}
+
+**ÉLIGIBILITÉ & POTENTIEL PROFITUM :**
+${JSON.stringify(enrichedData.operational_data.donnees_operationnelles.signaux_eligibilite_profitum, null, 2).substring(0, 1000)}
+
+**POTENTIEL ÉCONOMIES :**
+- Moyenne : ${enrichedData.operational_data.potentiel_global_profitum.economies_annuelles_totales.moyenne}€/an
+- Maximum : ${enrichedData.operational_data.potentiel_global_profitum.economies_annuelles_totales.maximum}€/an
+- Score attractivité : ${enrichedData.operational_data.potentiel_global_profitum.score_attractivite_prospect}/10
+
+**CONTEXTE TEMPOREL :**
+${JSON.stringify(enrichedData.timing_analysis.analyse_periode.contexte_business, null, 2).substring(0, 800)}
+
+🚨 RÈGLES CRITIQUES :
+
+1. **GESTION DES ICE BREAKERS TEMPORELS** :
+   - Si statut_temporel = "FUTUR" → Utiliser phrase standard
+   - Si statut_temporel = "PASSE" → Utiliser phrase_alternative_si_passe
+   - Si statut_temporel = "EN_COURS" → Adapter avec phrase_alternative_si_en_cours
+   - Si statut_temporel = "PERIME" → Éviter cet ice breaker
+
+2. **TON PROFESSIONNEL MAIS CHALEUREUX** :
+   - ❌ Éviter : "On bosse avec", "On gère", "Ça cartonne"
+   - ✅ Utiliser : "Nous travaillons avec", "Nous accompagnons", "Tout vous est simplifié"
+
+3. **STRUCTURE EMAIL** :
+   - Ouverture personnalisée (ice breaker adapté temporellement)
+   - Connexion valeur (arguments éligibilité pertinents)
+   - Potentiel chiffré personnalisé
+   - Call-to-action clair
+   - 150-250 mots maximum
+
+4. **OBJET D'EMAIL** :
+   - Court (5-7 mots)
+   - Contextuel et personnalisé
+   - Pas de clichés marketing
+   - Si l'utilisateur fournit un objet dans les instructions, l'utiliser tel quel ou s'en inspirer`;
+
+    // 📝 PROMPT UTILISATEUR ENRICHI
+    const userPrompt = `🎯 INSTRUCTIONS UTILISATEUR (PRIORITÉ ABSOLUE) :
+
+${context}
+
+${context.toLowerCase().includes('objet:') || context.toLowerCase().includes('subject:') 
+  ? '\n⚠️ IMPORTANT : Un objet d\'email est mentionné dans les instructions ci-dessus. UTILISE-LE tel quel ou INSPIRE-TOI en pour créer quelque chose de similaire. Ne le remplace pas par quelque chose de complètement différent.\n' 
+  : ''}
+
+📋 TA TÂCHE : GÉNÉRATION ULTRA-PERSONNALISÉE
+
+**Étape 1 : SÉLECTIONNER LES MEILLEURS ICE BREAKERS**
+Choisis 1-2 ice breakers parmi ceux disponibles, en validant leur statut temporel.
+
+**Étape 2 : CONSTRUIRE L'EMAIL**
+Crée un email fluide qui :
+- Intègre les ice breakers de manière naturelle et temporellement cohérente
+- Utilise les arguments d'éligibilité pertinents
+- Mentionne le potentiel d'économies personnalisé
+- Adapte le timing du CTA au contexte (si période chargée, proposer "début janvier")
+
+**Étape 3 : VALIDATION TEMPORELLE**
+Assure-toi que chaque référence à un événement/post est cohérente avec sa date.
+
+Réponds UNIQUEMENT au format JSON suivant (sans texte avant ou après) :
+{
+  "subject": "L'objet de l'email (5-7 mots, contextuel)",
+  "body": "Le corps de l'email en HTML (avec <p>, <br>, <strong>, etc.)",
+  "ice_breakers_utilises": [
+    {
+      "type": "Événement",
+      "phrase": "Phrase exacte utilisée",
+      "statut_temporel": "PASSE",
+      "validation": "✅ Cohérent temporellement"
+    }
+  ],
+  "arguments_eligibilite_utilises": ["Arg1", "Arg2"],
+  "potentiel_mentionne": "${enrichedData.operational_data.potentiel_global_profitum.economies_annuelles_totales.moyenne}€/an",
+  "adaptation_temporelle": "Description de l'adaptation au contexte temporel",
+  "nombre_mots": 180,
+  "score_personnalisation": 9
+}`;
+
+    // 🤖 APPEL À L'IA
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      response_format: { type: 'json_object' }
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('Pas de réponse de l\'IA');
+    }
+
+    // Parser le JSON
+    const result = JSON.parse(content);
+
+    // 📊 INSIGHTS PROSPECT POUR LE FRONTEND
+    const prospectInsights = {
+      potentiel_economies: `${enrichedData.operational_data.potentiel_global_profitum.economies_annuelles_totales.moyenne}€/an`,
+      score_attractivite: `${enrichedData.operational_data.potentiel_global_profitum.score_attractivite_prospect}/10`,
+      timing_score: `${enrichedData.timing_analysis.scoring_opportunite.score_global_timing}/10`,
+      ice_breakers_disponibles: enrichedData.linkedin_data?.ice_breakers_generes?.length || 0,
+      donnees_operationnelles: {
+        poids_lourds: enrichedData.operational_data.donnees_operationnelles.parc_vehicules.poids_lourds_plus_7_5T.valeur,
+        chauffeurs: enrichedData.operational_data.donnees_operationnelles.ressources_humaines.nombre_chauffeurs.valeur,
+        salaries: enrichedData.operational_data.donnees_operationnelles.ressources_humaines.nombre_salaries_total.valeur
+      }
+    };
+
+    console.log(`✅ Email enrichi V4 généré : ${result.nombre_mots || '?'} mots, score perso ${result.score_personnalisation || '?'}/10`);
+
+    return res.json({
+      success: true,
+      data: {
+        subject: result.subject,
+        body: result.body,
+        meta: {
+          ice_breakers_utilises: result.ice_breakers_utilises,
+          arguments_eligibilite: result.arguments_eligibilite_utilises,
+          potentiel_mentionne: result.potentiel_mentionne,
+          adaptation_temporelle: result.adaptation_temporelle,
+          nombre_mots: result.nombre_mots,
+          score_personnalisation: result.score_personnalisation
+        },
+        enrichment: enrichedData,
+        prospect_insights: prospectInsights
+      },
+      message: `Email enrichi V4 généré avec succès (${result.nombre_mots} mots)`
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur génération email enrichi V4:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur lors de la génération par IA'
+    });
+  }
+});
+
 // ============================================================================
 // ENDPOINTS V4 - SYSTÈME OPTIMISÉ COMPLET
 // ============================================================================
@@ -3022,6 +3278,264 @@ router.post('/:id/replies/mark-read', async (req, res) => {
 
     return res.json(result);
   } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
+// GESTION DES EMAILS PROGRAMMÉS
+// ============================================================================
+
+/**
+ * PUT /api/prospects/scheduled-emails/:id
+ * Modifier un email programmé (sujet, corps, date)
+ */
+router.put('/scheduled-emails/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { subject, body, scheduled_for } = req.body;
+
+    // Vérifier que l'email existe et est bien en status 'scheduled'
+    const { data: existing, error: fetchError } = await supabase
+      .from('prospect_email_scheduled')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existing) {
+      return res.status(404).json({
+        success: false,
+        error: 'Email programmé non trouvé'
+      });
+    }
+
+    if (existing.status !== 'scheduled') {
+      return res.status(400).json({
+        success: false,
+        error: `Impossible de modifier un email avec le statut "${existing.status}"`
+      });
+    }
+
+    // Préparer les champs à mettre à jour
+    const updates: any = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (subject !== undefined) updates.subject = subject;
+    if (body !== undefined) updates.body = body;
+    if (scheduled_for !== undefined) {
+      // Valider la date
+      const newDate = new Date(scheduled_for);
+      if (isNaN(newDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          error: 'Date invalide'
+        });
+      }
+      updates.scheduled_for = newDate.toISOString();
+    }
+
+    // Mettre à jour l'email
+    const { data: updated, error: updateError } = await supabase
+      .from('prospect_email_scheduled')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Erreur mise à jour email programmé:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la mise à jour'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: updated,
+      message: 'Email programmé mis à jour avec succès'
+    });
+  } catch (error: any) {
+    console.error('Erreur modification email programmé:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PATCH /api/prospects/scheduled-emails/:id/pause
+ * Suspendre un email programmé
+ */
+router.patch('/scheduled-emails/:id/pause', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'email existe et est bien en status 'scheduled'
+    const { data: existing, error: fetchError } = await supabase
+      .from('prospect_email_scheduled')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existing) {
+      return res.status(404).json({
+        success: false,
+        error: 'Email programmé non trouvé'
+      });
+    }
+
+    if (existing.status !== 'scheduled') {
+      return res.status(400).json({
+        success: false,
+        error: `Impossible de suspendre un email avec le statut "${existing.status}"`
+      });
+    }
+
+    // Mettre à jour le statut
+    const { data: updated, error: updateError } = await supabase
+      .from('prospect_email_scheduled')
+      .update({
+        status: 'paused',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Erreur suspension email programmé:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la suspension'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: updated,
+      message: 'Email programmé suspendu avec succès'
+    });
+  } catch (error: any) {
+    console.error('Erreur suspension email programmé:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PATCH /api/prospects/scheduled-emails/:id/resume
+ * Reprendre un email programmé suspendu
+ */
+router.patch('/scheduled-emails/:id/resume', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'email existe et est bien en status 'paused'
+    const { data: existing, error: fetchError } = await supabase
+      .from('prospect_email_scheduled')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existing) {
+      return res.status(404).json({
+        success: false,
+        error: 'Email programmé non trouvé'
+      });
+    }
+
+    if (existing.status !== 'paused') {
+      return res.status(400).json({
+        success: false,
+        error: `Impossible de reprendre un email avec le statut "${existing.status}"`
+      });
+    }
+
+    // Mettre à jour le statut
+    const { data: updated, error: updateError } = await supabase
+      .from('prospect_email_scheduled')
+      .update({
+        status: 'scheduled',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Erreur reprise email programmé:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la reprise'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: updated,
+      message: 'Email programmé repris avec succès'
+    });
+  } catch (error: any) {
+    console.error('Erreur reprise email programmé:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/prospects/scheduled-emails/:id
+ * Annuler/supprimer un email programmé
+ */
+router.delete('/scheduled-emails/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'email existe et peut être supprimé
+    const { data: existing, error: fetchError } = await supabase
+      .from('prospect_email_scheduled')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existing) {
+      return res.status(404).json({
+        success: false,
+        error: 'Email programmé non trouvé'
+      });
+    }
+
+    if (existing.status === 'sent') {
+      return res.status(400).json({
+        success: false,
+        error: 'Impossible de supprimer un email déjà envoyé'
+      });
+    }
+
+    // Marquer comme annulé plutôt que de supprimer complètement
+    const { data: cancelled, error: cancelError } = await supabase
+      .from('prospect_email_scheduled')
+      .update({
+        status: 'cancelled',
+        cancelled_reason: 'Annulé manuellement par l\'administrateur',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (cancelError) {
+      console.error('Erreur annulation email programmé:', cancelError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de l\'annulation'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: cancelled,
+      message: 'Email programmé annulé avec succès'
+    });
+  } catch (error: any) {
+    console.error('Erreur suppression email programmé:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });

@@ -39,7 +39,11 @@ import {
   Users,
   TrendingUp,
   Loader2,
-  Eye
+  Eye,
+  Pause,
+  Play,
+  Trash2,
+  X
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import ProspectEnrichmentView from "@/components/ProspectEnrichmentView";
@@ -110,9 +114,10 @@ interface ScheduledEmail {
   subject: string;
   body: string;
   scheduled_for: string;
-  status: 'scheduled' | 'sent' | 'cancelled';
+  status: 'scheduled' | 'sent' | 'cancelled' | 'paused';
   created_at: string;
   comment?: string | null;
+  cancelled_reason?: string | null;
 }
 
 interface ReceivedEmail {
@@ -191,6 +196,15 @@ export default function ProspectSequencePage() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, any>>({});
   const [isSavingField, setIsSavingField] = useState(false);
+
+  // États pour l'édition des emails programmés
+  const [editingScheduledEmail, setEditingScheduledEmail] = useState<string | null>(null);
+  const [editScheduledValues, setEditScheduledValues] = useState<{subject: string; body: string; scheduled_for: string}>({
+    subject: '',
+    body: '',
+    scheduled_for: ''
+  });
+  const [isSavingScheduled, setIsSavingScheduled] = useState(false);
 
   useEffect(() => {
     if (user && sequenceId) {
@@ -521,6 +535,135 @@ export default function ProspectSequencePage() {
       toast.error(error.message || 'Erreur lors de la sauvegarde');
     } finally {
       setIsSavingField(false);
+    }
+  };
+
+  // === FONCTIONS POUR GÉRER LES EMAILS PROGRAMMÉS ===
+
+  const startEditScheduledEmail = (email: ScheduledEmail) => {
+    setEditingScheduledEmail(email.id);
+    setEditScheduledValues({
+      subject: email.subject,
+      body: email.body,
+      scheduled_for: email.scheduled_for
+    });
+  };
+
+  const cancelEditScheduledEmail = () => {
+    setEditingScheduledEmail(null);
+    setEditScheduledValues({ subject: '', body: '', scheduled_for: '' });
+  };
+
+  const saveScheduledEmail = async (emailId: string) => {
+    try {
+      setIsSavingScheduled(true);
+      const token = await getSupabaseToken();
+
+      const response = await fetch(`${config.API_URL}/api/prospects/scheduled-emails/${emailId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(editScheduledValues)
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur lors de la modification');
+      }
+
+      toast.success('Email programmé modifié avec succès !');
+      await fetchData();
+      cancelEditScheduledEmail();
+    } catch (error: any) {
+      console.error('Erreur modification email programmé:', error);
+      toast.error(error.message || 'Erreur lors de la modification');
+    } finally {
+      setIsSavingScheduled(false);
+    }
+  };
+
+  const pauseScheduledEmail = async (emailId: string) => {
+    try {
+      const token = await getSupabaseToken();
+
+      const response = await fetch(`${config.API_URL}/api/prospects/scheduled-emails/${emailId}/pause`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur lors de la suspension');
+      }
+
+      toast.success('Email programmé suspendu');
+      await fetchData();
+    } catch (error: any) {
+      console.error('Erreur suspension email programmé:', error);
+      toast.error(error.message || 'Erreur lors de la suspension');
+    }
+  };
+
+  const resumeScheduledEmail = async (emailId: string) => {
+    try {
+      const token = await getSupabaseToken();
+
+      const response = await fetch(`${config.API_URL}/api/prospects/scheduled-emails/${emailId}/resume`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur lors de la reprise');
+      }
+
+      toast.success('Email programmé repris');
+      await fetchData();
+    } catch (error: any) {
+      console.error('Erreur reprise email programmé:', error);
+      toast.error(error.message || 'Erreur lors de la reprise');
+    }
+  };
+
+  const deleteScheduledEmail = async (emailId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir annuler cet email programmé ?')) {
+      return;
+    }
+
+    try {
+      const token = await getSupabaseToken();
+
+      const response = await fetch(`${config.API_URL}/api/prospects/scheduled-emails/${emailId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur lors de la suppression');
+      }
+
+      toast.success('Email programmé annulé');
+      await fetchData();
+    } catch (error: any) {
+      console.error('Erreur suppression email programmé:', error);
+      toast.error(error.message || 'Erreur lors de la suppression');
     }
   };
 
@@ -1037,36 +1180,150 @@ export default function ProspectSequencePage() {
                         <div className="flex-1 border-2 border-orange-300 rounded-lg p-3 lg:p-4 bg-gradient-to-br from-orange-50 to-amber-50/50 shadow-sm">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <Badge variant="outline" className="text-xs bg-white font-semibold">
                                   Étape {item.step}
                                 </Badge>
                                 <Badge className={
                                   item.status === 'scheduled' ? 'bg-orange-500 text-white shadow-sm' :
+                                  item.status === 'paused' ? 'bg-gray-500 text-white shadow-sm' :
                                   item.status === 'sent' ? 'bg-green-100 text-green-800' :
                                   'bg-red-100 text-red-800'
                                 }>
                                   {item.status === 'scheduled' ? '📅 Programmé' :
+                                   item.status === 'paused' ? '⏸️ Suspendu' :
                                    item.status === 'sent' ? '✅ Envoyé' :
                                    '❌ Annulé'}
                                 </Badge>
                               </div>
-                              <div className="font-semibold text-base text-gray-900 mb-1">{item.subject}</div>
-                              <div className="text-xs text-orange-700 font-medium bg-white/70 px-2 py-1 rounded inline-flex items-center">
-                                <Calendar className="h-3 w-3 inline mr-1" />
-                                Prévu le {new Date(item.scheduled_for!).toLocaleString('fr-FR', {
-                                  day: '2-digit',
-                                  month: 'long',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </div>
+                              
+                              {/* Mode édition */}
+                              {editingScheduledEmail === item.id ? (
+                                <div className="space-y-3 mt-2">
+                                  <div>
+                                    <Label className="text-xs mb-1">Sujet</Label>
+                                    <Input
+                                      value={editScheduledValues.subject}
+                                      onChange={(e) => setEditScheduledValues(prev => ({ ...prev, subject: e.target.value }))}
+                                      className="text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs mb-1">Date et heure</Label>
+                                    <Input
+                                      type="datetime-local"
+                                      value={new Date(editScheduledValues.scheduled_for).toISOString().slice(0, 16)}
+                                      onChange={(e) => setEditScheduledValues(prev => ({ ...prev, scheduled_for: new Date(e.target.value).toISOString() }))}
+                                      className="text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs mb-1">Corps du message (HTML)</Label>
+                                    <Textarea
+                                      value={editScheduledValues.body}
+                                      onChange={(e) => setEditScheduledValues(prev => ({ ...prev, body: e.target.value }))}
+                                      className="text-sm min-h-[200px] font-mono"
+                                    />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => saveScheduledEmail(item.id)}
+                                      disabled={isSavingScheduled}
+                                      className="h-7 text-xs"
+                                    >
+                                      {isSavingScheduled ? (
+                                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Sauvegarde...</>
+                                      ) : (
+                                        <><Save className="h-3 w-3 mr-1" /> Sauvegarder</>
+                                      )}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={cancelEditScheduledEmail}
+                                      disabled={isSavingScheduled}
+                                      className="h-7 text-xs"
+                                    >
+                                      <X className="h-3 w-3 mr-1" /> Annuler
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="font-semibold text-base text-gray-900 mb-1">{item.subject}</div>
+                                  <div className="text-xs text-orange-700 font-medium bg-white/70 px-2 py-1 rounded inline-flex items-center">
+                                    <Calendar className="h-3 w-3 inline mr-1" />
+                                    Prévu le {new Date(item.scheduled_for!).toLocaleString('fr-FR', {
+                                      day: '2-digit',
+                                      month: 'long',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </div>
+                                </>
+                              )}
                             </div>
+                            
+                            {/* Boutons d'action (uniquement si pas en mode édition et status = scheduled ou paused) */}
+                            {editingScheduledEmail !== item.id && (item.status === 'scheduled' || item.status === 'paused') && (
+                              <div className="flex gap-1 ml-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 hover:bg-orange-200 rounded"
+                                  onClick={() => {
+                                    const email = scheduledEmails.find(e => e.id === item.id);
+                                    if (email) startEditScheduledEmail(email);
+                                  }}
+                                  title="Modifier"
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </Button>
+                                {item.status === 'scheduled' ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 hover:bg-gray-200 rounded"
+                                    onClick={() => pauseScheduledEmail(item.id)}
+                                    title="Suspendre"
+                                  >
+                                    <Pause className="h-3.5 w-3.5" />
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 hover:bg-green-200 rounded"
+                                    onClick={() => resumeScheduledEmail(item.id)}
+                                    title="Reprendre"
+                                  >
+                                    <Play className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 hover:bg-red-200 rounded"
+                                  onClick={() => deleteScheduledEmail(item.id)}
+                                  title="Supprimer"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
+                          
+                          {/* Raison d'annulation si présente */}
+                          {item.status === 'cancelled' && (item.raw as ScheduledEmail)?.cancelled_reason && (
+                            <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                              <strong>Raison :</strong> {(item.raw as ScheduledEmail).cancelled_reason}
+                            </div>
+                          )}
 
-                          {/* Corps de l'email programmé */}
-                          {item.body && (
+                          {/* Corps de l'email programmé (uniquement si pas en mode édition) */}
+                          {item.body && editingScheduledEmail !== item.id && (
                             <div className="mt-3 pt-3 border-t border-orange-200">
                               <Button
                                 variant="ghost"

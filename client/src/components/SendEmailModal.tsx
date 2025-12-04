@@ -53,7 +53,8 @@ export default function SendEmailModal({
       setIsGenerating(true);
       const token = await getSupabaseToken();
 
-      const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-email`, {
+      // Utiliser l'endpoint enrichi V4 pour bénéficier de LinkedIn, secteur, etc.
+      const response = await fetch(`${config.API_URL}/api/prospects/generate-ai-email-v4`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -66,7 +67,8 @@ export default function SendEmailModal({
             lastname: prospectName.split(' ').slice(1).join(' '),
             company_name: companyName
           }],
-          context: aiContext
+          context: aiContext,
+          forceReenrichment: false // Utiliser le cache si disponible
         })
       });
 
@@ -78,7 +80,18 @@ export default function SendEmailModal({
 
       setSubject(result.data.subject || '');
       setBody(result.data.body || '');
-      toast.success('Email généré avec succès !');
+      
+      // Afficher les insights enrichis si disponibles
+      if (result.data.prospect_insights) {
+        const insights = result.data.prospect_insights;
+        console.log('📊 Insights enrichis V4:', insights);
+        toast.success(
+          `✨ Email enrichi généré ! Score: ${result.data.meta?.score_personnalisation || '?'}/10 | ` +
+          `Potentiel: ${insights.potentiel_economies || '?'}`
+        );
+      } else {
+        toast.success('Email enrichi V4 généré avec succès !');
+      }
     } catch (error: any) {
       console.error('Erreur génération IA:', error);
       toast.error(error.message || 'Erreur lors de la génération');

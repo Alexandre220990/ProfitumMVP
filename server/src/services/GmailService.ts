@@ -769,15 +769,11 @@ export class GmailService {
         .from('prospect_email_scheduled')
         .update({
           status: 'cancelled',
-          updated_at: new Date().toISOString(),
-          metadata: {
-            cancelled_reason: 'prospect_replied',
-            cancelled_at: new Date().toISOString(),
-            reply_from: replyFrom
-          }
+          cancelled_reason: `Séquence arrêtée : réponse reçue de ${replyFrom}`,
+          updated_at: new Date().toISOString()
         })
         .eq('prospect_id', prospectId)
-        .eq('status', 'pending')
+        .eq('status', 'scheduled')
         .select();
 
       if (cancelError) {
@@ -788,16 +784,26 @@ export class GmailService {
       }
 
       // 2. Mettre à jour le statut du prospect
+      const { data: prospect } = await supabase
+        .from('prospects')
+        .select('metadata')
+        .eq('id', prospectId)
+        .single();
+      
+      const updatedMetadata = {
+        ...(prospect?.metadata || {}),
+        last_reply_from: replyFrom,
+        last_reply_at: new Date().toISOString(),
+        sequence_stopped: true,
+        sequence_stopped_at: new Date().toISOString()
+      };
+
       const { error: prospectError } = await supabase
         .from('prospects')
         .update({
           emailing_status: 'replied',
           updated_at: new Date().toISOString(),
-          metadata: {
-            last_reply_from: replyFrom,
-            last_reply_at: new Date().toISOString(),
-            sequence_stopped: true
-          }
+          metadata: updatedMetadata
         })
         .eq('id', prospectId);
 
