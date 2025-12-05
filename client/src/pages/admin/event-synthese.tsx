@@ -24,8 +24,7 @@ import {
   Check,
   X,
   Send,
-  Plus,
-  Brain
+  Plus
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
@@ -1132,6 +1131,7 @@ const EventSynthese: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 };
