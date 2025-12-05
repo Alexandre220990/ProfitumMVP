@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/lib/supabase";
 import { Eye, EyeOff, Loader2, Shield, AlertCircle, CheckCircle } from "lucide-react";
 import Button from "@/components/ui/design-system/Button";
 import { Input } from "@/components/ui/input";
@@ -13,14 +14,127 @@ export default function ConnectAdmin() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   
-  const { login } = useAuth();
+  const { login, user, checkAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   
   // Récupérer l'URL de redirection depuis différentes sources
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  
+  // Vérifier la session Supabase au chargement de la page
+  useEffect(() => {
+    const verifyAndRedirect = async () => {
+      console.log('🔍 [connect-admin] Vérification session Supabase...');
+      
+      try {
+        // 1. Vérifier si une session existe
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (session && !sessionError) {
+          const userType = session.user.user_metadata?.type;
+          
+          // 2. Vérifier si c'est un admin
+          if (userType === 'admin') {
+            console.log('✅ [connect-admin] Session admin trouvée, rafraîchissement...');
+            
+            // 3. Vérifier si la session est expirée ou va bientôt expirer
+            const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+            const now = Date.now();
+            const timeUntilExpiry = expiresAt - now;
+            
+            // Si la session expire dans moins de 5 minutes, essayer de la rafraîchir
+            if (timeUntilExpiry < 5 * 60 * 1000) {
+              console.log('🔄 [connect-admin] Session expire bientôt, rafraîchissement...');
+              const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+              
+              if (refreshedSession && !refreshError) {
+                console.log('✅ [connect-admin] Session rafraîchie');
+              }
+            }
+            
+            // 4. Mettre à jour le contexte d'authentification
+            await checkAuth(false);
+            
+            // 5. Récupérer l'URL de redirection
+            const redirectFromQuery = searchParams.get('redirect');
+            const redirectFromState = (location.state as any)?.from?.pathname;
+            const finalRedirect = redirectFromQuery || redirectFromState;
+            
+            // 6. Rediriger vers la destination
+            if (finalRedirect) {
+              console.log('🔀 [connect-admin] Redirection automatique vers:', finalRedirect);
+              navigate(finalRedirect, { replace: true });
+            } else {
+              console.log('🔀 [connect-admin] Redirection vers dashboard');
+              navigate('/admin/dashboard-optimized', { replace: true });
+            }
+            return;
+          } else {
+            console.log('⚠️ [connect-admin] Session trouvée mais type incorrect:', userType);
+          }
+        }
+        
+        // 7. Si pas de session, vérifier s'il y a un refresh token
+        const storedSession = localStorage.getItem('supabase.auth.token');
+        if (storedSession) {
+          try {
+            const parsed = JSON.parse(storedSession);
+            if (parsed?.refresh_token) {
+              console.log('🔄 [connect-admin] Refresh token trouvé, tentative de restauration...');
+              const { data: { session: restoredSession }, error: restoreError } = await supabase.auth.refreshSession();
+              
+              if (restoredSession && !restoreError) {
+                const restoredUserType = restoredSession.user.user_metadata?.type;
+                if (restoredUserType === 'admin') {
+                  console.log('✅ [connect-admin] Session admin restaurée');
+                  await checkAuth(false);
+                  
+                  const redirectFromQuery = searchParams.get('redirect');
+                  const redirectFromState = (location.state as any)?.from?.pathname;
+                  const finalRedirect = redirectFromQuery || redirectFromState;
+                  
+                  if (finalRedirect) {
+                    navigate(finalRedirect, { replace: true });
+                  } else {
+                    navigate('/admin/dashboard-optimized', { replace: true });
+                  }
+                  return;
+                }
+              }
+            }
+          } catch (e) {
+            console.log('⚠️ [connect-admin] Erreur parsing session:', e);
+          }
+        }
+        
+        console.log('❌ [connect-admin] Aucune session admin valide, affichage formulaire');
+        setIsCheckingSession(false);
+      } catch (error) {
+        console.error('❌ [connect-admin] Erreur vérification session:', error);
+        setIsCheckingSession(false);
+      }
+    };
+
+    verifyAndRedirect();
+  }, [checkAuth, navigate, searchParams, location]);
+  
+  useEffect(() => {
+    // Si l'utilisateur est déjà connecté (après vérification), rediriger
+    if (!isCheckingSession && user && user.type === 'admin') {
+      const redirectFromQuery = searchParams.get('redirect');
+      const redirectFromState = (location.state as any)?.from?.pathname;
+      const finalRedirect = redirectFromQuery || redirectFromState;
+      
+      if (finalRedirect) {
+        navigate(finalRedirect, { replace: true });
+      } else {
+        navigate('/admin/dashboard-optimized', { replace: true });
+      }
+    }
+  }, [user, isCheckingSession, navigate, searchParams, location]);
   
   useEffect(() => {
     // 1. Vérifier les query params (?redirect=/admin/...)
@@ -98,6 +212,18 @@ export default function ConnectAdmin() {
       setIsLoading(false);
     }
   };
+
+  // Afficher un loader pendant la vérification de session
+  if (isCheckingSession) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <p className="text-gray-600">Vérification de l'authentification...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50 flex items-center justify-center p-4">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/lib/supabase";
 import { Eye, EyeOff, Loader2, UserCheck, AlertCircle, CheckCircle, Building2, Handshake, ArrowRight } from "lucide-react";
 import Button from "@/components/ui/design-system/Button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/design-system/Card";
@@ -15,14 +16,116 @@ export default function ConnexionApporteur() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [wrongTypeError, setWrongTypeError] = useState<any>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   
-  const { login } = useAuth();
+  const { login, user, checkAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   
   // Récupérer l'URL de redirection
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  
+  // Vérifier la session Supabase au chargement de la page
+  useEffect(() => {
+    const verifyAndRedirect = async () => {
+      console.log('🔍 [connexion-apporteur] Vérification session Supabase...');
+      
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (session && !sessionError) {
+          const userType = session.user.user_metadata?.type;
+          
+          if (userType === 'apporteur') {
+            console.log('✅ [connexion-apporteur] Session apporteur trouvée, rafraîchissement...');
+            
+            const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+            const now = Date.now();
+            const timeUntilExpiry = expiresAt - now;
+            
+            if (timeUntilExpiry < 5 * 60 * 1000) {
+              console.log('🔄 [connexion-apporteur] Session expire bientôt, rafraîchissement...');
+              const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+              
+              if (refreshedSession && !refreshError) {
+                console.log('✅ [connexion-apporteur] Session rafraîchie');
+              }
+            }
+            
+            await checkAuth(false);
+            
+            const redirectFromQuery = searchParams.get('redirect');
+            const redirectFromState = (location.state as any)?.from?.pathname;
+            const finalRedirect = redirectFromQuery || redirectFromState;
+            
+            if (finalRedirect) {
+              console.log('🔀 [connexion-apporteur] Redirection automatique vers:', finalRedirect);
+              navigate(finalRedirect, { replace: true });
+            } else {
+              console.log('🔀 [connexion-apporteur] Redirection vers dashboard');
+              navigate('/apporteur/dashboard', { replace: true });
+            }
+            return;
+          }
+        }
+        
+        const storedSession = localStorage.getItem('supabase.auth.token');
+        if (storedSession) {
+          try {
+            const parsed = JSON.parse(storedSession);
+            if (parsed?.refresh_token) {
+              console.log('🔄 [connexion-apporteur] Refresh token trouvé, tentative de restauration...');
+              const { data: { session: restoredSession }, error: restoreError } = await supabase.auth.refreshSession();
+              
+              if (restoredSession && !restoreError) {
+                const restoredUserType = restoredSession.user.user_metadata?.type;
+                if (restoredUserType === 'apporteur') {
+                  console.log('✅ [connexion-apporteur] Session apporteur restaurée');
+                  await checkAuth(false);
+                  
+                  const redirectFromQuery = searchParams.get('redirect');
+                  const redirectFromState = (location.state as any)?.from?.pathname;
+                  const finalRedirect = redirectFromQuery || redirectFromState;
+                  
+                  if (finalRedirect) {
+                    navigate(finalRedirect, { replace: true });
+                  } else {
+                    navigate('/apporteur/dashboard', { replace: true });
+                  }
+                  return;
+                }
+              }
+            }
+          } catch (e) {
+            console.log('⚠️ [connexion-apporteur] Erreur parsing session:', e);
+          }
+        }
+        
+        console.log('❌ [connexion-apporteur] Aucune session apporteur valide, affichage formulaire');
+        setIsCheckingSession(false);
+      } catch (error) {
+        console.error('❌ [connexion-apporteur] Erreur vérification session:', error);
+        setIsCheckingSession(false);
+      }
+    };
+
+    verifyAndRedirect();
+  }, [checkAuth, navigate, searchParams, location]);
+  
+  useEffect(() => {
+    if (!isCheckingSession && user && user.type === 'apporteur') {
+      const redirectFromQuery = searchParams.get('redirect');
+      const redirectFromState = (location.state as any)?.from?.pathname;
+      const finalRedirect = redirectFromQuery || redirectFromState;
+      
+      if (finalRedirect) {
+        navigate(finalRedirect, { replace: true });
+      } else {
+        navigate('/apporteur/dashboard', { replace: true });
+      }
+    }
+  }, [user, isCheckingSession, navigate, searchParams, location]);
   
   useEffect(() => {
     const redirectFromQuery = searchParams.get('redirect');
@@ -122,6 +225,18 @@ export default function ConnexionApporteur() {
       setIsLoading(false);
     }
   };
+
+  // Afficher un loader pendant la vérification de session
+  if (isCheckingSession) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <p className="text-gray-600">Vérification de l'authentification...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
