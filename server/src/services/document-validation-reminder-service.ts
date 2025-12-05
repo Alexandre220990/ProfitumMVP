@@ -9,6 +9,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NotificationPreferencesChecker } from './notification-preferences-checker';
 import { NotificationAggregationService } from './notification-aggregation-service';
+import { DocumentStatusChecker } from './document-status-checker';
 
 const supabase = createClient(
   process.env.SUPABASE_URL || '',
@@ -166,24 +167,61 @@ export class DocumentValidationReminderService {
       const hoursElapsed = (now.getTime() - referenceDate.getTime()) / (1000 * 60 * 60);
       const daysElapsed = Math.floor(hoursElapsed / 24);
 
-      // Déterminer la priorité et le message
+      // Déterminer la priorité
       let reminderPriority: 'high' | 'urgent' = 'high';
-      let reminderTitle = '';
+      if (threshold === '120h') {
+        reminderPriority = 'urgent';
+      } else if (threshold === '48h') {
+        reminderPriority = 'high';
+      } else {
+        reminderPriority = 'high';
+      }
+      
       const clientName = dossier.Client?.company_name || dossier.Client?.name || 'Client';
       const produitNom = dossier.ProduitEligible?.nom || 'Dossier';
 
-      if (threshold === '120h') {
-        reminderPriority = 'urgent';
-        reminderTitle = `🚨 URGENT : Documents à valider - ${produitNom}`;
-      } else if (threshold === '48h') {
-        reminderPriority = 'high';
-        reminderTitle = `⚠️ Documents à valider - ${produitNom}`;
+      // Vérifier l'état réel des documents pour générer le bon message
+      const documentStatus = await DocumentStatusChecker.checkDocumentStatus(dossier.id);
+      
+      let reminderTitle = '';
+      let reminderMessage = '';
+      
+      if (documentStatus) {
+        if (!documentStatus.hasUploadedDocuments) {
+          // Aucun document uploadé
+          const days = documentStatus.daysWaitingDocuments || 0;
+          reminderTitle = threshold === '120h' 
+            ? `🚨 URGENT : En attente de documents - ${produitNom}`
+            : threshold === '48h'
+            ? `⚠️ En attente de documents - ${produitNom}`
+            : `📋 En attente de documents - ${produitNom}`;
+          reminderMessage = `Dossier ${produitNom} - Client ${clientName} - En attente de documents depuis ${days} jour${days > 1 ? 's' : ''}`;
+        } else if (documentStatus.pendingDocumentsCount > 0) {
+          // Documents uploadés mais en attente de validation
+          const days = documentStatus.daysWaitingValidation || 0;
+          reminderTitle = threshold === '120h'
+            ? `🚨 URGENT : Documents à valider - ${produitNom}`
+            : threshold === '48h'
+            ? `⚠️ Documents à valider - ${produitNom}`
+            : `📋 Documents à valider - ${produitNom}`;
+          reminderMessage = `Client ${clientName} - ${documentStatus.pendingDocumentsCount} document${documentStatus.pendingDocumentsCount > 1 ? 's' : ''} en attente de validation admin - En attente depuis ${days} jour${days > 1 ? 's' : ''}`;
+        } else {
+          // Tous les documents sont validés - ne pas créer de rappel
+          return [];
+        }
       } else {
-        reminderPriority = 'high';
-        reminderTitle = `📋 Documents à valider - ${produitNom}`;
+        // Fallback si la vérification échoue
+        reminderMessage = `Dossier ${produitNom} - Client ${clientName} - En attente depuis ${daysElapsed} jour${daysElapsed > 1 ? 's' : ''}`;
       }
-
-      const reminderMessage = `Dossier ${produitNom} - Client ${clientName} - En attente depuis ${daysElapsed} jour${daysElapsed > 1 ? 's' : ''}`;
+      
+      // Si reminderTitle n'a pas été défini, utiliser l'ancien format
+      if (!reminderTitle) {
+        reminderTitle = threshold === '120h'
+          ? `🚨 URGENT : Documents à valider - ${produitNom}`
+          : threshold === '48h'
+          ? `⚠️ Documents à valider - ${produitNom}`
+          : `📋 Documents à valider - ${produitNom}`;
+      }
 
       // Récupérer tous les admins actifs
       const { data: admins } = await supabase
@@ -221,8 +259,8 @@ export class DocumentValidationReminderService {
           .insert({
             user_id: admin.auth_user_id,
             user_type: 'admin',
-            title: reminderTitle,
-            message: reminderMessage,
+            title: reminderTitle || `📋 Documents à valider - ${produitNom}`,
+            message: reminderMessage || `Dossier ${produitNom} - Client ${clientName} - En attente depuis ${daysElapsed} jour${daysElapsed > 1 ? 's' : ''}`,
             notification_type: 'documents_pending_validation_reminder',
             priority: reminderPriority,
             is_read: false,

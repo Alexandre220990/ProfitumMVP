@@ -47,7 +47,9 @@ import {
   ChevronDown,
   Clock,
   Send,
-  Timer
+  Timer,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -897,12 +899,32 @@ export function UniversalNotificationCenter({
                       </>
                     )}
                     
+                    {/* Bouton Lu/Non lu */}
                     <button
-                      onClick={() => archiveNotification(notification.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleReadStatus(notification);
+                      }}
+                      className="p-1 rounded hover:bg-blue-100 transition-colors"
+                      title={notification.is_read ? "Marquer comme non lu" : "Marquer comme lu"}
+                    >
+                      {notification.is_read ? (
+                        <EyeOff className="w-4 h-4 text-gray-500 hover:text-blue-600" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-blue-600 hover:text-blue-700" />
+                      )}
+                    </button>
+                    
+                    {/* Bouton Archiver */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        archiveNotification(notification.id);
+                      }}
+                      className="p-1 rounded hover:bg-orange-100 transition-colors"
                       title="Archiver"
                     >
-                      <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-600" />
+                      <Archive className="w-4 h-4 text-gray-500 hover:text-orange-600" />
                     </button>
                   </>
                 )}

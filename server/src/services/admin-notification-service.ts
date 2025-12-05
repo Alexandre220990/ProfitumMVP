@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NOTIFICATION_SLA_CONFIG, calculateSLAStatus } from '../config/notification-sla-config';
+import { DocumentStatusChecker } from './document-status-checker';
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -50,6 +51,7 @@ export class AdminNotificationService {
 
   /**
    * Notifier les admins : Documents de pré-éligibilité uploadés
+   * Utilise DocumentStatusChecker pour déterminer le type de notification approprié
    */
   static async notifyDocumentsPreEligibilityUploaded(data: {
     client_produit_id: string;
@@ -66,6 +68,14 @@ export class AdminNotificationService {
     }>;
   }): Promise<{ success: boolean; notification_ids: string[] }> {
     try {
+      // Vérifier l'état des documents pour déterminer le type de notification
+      const notificationInfo = await DocumentStatusChecker.getNotificationTypeForDossier(data.client_produit_id);
+      
+      if (!notificationInfo) {
+        console.log('ℹ️ Aucune notification à créer (documents déjà validés ou autre raison)');
+        return { success: false, notification_ids: [] };
+      }
+
       const adminIds = await this.getAdminIds();
       
       if (adminIds.length === 0) {
@@ -77,17 +87,28 @@ export class AdminNotificationService {
 
       // Créer une notification pour chaque admin
       for (const adminId of adminIds) {
+        // Déterminer l'action_url selon le type de notification
+        let actionUrl = `/admin/dossiers/${data.client_produit_id}`;
+        if (notificationInfo.notificationType === 'dossier_complete') {
+          actionUrl = `/admin/dossiers/${data.client_produit_id}`; // Redirige vers la synthèse avec bouton "Sélectionner un expert"
+        }
+
         const { data: notification, error } = await supabase
           .from('notification')
           .insert({
             user_id: adminId,
             user_type: 'admin',
-            title: `📄 Documents de pré-éligibilité ${data.product_type}`,
-            message: `${data.client_company || data.client_name || 'Un client'} a uploadé des documents pour validation d'éligibilité ${data.product_type}`,
-            notification_type: 'admin_action_required',
-            priority: 'high',
+            title: notificationInfo.title,
+            message: notificationInfo.message,
+            notification_type: notificationInfo.notificationType === 'waiting_documents' 
+              ? 'admin_action_required' 
+              : notificationInfo.notificationType === 'documents_to_validate'
+              ? 'admin_action_required'
+              : 'dossier_complete',
+            priority: notificationInfo.priority,
             is_read: false,
-            action_url: `/admin/dossiers/${data.client_produit_id}`,
+            status: 'unread',
+            action_url: actionUrl,
             action_data: {
               client_produit_id: data.client_produit_id,
               client_id: data.client_id,
@@ -97,7 +118,19 @@ export class AdminNotificationService {
               product_type: data.product_type,
               product_name: data.product_name,
               documents: data.documents,
-              action_required: 'validate_eligibility'
+              action_required: notificationInfo.notificationType === 'dossier_complete' 
+                ? 'select_expert' 
+                : 'validate_eligibility',
+              ...notificationInfo.metadata
+            },
+            metadata: {
+              client_produit_id: data.client_produit_id,
+              client_id: data.client_id,
+              client_name: data.client_name,
+              client_company: data.client_company,
+              product_type: data.product_type,
+              product_name: data.product_name,
+              ...notificationInfo.metadata
             },
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
