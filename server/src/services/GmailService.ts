@@ -539,7 +539,90 @@ export class GmailService {
             ? toHeader.value.match(/<(.+)>/)?.[1] 
             : toHeader.value.split(' ')[0];
 
-          // Chercher le prospect correspondant
+          // ✅ NOUVEAU: Vérifier si c'est une réponse à un email expert → client
+          const expertEmailMatch = await this.checkExpertClientEmailMatch(
+            fromEmail,
+            inReplyTo?.value ?? undefined,
+            references?.value ? references.value.split(' ') : []
+          );
+
+          if (expertEmailMatch) {
+            // C'est une réponse à un email expert → client
+            const receivedAt = new Date(messageData.internalDate 
+              ? parseInt(messageData.internalDate) 
+              : Date.now()).toISOString();
+
+            // Vérifier si cet email existe déjà
+            const { data: existingEmail } = await supabase
+              .from('expert_client_emails_received')
+              .select('id')
+              .eq('gmail_message_id', message.id)
+              .maybeSingle();
+
+            if (existingEmail) {
+              console.log(`ℹ️ Email expert déjà stocké (gmail_message_id: ${message.id}), skip...`);
+              results.processed++;
+              continue;
+            }
+
+            // Stocker l'email reçu dans expert_client_emails_received
+            const { data: emailReceived, error: insertError } = await supabase
+              .from('expert_client_emails_received')
+              .insert({
+                expert_email_id: expertEmailMatch.expert_email_id,
+                expert_id: expertEmailMatch.expert_id,
+                client_id: expertEmailMatch.client_id,
+                client_produit_id: expertEmailMatch.client_produit_id || null,
+                gmail_message_id: message.id,
+                gmail_thread_id: messageData.threadId,
+                from_email: fromEmail,
+                from_name: fromHeader.value,
+                to_email: toEmail,
+                subject: subjectHeader?.value || '',
+                body_html: emailBody.html,
+                body_text: emailBody.text,
+                snippet: emailBody.snippet,
+                in_reply_to: inReplyTo?.value || null,
+                references: references?.value ? references.value.split(' ') : [],
+                headers: headers,
+                labels: messageData.labelIds || [],
+                received_at: receivedAt,
+                is_read: false,
+                is_replied: false
+              })
+              .select()
+              .single();
+
+            if (insertError) {
+              console.error('❌ Erreur stockage email expert reçu:', insertError);
+              results.errors.push(`Erreur stockage email expert reçu: ${insertError.message}`);
+            } else {
+              console.log(`✅ Email expert reçu stocké: ${emailReceived.id}`);
+
+              // Notifier l'expert
+              await this.notifyExpertForClientReply(
+                expertEmailMatch.expert_id,
+                expertEmailMatch.client_id,
+                emailReceived.id,
+                fromEmail
+              );
+
+              // Notifier l'admin
+              await this.notifyAdminForClientReply(
+                expertEmailMatch.client_id,
+                emailReceived.id
+              );
+
+              results.updated++;
+            }
+
+            // Marquer comme lu et continuer (ne pas traiter comme prospect)
+            await this.markAsRead(message.id!);
+            results.processed++;
+            continue;
+          }
+
+          // Chercher le prospect correspondant (logique existante)
           let match = await this.checkProspectEmailMatch(fromEmail, toEmail || '');
 
           // ✅ Si aucun prospect trouvé, créer automatiquement un nouveau prospect
@@ -897,6 +980,229 @@ export class GmailService {
       }
     } catch (error: any) {
       console.error(`❌ Erreur createAdminNotificationForReply pour ${prospectId}:`, error);
+    }
+  }
+
+  /**
+   * Vérifier si un email reçu est une réponse à un email expert → client
+   * Retourne les infos de l'email expert si match trouvé
+   */
+  private static async checkExpertClientEmailMatch(
+    fromEmail: string,
+    inReplyTo?: string,
+    references?: string[]
+  ): Promise<{
+    expert_email_id: string;
+    expert_id: string;
+    client_id: string;
+    client_produit_id?: string;
+  } | null> {
+    try {
+      // Si pas de in_reply_to ni references, ce n'est pas une réponse
+      if (!inReplyTo && (!references || references.length === 0)) {
+        return null;
+      }
+
+      // Chercher l'email envoyé par l'expert via le Message-ID
+      // Le Message-ID est stocké dans expert_client_emails.message_id
+      const messageIdsToCheck = [
+        inReplyTo,
+        ...(references || [])
+      ].filter(Boolean) as string[];
+
+      if (messageIdsToCheck.length === 0) {
+        return null;
+      }
+
+      // Chercher dans expert_client_emails via message_id
+      // Note: message_id peut être dans le format <message-id> ou juste message-id
+      const cleanMessageIds = messageIdsToCheck.map(id => {
+        // Enlever les < > si présents
+        return id.replace(/^<|>$/g, '');
+      });
+
+      const { data: expertEmail, error } = await supabase
+        .from('expert_client_emails')
+        .select('id, expert_id, client_id, client_produit_id, message_id')
+        .in('message_id', cleanMessageIds)
+        .eq('status', 'sent')
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !expertEmail) {
+        // Aussi chercher dans les references (le message_id peut être dans les references)
+        // Essayer avec une recherche partielle
+        for (const msgId of cleanMessageIds) {
+          const { data: expertEmailPartial } = await supabase
+            .from('expert_client_emails')
+            .select('id, expert_id, client_id, client_produit_id, message_id')
+            .like('message_id', `%${msgId}%`)
+            .eq('status', 'sent')
+            .limit(1)
+            .maybeSingle();
+
+          if (expertEmailPartial) {
+            console.log(`✅ Email expert trouvé via recherche partielle: ${expertEmailPartial.id}`);
+            return {
+              expert_email_id: expertEmailPartial.id,
+              expert_id: expertEmailPartial.expert_id,
+              client_id: expertEmailPartial.client_id,
+              client_produit_id: expertEmailPartial.client_produit_id || undefined
+            };
+          }
+        }
+        return null;
+      }
+
+      console.log(`✅ Email expert trouvé: ${expertEmail.id} (message_id: ${expertEmail.message_id})`);
+      return {
+        expert_email_id: expertEmail.id,
+        expert_id: expertEmail.expert_id,
+        client_id: expertEmail.client_id,
+        client_produit_id: expertEmail.client_produit_id || undefined
+      };
+    } catch (error) {
+      console.error('❌ Erreur checkExpertClientEmailMatch:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Notifier l'expert qu'un client a répondu à son email
+   */
+  private static async notifyExpertForClientReply(
+    expert_id: string,
+    client_id: string,
+    email_received_id: string,
+    from_email: string
+  ): Promise<void> {
+    try {
+      // Récupérer les infos de l'expert
+      const { data: expert, error: expertError } = await supabase
+        .from('Expert')
+        .select('auth_user_id, name, first_name, last_name, email')
+        .eq('id', expert_id)
+        .single();
+
+      if (expertError || !expert?.auth_user_id) {
+        console.error('❌ Expert non trouvé pour notification:', expertError);
+        return;
+      }
+
+      // Récupérer les infos du client
+      const { data: client } = await supabase
+        .from('Client')
+        .select('name, first_name, last_name, company_name, email')
+        .eq('id', client_id)
+        .single();
+
+      const clientName = client?.first_name && client?.last_name
+        ? `${client.first_name} ${client.last_name}`
+        : client?.name || client?.company_name || 'Client';
+
+      // Créer la notification pour l'expert
+      const { error: notifError } = await supabase
+        .from('notification')
+        .insert({
+          user_id: expert.auth_user_id,
+          user_type: 'expert',
+          title: `📧 Réponse reçue de ${clientName}`,
+          message: `${clientName} a répondu à votre email. Vous pouvez consulter sa réponse et lui répondre directement.`,
+          notification_type: 'client_reply',
+          priority: 'high',
+          is_read: false,
+          action_url: `/expert/clients/${client_id}`,
+          action_data: {
+            client_id,
+            email_received_id,
+            from_email,
+            client_name: clientName
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (notifError) {
+        console.error('❌ Erreur notification expert:', notifError);
+      } else {
+        console.log(`✅ Notification expert créée pour réponse client: ${clientName}`);
+      }
+
+      // Envoyer un email à l'expert si configuré
+      if (expert.email && !expert.email.includes('@profitum.temp')) {
+        try {
+          const { EmailService } = await import('./EmailService');
+          // Email sera envoyé via le système de notifications
+        } catch (emailError) {
+          console.error('⚠️ Erreur envoi email expert (non bloquant):', emailError);
+        }
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur notifyExpertForClientReply:', error);
+    }
+  }
+
+  /**
+   * Notifier l'admin qu'un client a répondu à un expert
+   */
+  private static async notifyAdminForClientReply(
+    client_id: string,
+    email_received_id: string
+  ): Promise<void> {
+    try {
+      // Récupérer tous les admins actifs
+      const { data: admins } = await supabase
+        .from('Admin')
+        .select('auth_user_id')
+        .eq('is_active', true);
+
+      if (!admins || admins.length === 0) {
+        return;
+      }
+
+      // Récupérer les infos du client
+      const { data: client } = await supabase
+        .from('Client')
+        .select('name, first_name, last_name, company_name, email')
+        .eq('id', client_id)
+        .single();
+
+      const clientName = client?.first_name && client?.last_name
+        ? `${client.first_name} ${client.last_name}`
+        : client?.name || client?.company_name || 'Client';
+
+      // Créer une notification pour chaque admin
+      for (const admin of admins) {
+        if (!admin.auth_user_id) continue;
+
+        const { error: notifError } = await supabase
+          .from('notification')
+          .insert({
+            user_id: admin.auth_user_id,
+            user_type: 'admin',
+            title: `📧 Échange client-expert`,
+            message: `${clientName} a répondu à un expert. Consultez la fiche client pour voir les échanges.`,
+            notification_type: 'client_expert_exchange',
+            priority: 'medium',
+            is_read: false,
+            action_url: `/admin/clients/${client_id}`,
+            action_data: {
+              client_id,
+              email_received_id,
+              client_name: clientName
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (notifError) {
+          console.error(`❌ Erreur notification admin ${admin.auth_user_id}:`, notifError);
+        }
+      }
+
+      console.log(`✅ Notifications admin créées pour échange client-expert: ${clientName}`);
+    } catch (error: any) {
+      console.error('❌ Erreur notifyAdminForClientReply:', error);
     }
   }
 }

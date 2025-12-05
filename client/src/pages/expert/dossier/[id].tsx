@@ -13,6 +13,7 @@ import ExpertDocumentRequestModal from '@/components/expert/ExpertDocumentReques
 import ExpertDossierActions from '@/components/expert/ExpertDossierActions';
 import ReviseAuditModal from '@/components/expert/ReviseAuditModal';
 import FinaliserRapportAuditModal from '@/components/expert/FinaliserRapportAuditModal';
+import SendClientEmailModal from '@/components/expert/SendClientEmailModal';
 import type { ClientProduitStatut } from '@/types/statuts';
 import { STATUT_COLORS, STATUT_LABELS, getProgressFromStatut } from '@/types/statuts';
 import {
@@ -136,6 +137,7 @@ export default function ExpertDossierSynthese() {
   const [searchParams] = useSearchParams();
   const [showReviseModal, setShowReviseModal] = useState(false);
   const [showFinaliserRapportModal, setShowFinaliserRapportModal] = useState(false);
+  const [showSendEmailModal, setShowSendEmailModal] = useState(false);
 
   // Vérifier si on doit ouvrir le modal de révision
   useEffect(() => {
@@ -433,10 +435,22 @@ export default function ExpertDossierSynthese() {
               {statutLabel}
             </Badge>
             {cpe.Client?.id && (
-              <Button onClick={() => navigate(`/expert/messagerie?client=${cpe.Client.id}`)}>
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Contacter
-              </Button>
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate(`/expert/messagerie?client=${cpe.Client.id}`)}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Messagerie
+                </Button>
+                <Button 
+                  onClick={() => setShowSendEmailModal(true)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Envoyer un email
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -1035,6 +1049,24 @@ export default function ExpertDossierSynthese() {
               }
             };
             loadCPE();
+          }}
+        />
+      )}
+
+      {/* Modal d'envoi d'email */}
+      {cpe && (
+        <SendClientEmailModal
+          isOpen={showSendEmailModal}
+          onClose={() => setShowSendEmailModal(false)}
+          clientId={cpe.Client.id}
+          clientName={cpe.Client.first_name && cpe.Client.last_name
+            ? `${cpe.Client.first_name} ${cpe.Client.last_name}`
+            : cpe.Client.name || cpe.Client.company_name}
+          clientCompany={cpe.Client.company_name}
+          clientProduitId={cpe.id}
+          produitName={cpe.ProduitEligible?.nom}
+          onEmailSent={() => {
+            // Recharger les données si nécessaire
           }}
         />
       )}

@@ -8,14 +8,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { get } from "@/lib/api";
+import { config } from "@/config/env";
+import { getSupabaseToken } from "@/lib/auth-helpers";
 import { 
   ArrowLeft, Building, Mail, Phone, MapPin, Calendar, FileText, TrendingUp, 
   CheckCircle, AlertCircle, Download, Power, PowerOff, MessageSquare, 
   Edit, Eye, Clock, Activity, Users, Euro, Send, Paperclip, UserPlus,
-  Image, FileText as FileTextIcon, Plus
+  Image, FileText as FileTextIcon, Plus, Loader2
 } from "lucide-react";
 
 // Configuration Supabase - Utilise l'instance importée depuis @/lib/supabase
@@ -137,6 +140,8 @@ const ClientDetails = () => {
   const [experts, setExperts] = useState<Expert[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [prospectData, setProspectData] = useState<any>(null);
+  const [loadingProspectData, setLoadingProspectData] = useState(false);
 
   // États de chargement et erreurs
   const [loading, setLoading] = useState(true);
@@ -196,6 +201,11 @@ const ClientDetails = () => {
       setExperts(data.experts || []);
       setMessages(data.messages || []);
       setDocuments(data.documents || []);
+
+      // Charger les données prospect si le client a été transféré depuis un prospect
+      if (id) {
+        fetchProspectData(id);
+      }
     } catch (err: any) {
       setError(err.message);
       console.error('Erreur chargement client: ', err);
@@ -203,7 +213,36 @@ const ClientDetails = () => {
     } finally {
       setLoading(false);
     }
+
+    // Charger les données prospect si le client a été transféré depuis un prospect
+    if (id) {
+      fetchProspectData(id);
+    }
   }, [id]);
+
+  const fetchProspectData = async (clientId: string) => {
+    try {
+      setLoadingProspectData(true);
+      const token = await getSupabaseToken();
+      const response = await fetch(`${config.API_URL}/api/admin/clients/${clientId}/prospect-data`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setProspectData(result.data);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur chargement données prospect:', error);
+    } finally {
+      setLoadingProspectData(false);
+    }
+  };
 
   // Assigner un expert à un audit
   const assignExpertToAudit = async (auditId: string, expertId: string) => {
@@ -822,13 +861,14 @@ const ClientDetails = () => {
         {/* Onglets détaillés */}
         <Tabs defaultValue="produits" className="bg-white shadow-lg rounded-lg">
           <CardHeader>
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className={`grid w-full ${prospectData ? 'grid-cols-8' : 'grid-cols-7'}`}>
               <TabsTrigger value="produits">Produits</TabsTrigger>
               <TabsTrigger value="audits">Audits</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="messages">Messages</TabsTrigger>
               <TabsTrigger value="charte">Charte</TabsTrigger>
               <TabsTrigger value="historique">Historique</TabsTrigger>
+              {prospectData && <TabsTrigger value="prospect">Prospect</TabsTrigger>}
             </TabsList>
           </CardHeader>
 
@@ -1265,6 +1305,156 @@ const ClientDetails = () => {
               </div>
             )}
           </TabsContent>
+
+          {prospectData && (
+            <TabsContent value="prospect" className="p-6">
+              <CardTitle className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Données Prospect ({prospectData.prospect?.email || 'N/A'})
+              </CardTitle>
+              
+              {loadingProspectData ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+                  <p className="text-gray-500">Chargement des données prospect...</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Rapport du prospect */}
+                  {prospectData.report && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Rapport du prospect</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {prospectData.report.report_content && (
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Contenu du rapport</Label>
+                              <div className="bg-gray-50 p-4 rounded-md whitespace-pre-wrap text-sm">
+                                {prospectData.report.report_content}
+                              </div>
+                            </div>
+                          )}
+                          {prospectData.report.enriched_content && (
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Contenu enrichi</Label>
+                              <div className="bg-purple-50 p-4 rounded-md whitespace-pre-wrap text-sm">
+                                {prospectData.report.enriched_content}
+                              </div>
+                            </div>
+                          )}
+                          {prospectData.report.action_plan && (
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Plan d'action</Label>
+                              <div className="bg-green-50 p-4 rounded-md whitespace-pre-wrap text-sm">
+                                {prospectData.report.action_plan}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Emails envoyés */}
+                  {prospectData.emails && prospectData.emails.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Emails envoyés ({prospectData.emails.length})</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {prospectData.emails.map((email: any) => (
+                            <div key={email.id} className="border rounded-md p-3">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm">{email.subject}</p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {email.sent_at ? new Date(email.sent_at).toLocaleString('fr-FR') : 'Non envoyé'}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
+                                  {email.opened && <Badge className="bg-green-100 text-green-800 text-xs">Ouvert</Badge>}
+                                  {email.replied && <Badge className="bg-blue-100 text-blue-800 text-xs">Répondu</Badge>}
+                                </div>
+                              </div>
+                              {email.comment && (
+                                <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                                  <strong>Commentaire:</strong> {email.comment}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Emails reçus */}
+                  {prospectData.receivedEmails && prospectData.receivedEmails.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Emails reçus ({prospectData.receivedEmails.length})</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {prospectData.receivedEmails.map((email: any) => (
+                            <div key={email.id} className="border rounded-md p-3">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm">{email.subject}</p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    De: {email.from_email} - {new Date(email.received_at).toLocaleString('fr-FR')}
+                                  </p>
+                                </div>
+                              </div>
+                              {email.snippet && (
+                                <p className="text-xs text-gray-600 mt-2">{email.snippet}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Informations d'enrichissement */}
+                  {prospectData.prospect?.enrichment_data && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Données d'enrichissement</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3 text-sm">
+                          {prospectData.prospect.enrichment_data.secteur_activite && (
+                            <div>
+                              <Label className="font-medium">Secteur d'activité</Label>
+                              <p className="text-gray-600">{prospectData.prospect.enrichment_data.secteur_activite.description}</p>
+                            </div>
+                          )}
+                          {prospectData.prospect.enrichment_data.resume_strategique && (
+                            <div>
+                              <Label className="font-medium">Résumé stratégique</Label>
+                              <p className="text-gray-600">{prospectData.prospect.enrichment_data.resume_strategique}</p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {!prospectData.report && (!prospectData.emails || prospectData.emails.length === 0) && 
+                   (!prospectData.receivedEmails || prospectData.receivedEmails.length === 0) && (
+                    <div className="text-center py-8">
+                      <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">Aucune donnée prospect disponible</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </TabsContent>
+          )}
 
           <TabsContent value="historique" className="p-6">
             <CardTitle className="text-lg font-semibold text-gray-900 mb-4">

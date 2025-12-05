@@ -2640,4 +2640,292 @@ router.get('/events/:id/synthese', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================================
+// EMAILS EXPERTS → CLIENTS
+// ============================================================================
+
+/**
+ * POST /api/expert/clients/:clientId/send-email
+ * Envoyer un email unique à un client
+ */
+router.post('/clients/:clientId/send-email', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    const { clientId } = req.params;
+    const { subject, expert_message, client_produit_id, use_ai_enrichment } = req.body;
+
+    if (!subject || !expert_message) {
+      return res.status(400).json({
+        success: false,
+        message: 'subject et expert_message sont requis'
+      });
+    }
+
+    const { ExpertClientEmailService } = await import('../services/ExpertClientEmailService');
+
+    const result = await ExpertClientEmailService.sendExpertClientEmail({
+      expert_id: user.database_id,
+      client_id: clientId,
+      client_produit_id: client_produit_id || undefined,
+      subject,
+      expert_message,
+      use_ai_enrichment: use_ai_enrichment || false
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        email_id: result.email_id
+      },
+      message: 'Email envoyé avec succès'
+    });
+  } catch (error: any) {
+    console.error('Erreur envoi email expert → client:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * POST /api/expert/clients/:clientId/create-sequence
+ * Créer une séquence d'emails pour un client
+ */
+router.post('/clients/:clientId/create-sequence', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    const { clientId } = req.params;
+    const { name, start_date, client_produit_id, steps } = req.body;
+
+    if (!steps || !Array.isArray(steps) || steps.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'steps (array) est requis avec au moins un email'
+      });
+    }
+
+    const { ExpertClientEmailService } = await import('../services/ExpertClientEmailService');
+
+    const result = await ExpertClientEmailService.createEmailSequence({
+      expert_id: user.database_id,
+      client_id: clientId,
+      client_produit_id: client_produit_id || undefined,
+      name: name || undefined,
+      start_date: start_date || undefined,
+      steps
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        sequence_id: result.sequence_id
+      },
+      message: 'Séquence créée avec succès'
+    });
+  } catch (error: any) {
+    console.error('Erreur création séquence:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * GET /api/expert/emails
+ * Récupérer les emails envoyés par l'expert
+ */
+router.get('/emails', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    const { client_id, client_produit_id, limit = 50, offset = 0 } = req.query;
+
+    let query = supabase
+      .from('expert_client_emails')
+      .select(`
+        *,
+        Client:client_id (
+          id,
+          name,
+          first_name,
+          last_name,
+          company_name,
+          email
+        ),
+        ClientProduitEligible:client_produit_id (
+          id,
+          ProduitEligible:produitId (
+            id,
+            nom
+          )
+        )
+      `)
+      .eq('expert_id', user.database_id)
+      .order('sent_at', { ascending: false })
+      .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
+
+    if (client_id) {
+      query = query.eq('client_id', client_id as string);
+    }
+
+    if (client_produit_id) {
+      query = query.eq('client_produit_id', client_produit_id as string);
+    }
+
+    const { data: emails, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      data: emails || []
+    });
+  } catch (error: any) {
+    console.error('Erreur récupération emails:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * GET /api/expert/emails/received
+ * Récupérer les réponses des clients
+ */
+router.get('/emails/received', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    const { client_id, is_read, limit = 50, offset = 0 } = req.query;
+
+    let query = supabase
+      .from('expert_client_emails_received')
+      .select(`
+        *,
+        expert_client_emails!expert_email_id (
+          id,
+          subject,
+          sent_at
+        ),
+        Client:client_id (
+          id,
+          name,
+          first_name,
+          last_name,
+          company_name,
+          email
+        )
+      `)
+      .eq('expert_id', user.database_id)
+      .order('received_at', { ascending: false })
+      .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
+
+    if (client_id) {
+      query = query.eq('client_id', client_id as string);
+    }
+
+    if (is_read !== undefined) {
+      query = query.eq('is_read', is_read === 'true');
+    }
+
+    const { data: receivedEmails, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      data: receivedEmails || []
+    });
+  } catch (error: any) {
+    console.error('Erreur récupération emails reçus:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * PUT /api/expert/emails/received/:id/mark-read
+ * Marquer un email reçu comme lu
+ */
+router.put('/emails/received/:id/mark-read', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    const { id } = req.params;
+
+    const { error } = await supabase
+      .from('expert_client_emails_received')
+      .update({
+        is_read: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('expert_id', user.database_id);
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Email marqué comme lu'
+    });
+  } catch (error: any) {
+    console.error('Erreur marquage email lu:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur serveur'
+    });
+  }
+});
+
 export default router; 

@@ -1,6 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertCircle } from 'lucide-react';
-import { Button } from './ui/button';
+import { Component, ErrorInfo, ReactNode } from 'react';
+import ErrorDisplay from './ErrorDisplay';
 
 interface Props {
   children: ReactNode;
@@ -9,21 +8,26 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  errorInfo: ErrorInfo | null;
 }
 
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
-    error: null
+    error: null,
+    errorInfo: null
   };
 
-  public static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): Partial<State> {
     // Mettre à jour l'état pour afficher l'UI de secours au prochain rendu
     return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    
+    // Stocker errorInfo pour l'envoyer au support
+    this.setState({ errorInfo });
     
     // Vérifier si c'est une erreur de chargement de chunk
     const chunkFailedMessage = /Failed to fetch dynamically imported module|Loading chunk|Loading CSS chunk/i;
@@ -45,75 +49,13 @@ class ErrorBoundary extends Component<Props, State> {
     }
   }
 
-  private handleReload = () => {
-    sessionStorage.removeItem('chunk_reload_attempted');
-    window.location.reload();
-  };
-
-  private handleReset = () => {
-    this.setState({ hasError: false, error: null });
-    sessionStorage.removeItem('chunk_reload_attempted');
-  };
-
   public render() {
     if (this.state.hasError) {
-      const isChunkError = this.state.error?.message && 
-        /Failed to fetch dynamically imported module|Loading chunk|Loading CSS chunk/i.test(this.state.error.message);
-
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-          <div className="max-w-md w-full">
-            <div className="bg-white rounded-lg shadow-lg p-8">
-              <div className="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 rounded-full mb-4">
-                <AlertCircle className="h-8 w-8 text-red-600" />
-              </div>
-              
-              <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">
-                {isChunkError ? 'Nouvelle version disponible' : 'Une erreur s\'est produite'}
-              </h1>
-              
-              <p className="text-center text-gray-600 mb-6">
-                {isChunkError ? (
-                  <>
-                    L'application a été mise à jour. Veuillez recharger la page pour accéder à la dernière version.
-                  </>
-                ) : (
-                  <>
-                    Nous sommes désolés, une erreur inattendue s'est produite. 
-                    Veuillez recharger la page pour continuer.
-                  </>
-                )}
-              </p>
-              
-              {this.state.error && !isChunkError && (
-                <div className="bg-gray-100 rounded p-4 mb-6 text-sm">
-                  <p className="font-mono text-gray-700 break-all">
-                    {this.state.error.message}
-                  </p>
-                </div>
-              )}
-              
-              <div className="flex gap-3">
-                <Button
-                  onClick={this.handleReload}
-                  className="flex-1"
-                  variant="default"
-                >
-                  Recharger l'application
-                </Button>
-                {!isChunkError && (
-                  <Button
-                    onClick={this.handleReset}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    Réessayer
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <ErrorDisplay 
+          error={this.state.error} 
+          errorInfo={this.state.errorInfo}
+        />
       );
     }
 

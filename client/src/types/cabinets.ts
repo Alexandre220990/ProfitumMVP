@@ -108,6 +108,8 @@ export interface Cabinet {
     dossiers_total: number;
     dossiers_en_cours: number;
     dossiers_signes: number;
+    clients_actifs: number;
+    prospects_count: number;
   };
   produits_count?: number;
 }

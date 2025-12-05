@@ -115,10 +115,12 @@ export class CabinetService {
     const cabinetIds = (data || []).map(cab => cab.id);
     
     // Récupérer les stats agrégées et les counts de membres/produits
-    const [statsByCabinet, membersCounts, produitsCounts] = await Promise.all([
+    const [statsByCabinet, membersCounts, produitsCounts, clientsActifsCounts, prospectsCounts] = await Promise.all([
       this.getAggregatedTeamStats(cabinetIds),
       this.getMembersCounts(cabinetIds),
-      this.getProduitsCounts(cabinetIds)
+      this.getProduitsCounts(cabinetIds),
+      this.getClientsActifsCounts(cabinetIds),
+      this.getProspectsCounts(cabinetIds)
     ]);
 
     return (data || []).map(cabinet => ({
@@ -127,7 +129,9 @@ export class CabinetService {
         members: membersCounts[cabinet.id] || 0,
         dossiers_total: statsByCabinet[cabinet.id]?.dossiers_total || 0,
         dossiers_en_cours: statsByCabinet[cabinet.id]?.dossiers_en_cours || 0,
-        dossiers_signes: statsByCabinet[cabinet.id]?.dossiers_signes || 0
+        dossiers_signes: statsByCabinet[cabinet.id]?.dossiers_signes || 0,
+        clients_actifs: clientsActifsCounts[cabinet.id] || 0,
+        prospects_count: prospectsCounts[cabinet.id] || 0
       },
       produits_count: produitsCounts[cabinet.id] || 0
     }));
@@ -817,6 +821,118 @@ export class CabinetService {
     return (data || []).reduce<Record<string, number>>((acc, row) => {
       const cabId = row.cabinet_id;
       acc[cabId] = (acc[cabId] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  private static async getClientsActifsCounts(cabinetIds: string[]): Promise<Record<string, number>> {
+    if (!cabinetIds.length) return {};
+
+    // Récupérer tous les experts des cabinets
+    const { data: experts, error: expertsError } = await supabase
+      .from('Expert')
+      .select('id, cabinet_id')
+      .in('cabinet_id', cabinetIds);
+
+    if (expertsError) throw expertsError;
+    if (!experts || experts.length === 0) {
+      return cabinetIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {});
+    }
+
+    const expertIds = experts.map(e => e.id);
+    const expertToCabinet = experts.reduce<Record<string, string>>((acc, expert) => {
+      if (expert.cabinet_id) {
+        acc[expert.id] = expert.cabinet_id;
+      }
+      return acc;
+    }, {});
+
+    // Compter les clients distincts qui ont au moins un ClientProduitEligible avec un expert du cabinet
+    const { data: cpeData, error: cpeError } = await supabase
+      .from('ClientProduitEligible')
+      .select('clientId, expert_id')
+      .in('expert_id', expertIds)
+      .not('expert_id', 'is', null);
+
+    if (cpeError) throw cpeError;
+
+    // Compter les clients distincts par cabinet
+    const clientCounts: Record<string, Set<string>> = {};
+    (cpeData || []).forEach(cpe => {
+      if (cpe.expert_id && expertToCabinet[cpe.expert_id]) {
+        const cabId = expertToCabinet[cpe.expert_id];
+        if (!clientCounts[cabId]) {
+          clientCounts[cabId] = new Set();
+        }
+        clientCounts[cabId].add(cpe.clientId);
+      }
+    });
+
+    return cabinetIds.reduce<Record<string, number>>((acc, cabId) => {
+      acc[cabId] = clientCounts[cabId]?.size || 0;
+      return acc;
+    }, {});
+  }
+
+  private static async getProspectsCounts(cabinetIds: string[]): Promise<Record<string, number>> {
+    if (!cabinetIds.length) return {};
+
+    // Récupérer tous les experts des cabinets
+    const { data: experts, error: expertsError } = await supabase
+      .from('Expert')
+      .select('id, cabinet_id')
+      .in('cabinet_id', cabinetIds);
+
+    if (expertsError) throw expertsError;
+    if (!experts || experts.length === 0) {
+      return cabinetIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {});
+    }
+
+    const expertIds = experts.map(e => e.id);
+    const expertToCabinet = experts.reduce<Record<string, string>>((acc, expert) => {
+      if (expert.cabinet_id) {
+        acc[expert.id] = expert.cabinet_id;
+      }
+      return acc;
+    }, {});
+
+    // Récupérer les prospects (clients avec status='prospect') qui ont un ClientProduitEligible avec un expert du cabinet
+    const { data: clients, error: clientsError } = await supabase
+      .from('Client')
+      .select('id, status')
+      .eq('status', 'prospect');
+
+    if (clientsError) throw clientsError;
+    if (!clients || clients.length === 0) {
+      return cabinetIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {});
+    }
+
+    const prospectClientIds = clients.map(c => c.id);
+
+    // Récupérer les ClientProduitEligible des prospects avec experts du cabinet
+    const { data: cpeData, error: cpeError } = await supabase
+      .from('ClientProduitEligible')
+      .select('clientId, expert_id')
+      .in('clientId', prospectClientIds)
+      .in('expert_id', expertIds)
+      .not('expert_id', 'is', null);
+
+    if (cpeError) throw cpeError;
+
+    // Compter les prospects distincts par cabinet
+    const prospectCounts: Record<string, Set<string>> = {};
+    (cpeData || []).forEach(cpe => {
+      if (cpe.expert_id && expertToCabinet[cpe.expert_id]) {
+        const cabId = expertToCabinet[cpe.expert_id];
+        if (!prospectCounts[cabId]) {
+          prospectCounts[cabId] = new Set();
+        }
+        prospectCounts[cabId].add(cpe.clientId);
+      }
+    });
+
+    return cabinetIds.reduce<Record<string, number>>((acc, cabId) => {
+      acc[cabId] = prospectCounts[cabId]?.size || 0;
       return acc;
     }, {});
   }

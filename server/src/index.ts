@@ -117,6 +117,7 @@ import { startDocumentValidationRemindersCron } from './cron/document-validation
 import { startProspectNotificationsCron } from './cron/prospect-notifications';
 import { startProspectEmailSequencesCron } from './cron/prospect-email-sequences';
 import { startGmailCheckerJob } from './jobs/gmail-checker';
+import { startExpertEmailSchedulerJob } from './jobs/expert-email-scheduler';
 import routes from './routes';
 
 // Routes apporteurs d'affaires
@@ -136,6 +137,7 @@ import publicUploadRoutes from './routes/public-upload';
 import redirectRoutes from './routes/redirect';
 import expertDemoRequestRoutes from './routes/expert/demo-request';
 import contactRoutes from './routes/contact';
+import supportRoutes from './routes/support';
 import expertDocumentsRoutes from './routes/expert-documents';
 import clientDocumentsRoutes from './routes/client-documents';
 
@@ -342,6 +344,10 @@ console.log('📤 Route upload publique montée sur /api/upload (PUBLIQUE)');
 // 📧 ROUTE DE CONTACT PUBLIQUE - Pour formulaire de contact public
 app.use('/api/contact', publicRouteLogger, contactRoutes);
 console.log('📧 Route contact publique montée sur /api/contact (PUBLIQUE)');
+
+// 🆘 ROUTE DE SUPPORT - Pour rapports d'erreur (authentification optionnelle)
+app.use('/api/support', publicRouteLogger, supportRoutes);
+console.log('🆘 Route support montée sur /api/support');
 
 // 🔗 ROUTE DE REDIRECTION INTELLIGENTE - PUBLIQUE (pour deep linking dans les emails)
 app.use('/api/redirect', publicRouteLogger, redirectRoutes);
@@ -925,9 +931,14 @@ server.listen(PORT, HOST, () => {
     
     if (process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN) {
       startGmailCheckerJob();
+    }
+
+    // Démarrer le job de traitement des emails programmés experts → clients
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      startExpertEmailSchedulerJob();
     } else {
-      console.log('⚠️  Job vérification Gmail désactivé (credentials manquants)');
-      console.log('   Configurez GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET et GMAIL_REFRESH_TOKEN pour activer');
+      console.log('⚠️  Job emails experts désactivé (SMTP credentials manquants)');
+      console.log('   Configurez SMTP_USER et SMTP_PASS pour activer');
     }
   } catch (error) {
     console.error('❌ Erreur démarrage job vérification Gmail:', error);

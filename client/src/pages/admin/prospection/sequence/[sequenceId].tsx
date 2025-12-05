@@ -43,12 +43,14 @@ import {
   Pause,
   Play,
   Trash2,
-  X
+  X,
+  UserPlus
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import ProspectEnrichmentView from "@/components/ProspectEnrichmentView";
 import SendEmailModal from "@/components/SendEmailModal";
 import ScheduleSequenceModal from "@/components/ScheduleSequenceModal";
+import TransferProspectModal from "@/components/admin/prospection/TransferProspectModal";
 import { ProspectEnrichmentData } from "@/types/prospects";
 
 interface Prospect {
@@ -190,6 +192,7 @@ export default function ProspectSequencePage() {
   const [showSendEmailModal, setShowSendEmailModal] = useState(false);
   const [showScheduleSequenceModal, setShowScheduleSequenceModal] = useState(false);
   const [showEnrichmentModal, setShowEnrichmentModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   
   // États pour l'édition des informations
@@ -436,6 +439,11 @@ export default function ProspectSequencePage() {
       setIsSavingReport(true);
       const token = await getSupabaseToken();
 
+      if (!token) {
+        toast.error('Token d\'authentification manquant. Veuillez vous reconnecter.');
+        return;
+      }
+
       const response = await fetch(`${config.API_URL}/api/prospects/${sequenceId}/report`, {
         method: 'POST',
         headers: {
@@ -449,7 +457,13 @@ export default function ProspectSequencePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Erreur lors de la sauvegarde du rapport');
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          toast.error('Erreur d\'authentification. Veuillez vous reconnecter.');
+        } else {
+          throw new Error(errorData.error || `Erreur ${response.status} lors de la sauvegarde du rapport`);
+        }
+        return;
       }
 
       const result = await response.json();
@@ -458,9 +472,9 @@ export default function ProspectSequencePage() {
       }
 
       toast.success('Rapport sauvegardé');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur sauvegarde rapport:', error);
-      toast.error('Erreur lors de la sauvegarde du rapport');
+      toast.error(error.message || 'Erreur lors de la sauvegarde du rapport');
     } finally {
       setIsSavingReport(false);
     }
@@ -473,6 +487,20 @@ export default function ProspectSequencePage() {
       setIsEnrichingReport(true);
       const token = await getSupabaseToken();
 
+      // Sauvegarder d'abord le rapport utilisateur s'il a été modifié
+      if (reportContent.trim()) {
+        await saveReport();
+      }
+
+      // Vérifier si le prospect est enrichi, sinon l'enrichir
+      if (prospect && (!prospect.enrichment_data || prospect.enrichment_status !== 'completed')) {
+        toast.info('Enrichissement du prospect en cours...');
+        await enrichWithAI();
+        // Attendre un peu pour que l'enrichissement se termine
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await fetchData(); // Recharger les données
+      }
+
       const response = await fetch(`${config.API_URL}/api/prospects/${sequenceId}/report/enrich`, {
         method: 'POST',
         headers: {
@@ -482,7 +510,8 @@ export default function ProspectSequencePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Erreur lors de l\'enrichissement du rapport');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur lors de l\'enrichissement du rapport');
       }
 
       await response.json();
@@ -499,15 +528,56 @@ export default function ProspectSequencePage() {
         const reportResult = await reportResponse.json();
         if (reportResult.data) {
           setProspectReport(reportResult.data);
+          setReportContent(reportResult.data.report_content || '');
         }
       }
 
       toast.success('Rapport enrichi avec succès');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur enrichissement rapport:', error);
-      toast.error('Erreur lors de l\'enrichissement du rapport');
+      toast.error(error.message || 'Erreur lors de l\'enrichissement du rapport');
     } finally {
       setIsEnrichingReport(false);
+    }
+  };
+
+  const saveEnrichedReport = async () => {
+    if (!sequenceId || !prospectReport) return;
+
+    try {
+      setIsSavingReport(true);
+      const token = await getSupabaseToken();
+
+      const response = await fetch(`${config.API_URL}/api/prospects/${sequenceId}/report`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          report_content: reportContent,
+          enriched_content: prospectReport.enriched_content,
+          action_plan: prospectReport.action_plan,
+          prospect_id: sequenceId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur lors de la sauvegarde');
+      }
+
+      const result = await response.json();
+      if (result.data) {
+        setProspectReport(result.data);
+      }
+
+      toast.success('Rapport enrichi sauvegardé');
+    } catch (error: any) {
+      console.error('Erreur sauvegarde rapport enrichi:', error);
+      toast.error(error.message || 'Erreur lors de la sauvegarde');
+    } finally {
+      setIsSavingReport(false);
     }
   };
 
@@ -935,6 +1005,14 @@ export default function ProspectSequencePage() {
                 <Calendar className="h-3 w-3 mr-1" />
                 Programmer une séquence
               </Button>
+              <Button
+                onClick={() => setShowTransferModal(true)}
+                className="h-7 px-2 text-[11px] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                size="sm"
+              >
+                <UserPlus className="h-3 w-3 mr-1" />
+                Transférer vers expert
+              </Button>
             </div>
           </div>
         </div>
@@ -949,10 +1027,10 @@ export default function ProspectSequencePage() {
               Rapport du prospect
             </CardTitle>
             <div className="flex items-center gap-2">
-              {prospectReport && (
+              {reportContent.trim() && (
                 <Button
                   onClick={enrichReportWithAI}
-                  disabled={isEnrichingReport || !reportContent.trim()}
+                  disabled={isEnrichingReport}
                   variant="outline"
                   size="sm"
                   className="h-8 px-3 text-xs bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
@@ -960,12 +1038,12 @@ export default function ProspectSequencePage() {
                   {isEnrichingReport ? (
                     <>
                       <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-                      Optimisation en cours...
+                      Amélioration en cours...
                     </>
                   ) : (
                     <>
                       <Brain className="h-3 w-3 mr-1.5" />
-                      Optimiser avec l'IA
+                      Améliorer avec l'IA
                     </>
                   )}
                 </Button>
@@ -1009,31 +1087,72 @@ export default function ProspectSequencePage() {
             />
           </div>
 
-          {/* Contenu enrichi par l'IA */}
+          {/* Contenu enrichi par l'IA - ÉDITABLE */}
           {prospectReport?.enriched_content && (
             <div className="border-t pt-4">
-              <div className="mb-2 flex items-center gap-2">
-                <Brain className="h-4 w-4 text-purple-600" />
-                <h4 className="text-sm font-semibold text-gray-900">Rapport optimisé par l'IA</h4>
-                <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                  Dernière mise à jour : {new Date(prospectReport.enriched_at).toLocaleDateString('fr-FR', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </Badge>
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-purple-600" />
+                  <h4 className="text-sm font-semibold text-gray-900">Rapport optimisé par l'IA</h4>
+                  <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                    Dernière mise à jour : {prospectReport.enriched_at ? new Date(prospectReport.enriched_at).toLocaleDateString('fr-FR', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : 'Jamais'}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={enrichReportWithAI}
+                    disabled={isEnrichingReport}
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                  >
+                    {isEnrichingReport ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Mise à jour...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-3 w-3 mr-1" />
+                        Relancer l'enrichissement
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={saveEnrichedReport}
+                    disabled={isSavingReport}
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                  >
+                    <Save className="h-3 w-3 mr-1" />
+                    Sauvegarder
+                  </Button>
+                </div>
               </div>
               <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-100">
-                <div className="prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap">
-                  {prospectReport.enriched_content}
+                <Textarea
+                  value={prospectReport.enriched_content}
+                  onChange={(e) => {
+                    // Permettre l'édition
+                    setProspectReport((prev: any) => prev ? { ...prev, enriched_content: e.target.value } : null);
+                  }}
+                  className="min-h-[200px] resize-y text-sm bg-white/80 font-mono"
+                />
+                <div className="mt-2 text-xs text-gray-500">
+                  💡 Vous pouvez modifier ce contenu. Relancez l'enrichissement pour mettre à jour avec les dernières informations.
                 </div>
               </div>
             </div>
           )}
 
-          {/* Plan d'action */}
+          {/* Plan d'action - ÉDITABLE */}
           {prospectReport?.action_plan && (
             <div className="border-t pt-4">
               <div className="mb-2 flex items-center gap-2">
@@ -1041,9 +1160,13 @@ export default function ProspectSequencePage() {
                 <h4 className="text-sm font-semibold text-gray-900">Plan d'action suggéré</h4>
               </div>
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-100">
-                <div className="prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap">
-                  {prospectReport.action_plan}
-                </div>
+                <Textarea
+                  value={prospectReport.action_plan}
+                  onChange={(e) => {
+                    setProspectReport((prev: any) => prev ? { ...prev, action_plan: e.target.value } : null);
+                  }}
+                  className="min-h-[150px] resize-y text-sm bg-white/80 font-mono"
+                />
               </div>
             </div>
           )}
@@ -2302,6 +2425,17 @@ export default function ProspectSequencePage() {
             </DialogContent>
           </Dialog>
         </>
+      )}
+
+      {/* Modal de transfert vers expert */}
+      {prospect && (
+        <TransferProspectModal
+          isOpen={showTransferModal}
+          onClose={() => setShowTransferModal(false)}
+          prospectId={prospect.id}
+          prospectEmail={prospect.email}
+          prospectCompany={prospect.company_name || undefined}
+        />
       )}
     </div>
   );

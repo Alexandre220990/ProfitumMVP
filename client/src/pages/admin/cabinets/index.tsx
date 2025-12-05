@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 
-type SortColumn = 'name' | 'owner' | 'contact' | 'status' | 'performances' | 'members';
+type SortColumn = 'name' | 'owner' | 'clients' | 'prospects' | 'status' | 'dossiers_en_cours' | 'members';
 type SortDirection = 'asc' | 'desc' | null;
 
 const AdminCabinetsPage: React.FC = () => {
@@ -51,6 +51,13 @@ const AdminCabinetsPage: React.FC = () => {
     navigate(`/admin/cabinets/${id}`);
   };
 
+  const handleOwnerClick = (e: React.MouseEvent, ownerId?: string) => {
+    e.stopPropagation();
+    if (ownerId) {
+      navigate(`/admin/experts/${ownerId}`);
+    }
+  };
+
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
       if (sortDirection === 'asc') {
@@ -85,17 +92,9 @@ const AdminCabinetsPage: React.FC = () => {
           aValue = a.owner?.name?.toLowerCase() || a.owner?.email?.toLowerCase() || '';
           bValue = b.owner?.name?.toLowerCase() || b.owner?.email?.toLowerCase() || '';
           break;
-        case 'contact':
-          aValue = a.email?.toLowerCase() || a.phone || '';
-          bValue = b.email?.toLowerCase() || b.phone || '';
-          break;
         case 'status':
           aValue = a.status || '';
           bValue = b.status || '';
-          break;
-        case 'performances':
-          aValue = a.stats_summary?.dossiers_signes || 0;
-          bValue = b.stats_summary?.dossiers_signes || 0;
           break;
         case 'members':
           aValue = a.stats_summary?.members || 0;
@@ -198,11 +197,20 @@ const AdminCabinetsPage: React.FC = () => {
                 </TableHead>
                 <TableHead>
                   <button
-                    onClick={() => handleSort('contact')}
+                    onClick={() => handleSort('clients')}
                     className="flex items-center hover:text-gray-900 transition-colors"
                   >
-                    Contact
-                    {getSortIcon('contact')}
+                    Clients
+                    {getSortIcon('clients')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button
+                    onClick={() => handleSort('prospects')}
+                    className="flex items-center hover:text-gray-900 transition-colors"
+                  >
+                    Prospect
+                    {getSortIcon('prospects')}
                   </button>
                 </TableHead>
                 <TableHead>
@@ -216,11 +224,11 @@ const AdminCabinetsPage: React.FC = () => {
                 </TableHead>
                 <TableHead>
                   <button
-                    onClick={() => handleSort('performances')}
+                    onClick={() => handleSort('dossiers_en_cours')}
                     className="flex items-center hover:text-gray-900 transition-colors"
                   >
-                    Performances
-                    {getSortIcon('performances')}
+                    Dossiers en cours
+                    {getSortIcon('dossiers_en_cours')}
                   </button>
                 </TableHead>
                 <TableHead>
@@ -238,79 +246,100 @@ const AdminCabinetsPage: React.FC = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
+                  <TableCell colSpan={8} className="text-center py-4">
                     Chargement...
                   </TableCell>
                 </TableRow>
               ) : sortedCabinets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-4 text-gray-500">
                     Aucun cabinet trouvé
                   </TableCell>
                 </TableRow>
               ) : (
-                sortedCabinets.map((cabinet) => (
-                  <TableRow key={cabinet.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span>{cabinet.name}</span>
-                        <span className="text-xs text-gray-500">{cabinet.siret || '—'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col text-sm">
-                        {cabinet.owner?.name ? (
-                          <>
-                            <span>{cabinet.owner.name}</span>
-                            <span className="text-gray-500">{cabinet.owner.email || '—'}</span>
-                          </>
+                sortedCabinets.map((cabinet) => {
+                  const ownerName = cabinet.owner?.name || 
+                    (cabinet.owner?.first_name && cabinet.owner?.last_name 
+                      ? `${cabinet.owner.first_name} ${cabinet.owner.last_name}` 
+                      : cabinet.owner?.first_name || cabinet.owner?.last_name || '');
+                  
+                  return (
+                    <TableRow 
+                      key={cabinet.id}
+                      className="cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => handleViewCabinet(cabinet.id)}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span>{cabinet.name}</span>
+                          <span className="text-xs text-gray-500">{cabinet.siret || '—'}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {cabinet.owner ? (
+                          <div 
+                            className="flex flex-col text-sm"
+                            onClick={(e) => handleOwnerClick(e, cabinet.owner?.id)}
+                          >
+                            <span className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
+                              {ownerName || 'Non défini'}
+                            </span>
+                            {cabinet.owner.email && (
+                              <span className="text-gray-500 text-xs">{cabinet.owner.email}</span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-gray-400 text-sm">Non défini</span>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col text-sm">
-                        {cabinet.email && <span>{cabinet.email}</span>}
-                        {cabinet.phone && <span className="text-gray-500">{cabinet.phone}</span>}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={cabinet.status === 'active' ? 'default' : 'outline'}>
-                        {cabinet.status || 'draft'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <p className="font-semibold">
-                          {cabinet.stats_summary?.dossiers_signes || 0} signés
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {cabinet.stats_summary?.dossiers_total || 0} dossiers
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3 text-sm">
-                        <span className="flex items-center gap-1 text-gray-700">
-                          <Shield className="h-3.5 w-3.5" />
-                          {cabinet.stats_summary?.members || 0}
-                        </span>
-                        <span className="flex items-center gap-1 text-gray-500">
-                          <Users className="h-3.5 w-3.5" />
-                          {cabinet.produits_count || 0} prod.
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" onClick={() => handleViewCabinet(cabinet.id)}>
-                          Consulter
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <span className="font-medium">{cabinet.stats_summary?.clients_actifs || 0}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <span className="font-medium">{cabinet.stats_summary?.prospects_count || 0}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={cabinet.status === 'active' ? 'default' : 'outline'}>
+                          {cabinet.status || 'draft'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <span className="font-medium">{cabinet.stats_summary?.dossiers_en_cours || 0}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3 text-sm">
+                          <span className="flex items-center gap-1 text-gray-700">
+                            <Shield className="h-3.5 w-3.5" />
+                            {cabinet.stats_summary?.members || 0}
+                          </span>
+                          <span className="flex items-center gap-1 text-gray-500">
+                            <Users className="h-3.5 w-3.5" />
+                            {cabinet.produits_count || 0} prod.
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="ghost" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewCabinet(cabinet.id);
+                            }}
+                          >
+                            Consulter
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

@@ -113,7 +113,11 @@ const availabilityOptions = [
 const FormulaireExpert = () => {
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id: idFromParams } = useParams();
+  // Support pour query param aussi (pour compatibilité)
+  const searchParams = new URLSearchParams(window.location.search);
+  const idFromQuery = searchParams.get('id');
+  const id = idFromParams || idFromQuery || null;
   const isEditing = !!id;
 
   // États du formulaire

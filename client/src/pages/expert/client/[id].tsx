@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import InfosClientEnrichies from '@/components/dossier/InfosClientEnrichies';
+import SendClientEmailModal from '@/components/expert/SendClientEmailModal';
 import {
   Loader2,
   ArrowLeft,
@@ -22,7 +23,8 @@ import {
   Eye,
   Upload,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Send
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -201,6 +203,7 @@ export default function ExpertClientSynthese() {
   const [dossierActionId, setDossierActionId] = useState<string | null>(null);
   const [uploadingDossierId, setUploadingDossierId] = useState<string | null>(null);
   const fileInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
+  const [showSendEmailModal, setShowSendEmailModal] = useState(false);
 
   const fetchClientData = useCallback(async () => {
     if (!id || !user) return;
@@ -571,6 +574,13 @@ export default function ExpertClientSynthese() {
             <Badge variant="outline">
               {client.statut || 'prospect'}
             </Badge>
+            <Button 
+              onClick={() => setShowSendEmailModal(true)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Envoyer un email
+            </Button>
           </div>
         </div>
 
@@ -998,6 +1008,20 @@ export default function ExpertClientSynthese() {
         )}
 
       </div>
+
+      {/* Modal d'envoi d'email */}
+      {data && (
+        <SendClientEmailModal
+          isOpen={showSendEmailModal}
+          onClose={() => setShowSendEmailModal(false)}
+          clientId={data.client.id}
+          clientName={clientName}
+          clientCompany={data.client.company_name}
+          onEmailSent={() => {
+            fetchClientData();
+          }}
+        />
+      )}
     </div>
   );
 }

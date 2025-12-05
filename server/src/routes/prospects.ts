@@ -3345,5 +3345,60 @@ router.delete('/scheduled-emails/:id', async (req, res) => {
   }
 });
 
+// ============================================================================
+// TRANSFERT PROSPECT VERS CLIENT/EXPERT
+// ============================================================================
+
+/**
+ * POST /api/prospects/:prospectId/transfer-to-expert
+ * Transfère un prospect vers un client avec assignation d'un produit et d'un expert
+ */
+router.post('/:prospectId/transfer-to-expert', async (req, res) => {
+  try {
+    const { prospectId } = req.params;
+    const { produitId, expertId, montantPotentiel, notes } = req.body;
+    const user = (req as any).user;
+
+    if (!produitId || !expertId) {
+      return res.status(400).json({
+        success: false,
+        error: 'produitId et expertId sont requis'
+      });
+    }
+
+    const { ProspectTransferService } = await import('../services/ProspectTransferService');
+
+    const result = await ProspectTransferService.transferProspectToExpert(
+      {
+        prospectId,
+        produitId,
+        expertId,
+        montantPotentiel,
+        notes
+      },
+      user?.database_id
+    );
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        clientId: result.clientId,
+        clientProduitEligibleId: result.clientProduitEligibleId
+      },
+      message: result.message
+    });
+  } catch (error: any) {
+    console.error('Erreur transfert prospect:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur serveur'
+    });
+  }
+});
+
 export default router;
 

@@ -2753,6 +2753,35 @@ router.get('/clients/:id', asyncHandler(async (req, res) => {
   }
 }));
 
+// GET /api/admin/clients/:id/prospect-data - Récupère les données du prospect lié à un client
+router.get('/clients/:id/prospect-data', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { ProspectTransferService } = await import('../services/ProspectTransferService');
+
+    const prospectData = await ProspectTransferService.getProspectDataForClient(id);
+
+    if (!prospectData) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'Aucune donnée prospect liée à ce client'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: prospectData
+    });
+  } catch (error: any) {
+    console.error('Erreur récupération données prospect:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur serveur'
+    });
+  }
+}));
+
 // PUT /api/admin/clients/:id/status - Modifier le statut d'un client
 router.put('/clients/:id/status', asyncHandler(async (req, res) => {
   try {

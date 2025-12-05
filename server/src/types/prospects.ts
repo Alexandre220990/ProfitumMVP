@@ -378,6 +378,9 @@ export interface CreateReportInput {
 export interface UpdateReportInput {
   report_content?: string;
   report_html?: string;
+  enriched_content?: string;
+  enriched_html?: string;
+  action_plan?: string;
   tags?: string[];
   attachments?: ReportAttachment[];
 }

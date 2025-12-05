@@ -132,6 +132,15 @@ export class ProspectReportService {
       if (input.report_html !== undefined) {
         updateData.report_html = input.report_html;
       }
+      if (input.enriched_content !== undefined) {
+        updateData.enriched_content = input.enriched_content;
+      }
+      if (input.enriched_html !== undefined) {
+        updateData.enriched_html = input.enriched_html;
+      }
+      if (input.action_plan !== undefined) {
+        updateData.action_plan = input.action_plan;
+      }
       if (input.tags !== undefined) {
         updateData.tags = input.tags;
       }
@@ -516,6 +525,7 @@ export class ProspectReportService {
       // 5. Construire le contexte complet pour l'IA
       const context = {
         original_report: report.report_content,
+        previous_enriched_content: report.enriched_content || null, // Ajouter le rapport enrichi précédent pour mise à jour intelligente
         prospect_info: {
           name: `${prospect.firstname || ''} ${prospect.lastname || ''}`.trim() || prospect.email,
           company: prospect.company_name,

@@ -30,7 +30,8 @@ import {
   CalendarPlus,
   XCircle,
   Send,
-  Trash2
+  Trash2,
+  Star
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
@@ -659,85 +660,138 @@ const ExpertSynthese: React.FC = () => {
 
               {/* TAB PROFIL */}
               <TabsContent value="profil">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <User className="w-5 h-5" />
-                      Informations de l'Expert
-                    </CardTitle>
+                <Card className="border-0 shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-3 text-xl font-semibold text-gray-900">
+                        <div className="p-2 bg-white rounded-lg shadow-sm">
+                          <User className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <span>Informations de l'Expert</span>
+                      </CardTitle>
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        onClick={() => navigate(`/admin/formulaire-expert?id=${expert.id}`)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Modifier le profil
+                      </Button>
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Nom Complet</label>
-                          <p className="text-lg font-semibold text-gray-900">{getExpertDisplayName()}</p>
+                  <CardContent className="p-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      {/* Colonne gauche - Informations principales */}
+                      <div className="space-y-6">
+                        <div className="pb-4 border-b border-gray-100">
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
+                            Nom Complet
+                          </label>
+                          <p className="text-xl font-bold text-gray-900">{getExpertDisplayName()}</p>
                         </div>
 
                         {expert.company_name && (
-                          <div>
-                            <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                              <Briefcase className="w-4 h-4" />
-                              Entreprise
-                            </label>
-                            <p className="text-gray-900">{expert.company_name}</p>
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                            <Mail className="w-4 h-4" />
-                            Email
-                          </label>
-                          <p className="text-gray-900">{expert.email}</p>
-                        </div>
-
-                        {expert.phone && (
-                          <div>
-                            <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                              <Phone className="w-4 h-4" />
-                              Téléphone
-                            </label>
-                            <p className="text-gray-900">{expert.phone}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Statut d'approbation</label>
-                          <div>
-                            <Badge variant={
-                              expert.approval_status === 'approved' ? 'default' :
-                              expert.approval_status === 'pending' ? 'secondary' :
-                              'destructive'
-                            }>
-                              {expert.approval_status}
-                            </Badge>
-                          </div>
-                        </div>
-
-                        {expert.rating && (
-                          <div>
-                            <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                              <Award className="w-4 h-4" />
-                              Évaluation
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <span className="text-2xl font-bold text-yellow-600">
-                                {expert.rating}/5
-                              </span>
-                              <span className="text-yellow-500">{'⭐'.repeat(Math.round(expert.rating))}</span>
+                          <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                            <div className="p-2 bg-white rounded-md shadow-sm">
+                              <Briefcase className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div className="flex-1">
+                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">
+                                Entreprise
+                              </label>
+                              <p className="text-base font-medium text-gray-900">{expert.company_name}</p>
                             </div>
                           </div>
                         )}
 
+                        <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                          <div className="p-2 bg-white rounded-md shadow-sm">
+                            <Mail className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">
+                              Email
+                            </label>
+                            <p className="text-base font-medium text-gray-900 break-all">{expert.email}</p>
+                          </div>
+                        </div>
+
+                        {expert.phone && (
+                          <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                            <div className="p-2 bg-white rounded-md shadow-sm">
+                              <Phone className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div className="flex-1">
+                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">
+                                Téléphone
+                              </label>
+                              <p className="text-base font-medium text-gray-900">{expert.phone}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Colonne droite - Statut et détails */}
+                      <div className="space-y-6">
+                        <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
+                            Statut d'approbation
+                          </label>
+                          <Badge 
+                            variant={
+                              expert.approval_status === 'approved' ? 'default' :
+                              expert.approval_status === 'pending' ? 'secondary' :
+                              'destructive'
+                            }
+                            className="text-sm px-3 py-1 font-semibold"
+                          >
+                            {expert.approval_status === 'approved' ? 'Approuvé' :
+                             expert.approval_status === 'pending' ? 'En attente' : 'Rejeté'}
+                          </Badge>
+                        </div>
+
+                        {expert.rating !== undefined && expert.rating !== null && (() => {
+                          const rating: number = expert.rating ?? 0;
+                          return (
+                            <div className="p-4 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg border border-yellow-200">
+                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                <Award className="w-4 h-4 text-yellow-600" />
+                                Évaluation
+                              </label>
+                              <div className="flex items-center gap-3">
+                                <span className="text-3xl font-bold text-yellow-600">
+                                  {rating}/5
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  {Array.from({ length: 5 }).map((_, i) => (
+                                    <Star 
+                                      key={i} 
+                                      className={`w-5 h-5 ${
+                                        i < Math.round(rating) 
+                                          ? 'text-yellow-500 fill-yellow-500' 
+                                          : 'text-gray-300'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
                         {expert.specializations && expert.specializations.length > 0 && (
-                          <div>
-                            <label className="text-sm font-medium text-gray-600 mb-2 block">Spécialisations</label>
+                          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">
+                              Spécialisations
+                            </label>
                             <div className="flex flex-wrap gap-2">
                               {expert.specializations.map((spec: string, index: number) => (
-                                <Badge key={index} variant="secondary">
+                                <Badge 
+                                  key={index} 
+                                  variant="secondary"
+                                  className="bg-white text-blue-700 border border-blue-200 px-3 py-1 font-medium"
+                                >
                                   {spec}
                                 </Badge>
                               ))}
@@ -747,39 +801,36 @@ const ExpertSynthese: React.FC = () => {
 
                         {/* Affichage du texte libre "Autre produit" */}
                         {(expert as any).autre_produit && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <label className="text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
+                          <div className="bg-blue-50 border-l-4 border-blue-400 rounded-lg p-4 shadow-sm">
+                            <label className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-2">
                               <AlertCircle className="w-4 h-4" />
                               Produit non listé (texte libre)
                             </label>
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                               {(expert as any).autre_produit}
                             </p>
-                            <p className="text-xs text-gray-500 mt-2 italic">
+                            <p className="text-xs text-gray-500 mt-3 italic border-t border-blue-200 pt-3">
                               Ce produit n'est pas dans le catalogue ProduitEligible. Visible uniquement pour validation admin.
                             </p>
                           </div>
                         )}
 
-                        <div>
-                          <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                            <Calendar className="w-4 h-4" />
-                            Date d'inscription
-                          </label>
-                          <p className="text-gray-900">
-                            {new Date(expert.created_at).toLocaleDateString('fr-FR', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric'
-                            })}
-                          </p>
-                        </div>
-
-                        <div>
-                          <Button variant="outline" size="sm">
-                            <Edit className="w-4 h-4 mr-2" />
-                            Modifier le profil
-                          </Button>
+                        <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="p-2 bg-white rounded-md shadow-sm">
+                            <Calendar className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">
+                              Date d'inscription
+                            </label>
+                            <p className="text-base font-medium text-gray-900">
+                              {new Date(expert.created_at).toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric'
+                              })}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>

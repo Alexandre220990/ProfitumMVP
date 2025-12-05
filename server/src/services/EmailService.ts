@@ -118,18 +118,14 @@ export class EmailService {
         try {
             const template = this.getClientCredentialsTemplate(credentials, clientName);
             
-            // Ici vous pouvez intégrer votre service d'email (SendGrid, Mailgun, etc.)
-            // Pour l'instant, on simule l'envoi
-            console.log('📧 Email à envoyer:', {
-                to: credentials.email,
-                subject: template.subject,
-                html: template.html
-            });
+            // Envoyer l'email via la méthode sendEmail
+            const success = await this.sendEmail(credentials.email, template.subject, template.html, template.text);
+            
+            if (success) {
+                console.log('✅ Email identifiants client envoyé avec succès à:', credentials.email);
+            }
 
-            // TODO: Intégrer le vrai service d'email
-            // await this.sendEmail(credentials.email, template.subject, template.html);
-
-            return true;
+            return success;
 
         } catch (error) {
             console.error('Erreur sendClientCredentials:', error);
@@ -208,6 +204,244 @@ export class EmailService {
             
             Cordialement,
             L'équipe Profitum
+        `;
+
+        return { subject, html, text };
+    }
+
+    // ===== ENVOI EMAIL TRANSFERT PROSPECT → CLIENT =====
+    /**
+     * Envoie un email au client lors du transfert prospect → client avec toutes les informations
+     */
+    static async sendProspectTransferEmail(data: {
+        clientEmail: string;
+        clientName: string;
+        clientCompany?: string;
+        temporaryPassword: string;
+        loginUrl: string;
+        produitName: string;
+        produitType?: string;
+        expertName: string;
+        expertCompany?: string;
+        expertEmail?: string;
+        montantPotentiel?: number;
+        adminNotes?: string;
+    }): Promise<boolean> {
+        try {
+            const template = this.getProspectTransferEmailTemplate(data);
+            
+            // Envoyer l'email via la méthode sendEmail
+            const success = await this.sendEmail(data.clientEmail, template.subject, template.html, template.text);
+            
+            if (success) {
+                console.log('✅ Email transfert prospect envoyé avec succès à:', data.clientEmail);
+            }
+
+            return success;
+
+        } catch (error) {
+            console.error('Erreur sendProspectTransferEmail:', error);
+            return false;
+        }
+    }
+
+    // ===== TEMPLATE EMAIL TRANSFERT PROSPECT =====
+    private static getProspectTransferEmailTemplate(data: {
+        clientEmail: string;
+        clientName: string;
+        clientCompany?: string;
+        temporaryPassword: string;
+        loginUrl: string;
+        produitName: string;
+        produitType?: string;
+        expertName: string;
+        expertCompany?: string;
+        expertEmail?: string;
+        montantPotentiel?: number;
+        adminNotes?: string;
+    }): EmailTemplate {
+        const subject = 'Bienvenue sur Profitum - Votre dossier est en cours de traitement';
+        
+        const formatCurrency = (amount?: number) => {
+            if (!amount) return 'Non spécifié';
+            return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
+        };
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Bienvenue sur Profitum</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { padding: 30px; background: #f9fafb; border-radius: 0 0 10px 10px; }
+                    .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb; }
+                    .credentials { background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #3b82f6; }
+                    .credential-item { margin: 12px 0; padding: 10px; background: white; border-radius: 6px; }
+                    .credential-label { font-weight: 600; color: #1e40af; margin-bottom: 5px; font-size: 14px; }
+                    .credential-value { font-family: 'Courier New', monospace; font-size: 16px; color: #1f2937; font-weight: 600; }
+                    .dossier-info { background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
+                    .dossier-item { margin: 10px 0; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+                    .dossier-item:last-child { border-bottom: none; }
+                    .dossier-label { font-weight: 600; color: #059669; font-size: 14px; }
+                    .dossier-value { color: #1f2937; margin-top: 4px; }
+                    .expert-info { background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+                    .button { display: inline-block; background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; text-align: center; }
+                    .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                    .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; margin-top: 30px; }
+                    .highlight { color: #2563eb; font-weight: 600; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🎉 Bienvenue sur Profitum</h1>
+                        <p style="margin: 10px 0 0 0; font-size: 18px;">Votre dossier est en cours de traitement</p>
+                    </div>
+                    <div class="content">
+                        <p>Bonjour <strong>${data.clientName}</strong>${data.clientCompany ? ` (${data.clientCompany})` : ''},</p>
+                        
+                        <p>Nous avons le plaisir de vous informer que votre dossier a été transféré sur notre plateforme Profitum et qu'un expert a été assigné pour vous accompagner.</p>
+                        
+                        <div class="credentials">
+                            <h3 style="margin-top: 0; color: #1e40af;">🔐 Vos identifiants de connexion :</h3>
+                            
+                            <div class="credential-item">
+                                <div class="credential-label">📧 Email :</div>
+                                <div class="credential-value">${data.clientEmail}</div>
+                            </div>
+                            
+                            <div class="credential-item">
+                                <div class="credential-label">🔑 Mot de passe provisoire :</div>
+                                <div class="credential-value">${data.temporaryPassword}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="warning">
+                            <strong>⚠️ Important :</strong> Pour votre sécurité, vous devez changer ce mot de passe provisoire lors de votre première connexion.
+                        </div>
+                        
+                        <div class="dossier-info">
+                            <h3 style="margin-top: 0; color: #059669;">📋 Informations de votre dossier :</h3>
+                            
+                            <div class="dossier-item">
+                                <div class="dossier-label">Produit :</div>
+                                <div class="dossier-value"><strong>${data.produitName}</strong>${data.produitType ? ` (${data.produitType})` : ''}</div>
+                            </div>
+                            
+                            ${data.montantPotentiel ? `
+                            <div class="dossier-item">
+                                <div class="dossier-label">Montant estimé :</div>
+                                <div class="dossier-value"><strong class="highlight">${formatCurrency(data.montantPotentiel)}</strong></div>
+                            </div>
+                            ` : ''}
+                            
+                            <div class="dossier-item">
+                                <div class="dossier-label">Statut :</div>
+                                <div class="dossier-value">En attente d'acceptation par l'expert</div>
+                            </div>
+                        </div>
+                        
+                        <div class="expert-info">
+                            <h3 style="margin-top: 0; color: #92400e;">👨‍💼 Expert assigné :</h3>
+                            
+                            <div class="dossier-item">
+                                <div class="dossier-label">Nom :</div>
+                                <div class="dossier-value"><strong>${data.expertName}</strong>${data.expertCompany ? ` - ${data.expertCompany}` : ''}</div>
+                            </div>
+                            
+                            ${data.expertEmail ? `
+                            <div class="dossier-item">
+                                <div class="dossier-label">Email :</div>
+                                <div class="dossier-value">${data.expertEmail}</div>
+                            </div>
+                            ` : ''}
+                            
+                            <p style="margin-top: 15px; font-size: 14px; color: #78350f;">
+                                Votre expert va examiner votre dossier et vous contactera prochainement pour vous accompagner dans votre démarche.
+                            </p>
+                        </div>
+                        
+                        ${data.adminNotes ? `
+                        <div class="info-box">
+                            <h3 style="margin-top: 0; color: #1e40af;">📝 Notes :</h3>
+                            <p style="color: #1f2937; white-space: pre-wrap;">${data.adminNotes}</p>
+                        </div>
+                        ` : ''}
+                        
+                        <div style="text-align: center;">
+                            <a href="${data.loginUrl}" class="button">🚀 Accéder à mon espace client</a>
+                        </div>
+                        
+                        <p style="margin-top: 30px;">Une fois connecté, vous pourrez :</p>
+                        <ul style="color: #1f2937;">
+                            <li>✅ Consulter l'état de votre dossier</li>
+                            <li>✅ Communiquer avec votre expert</li>
+                            <li>✅ Télécharger et uploader des documents</li>
+                            <li>✅ Suivre l'avancement de votre demande</li>
+                        </ul>
+                        
+                        <p style="margin-top: 30px;">Si vous avez des questions, n'hésitez pas à contacter votre expert ou notre équipe support.</p>
+                        
+                        <p style="margin-top: 30px;">Cordialement,<br><strong>L'équipe Profitum</strong></p>
+                    </div>
+                    <div class="footer">
+                        <p>Profitum - Plateforme de gestion des aides financières</p>
+                        <p style="font-size: 12px; color: #9ca3af;">Cet email a été envoyé automatiquement, merci de ne pas y répondre directement.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        const text = `
+            Bienvenue sur Profitum - Votre dossier est en cours de traitement
+            
+            Bonjour ${data.clientName}${data.clientCompany ? ` (${data.clientCompany})` : ''},
+            
+            Nous avons le plaisir de vous informer que votre dossier a été transféré sur notre plateforme Profitum et qu'un expert a été assigné pour vous accompagner.
+            
+            🔐 VOS IDENTIFIANTS DE CONNEXION :
+            
+            Email : ${data.clientName.split('@')[0] ? data.clientName : 'Votre email'}
+            Mot de passe provisoire : ${data.temporaryPassword}
+            
+            ⚠️ IMPORTANT : Pour votre sécurité, vous devez changer ce mot de passe provisoire lors de votre première connexion.
+            
+            📋 INFORMATIONS DE VOTRE DOSSIER :
+            
+            Produit : ${data.produitName}${data.produitType ? ` (${data.produitType})` : ''}
+            ${data.montantPotentiel ? `Montant estimé : ${formatCurrency(data.montantPotentiel)}` : ''}
+            Statut : En attente d'acceptation par l'expert
+            
+            👨‍💼 EXPERT ASSIGNÉ :
+            
+            Nom : ${data.expertName}${data.expertCompany ? ` - ${data.expertCompany}` : ''}
+            ${data.expertEmail ? `Email : ${data.expertEmail}` : ''}
+            
+            Votre expert va examiner votre dossier et vous contactera prochainement pour vous accompagner dans votre démarche.
+            
+            ${data.adminNotes ? `\n📝 NOTES :\n${data.adminNotes}\n` : ''}
+            
+            Lien de connexion : ${data.loginUrl}
+            
+            Une fois connecté, vous pourrez :
+            - Consulter l'état de votre dossier
+            - Communiquer avec votre expert
+            - Télécharger et uploader des documents
+            - Suivre l'avancement de votre demande
+            
+            Si vous avez des questions, n'hésitez pas à contacter votre expert ou notre équipe support.
+            
+            Cordialement,
+            L'équipe Profitum
+            
+            ---
+            Profitum - Plateforme de gestion des aides financières
+            Cet email a été envoyé automatiquement, merci de ne pas y répondre directement.
         `;
 
         return { subject, html, text };

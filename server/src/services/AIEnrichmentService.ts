@@ -156,13 +156,13 @@ IMPORTANT :
         messages: [
           { 
             role: 'system', 
-            content: 'Tu es un expert en analyse commerciale B2B. Tu fournis des analyses approfondies, stratégiques et actionnables.' 
+            content: 'Tu es un expert en analyse commerciale B2B et optimisation de tunnels de vente. Tu fournis des analyses approfondies, stratégiques et actionnables orientées conversion.' 
           },
           { role: 'user', content: prompt }
         ],
         response_format: { type: 'json_object' },
         temperature: 0.7,
-        max_tokens: 3000
+        max_tokens: 4000
       });
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
