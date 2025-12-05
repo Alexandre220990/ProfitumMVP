@@ -57,28 +57,34 @@
     scroll-behavior: smooth;
     /* Empêcher le défilement horizontal */
     overflow-x: hidden;
+    max-width: 100vw;
+    box-sizing: border-box;
   }
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: hidden !important;
     min-height: 100vh;
     /* S'assurer que le body ne déborde jamais */
     max-width: 100vw;
+    width: 100%;
     position: relative;
   }
 
   /* Empêcher tous les containers de déborder horizontalement */
-  * {
+  *,
+  *::before,
+  *::after {
     /* Box-sizing pour éviter les débordements dus au padding */
     box-sizing: border-box;
   }
   
   /* Root container */
   #root {
-    overflow-x: hidden;
+    overflow-x: hidden !important;
     max-width: 100vw;
+    width: 100%;
   }
 
   /* Ensure buttons and links are interactive */
@@ -539,67 +545,415 @@
 }
 
 /* ============================================================================
-   CORRECTIONS RESPONSIVE - MOBILE FIRST
+   FONDATIONS RESPONSIVE - MOBILE FIRST
    ============================================================================ */
 
-/* Empêcher le débordement horizontal global */
-body, html, #root {
-  overflow-x: hidden !important;
+/* Empêcher TOUS les débordements horizontaux */
+html {
+  overflow-x: hidden;
   max-width: 100vw;
+  box-sizing: border-box;
 }
 
-/* S'assurer que les containers max-w-* ne débordent jamais */
+body,
+#root {
+  overflow-x: hidden !important;
+  max-width: 100vw;
+  width: 100%;
+}
+
+/* Tous les containers doivent respecter la largeur de l'écran */
+.container,
 .max-w-7xl,
 .max-w-6xl,
 .max-w-5xl,
 .max-w-4xl,
 .max-w-3xl,
-.max-w-2xl {
+.max-w-2xl,
+.max-w-xl,
+.max-w-lg,
+.max-w-md,
+.max-w-sm {
   width: 100%;
   max-width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 /* Responsive containers avec breakpoints */
 @media (min-width: 640px) {
+  .max-w-sm { max-width: 24rem; }
+  .max-w-md { max-width: 28rem; }
+  .max-w-lg { max-width: 32rem; }
+  .max-w-xl { max-width: 36rem; }
   .max-w-2xl { max-width: 42rem; }
   .max-w-3xl { max-width: 48rem; }
+  
+  .container,
+  .max-w-7xl,
+  .max-w-6xl,
+  .max-w-5xl,
+  .max-w-4xl,
+  .max-w-3xl,
+  .max-w-2xl,
+  .max-w-xl,
+  .max-w-lg,
+  .max-w-md,
+  .max-w-sm {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
 }
 
 @media (min-width: 768px) {
   .max-w-4xl { max-width: 56rem; }
   .max-w-5xl { max-width: 64rem; }
+  
+  .container,
+  .max-w-7xl,
+  .max-w-6xl,
+  .max-w-5xl,
+  .max-w-4xl {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
 }
 
 @media (min-width: 1024px) {
   .max-w-6xl { max-width: 72rem; }
-  .max-w-7xl { max-width: 80rem; }
+  
+  .container,
+  .max-w-7xl,
+  .max-w-6xl {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
 }
 
-/* Fix pour les images qui débordent */
-img {
+@media (min-width: 1280px) {
+  .max-w-7xl { max-width: 80rem; }
+  
+  .container,
+  .max-w-7xl {
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+}
+
+/* ============================================================================
+   IMAGES ET MÉDIAS RESPONSIVES
+   ============================================================================ */
+
+/* Images responsives */
+img,
+picture,
+video,
+svg,
+iframe {
   max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Empêcher les images de déborder */
+img {
+  width: 100%;
+  object-fit: cover;
+}
+
+/* Vidéos responsives */
+video {
+  width: 100%;
   height: auto;
 }
 
-/* Fix pour les grids qui peuvent déborder */
-.grid {
+/* Iframes (YouTube, etc.) */
+iframe {
+  max-width: 100%;
   width: 100%;
 }
+
+/* ============================================================================
+   TEXTES ET TYPOGRAPHIE RESPONSIVE
+   ============================================================================ */
+
+/* Gestion des textes longs */
+p, span, div, h1, h2, h3, h4, h5, h6 {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Empêcher les débordements de texte */
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Typographie responsive */
+h1 {
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  line-height: 1.4;
+}
+
+p {
+  font-size: clamp(0.875rem, 2vw, 1rem);
+  line-height: 1.6;
+}
+
+/* ============================================================================
+   BOUTONS ET ZONES TACTILES
+   ============================================================================ */
+
+/* Touch-friendly pour mobile (iOS standard: 44x44px minimum) */
+@media (max-width: 768px) {
+  button,
+  a[role="button"],
+  [role="button"],
+  .btn,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+  
+  /* Espacement entre boutons */
+  .btn + .btn,
+  button + button {
+    margin-left: 0.5rem;
+  }
+  
+  /* Boutons en colonne sur mobile si nécessaire */
+  .btn-group-mobile {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .btn-group-mobile > * {
+    width: 100%;
+    margin-left: 0;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Desktop: taille normale */
+@media (min-width: 769px) {
+  button,
+  .btn {
+    min-height: auto;
+    padding: 0.5rem 1rem;
+  }
+}
+
+/* ============================================================================
+   GRIDS ET FLEXBOX RESPONSIVE
+   ============================================================================ */
+
+/* Grids responsives */
+.grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+/* Grid 2 colonnes sur mobile, 3+ sur desktop */
+.grid-responsive {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Flexbox responsive */
+.flex-responsive {
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .flex-responsive {
+    flex-direction: row;
+  }
+}
+
+/* Empêcher le shrink des éléments flex */
+.flex-no-shrink {
+  flex-shrink: 0;
+}
+
+.flex-shrink {
+  flex-shrink: 1;
+  min-width: 0; /* Important pour permettre le shrink */
+}
+
+/* ============================================================================
+   TABLES RESPONSIVES
+   ============================================================================ */
+
+/* Tables avec scroll horizontal sur mobile */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+  width: 100%;
+  min-width: 600px; /* Largeur minimale pour garder la lisibilité */
+}
+
+/* Alternative: Tables en cartes sur mobile */
+@media (max-width: 768px) {
+  .table-card-mobile {
+    display: block;
+  }
+  
+  .table-card-mobile thead {
+    display: none;
+  }
+  
+  .table-card-mobile tbody,
+  .table-card-mobile tr,
+  .table-card-mobile td {
+    display: block;
+    width: 100%;
+  }
+  
+  .table-card-mobile tr {
+    margin-bottom: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .table-card-mobile td {
+    padding: 0.5rem 0;
+    border: none;
+    text-align: left;
+  }
+  
+  .table-card-mobile td::before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+    display: inline-block;
+    min-width: 100px;
+  }
+}
+
+/* ============================================================================
+   MODALS ET DIALOGS RESPONSIVE
+   ============================================================================ */
+
+/* Modals responsives */
+.modal-content,
+[role="dialog"],
+.dialog-content {
+  width: 100%;
+  max-width: 100vw;
+  margin: 0;
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .modal-content,
+  [role="dialog"],
+  .dialog-content {
+    max-width: 90vw;
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .modal-content,
+  [role="dialog"],
+  .dialog-content {
+    max-width: 600px;
+    padding: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .modal-content,
+  [role="dialog"],
+  .dialog-content {
+    max-width: 800px;
+  }
+}
+
+/* ============================================================================
+   SIDEBARS ET NAVIGATION RESPONSIVE
+   ============================================================================ */
+
+/* Sidebar responsive */
+.sidebar {
+  width: 100%;
+  max-width: 100vw;
+}
+
+@media (min-width: 768px) {
+  .sidebar {
+    width: 250px;
+    max-width: 250px;
+  }
+}
+
+/* Navigation mobile */
+@media (max-width: 767px) {
+  .nav-mobile {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .nav-mobile.open {
+    transform: translateX(0);
+  }
+  
+  /* Overlay */
+  .nav-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+  }
+}
+
+/* ============================================================================
+   UTILITAIRES
+   ============================================================================ */
 
 /* Meilleure gestion du texte long */
 .break-word {
   word-break: break-word;
   overflow-wrap: break-word;
-}
-
-/* Touch-friendly pour mobile */
-@media (max-width: 768px) {
-  button,
-  a,
-  [role="button"] {
-    min-height: 44px; /* iOS touch target minimum */
-    min-width: 44px;
-  }
 }
 
 /* Animation smooth du menu mobile */

@@ -134,12 +134,15 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
       {/* Sidebar Mobile */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
+          <div 
+            className="fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity" 
+            onClick={() => setSidebarOpen(false)} 
+          />
+          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white transform transition-transform duration-300 ease-in-out">
             <div className="absolute top-0 right-0 -mr-12 pt-2">
               <button
                 type="button"
-                className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                className="ml-1 flex items-center justify-center h-10 w-10 min-h-[44px] min-w-[44px] rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
                 onClick={() => setSidebarOpen(false)}
               >
                 <X className="h-6 w-6 text-white" />
@@ -190,21 +193,21 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
 
       {/* Sidebar Desktop */}
       <div className="hidden lg:flex lg:flex-shrink-0 lg:fixed lg:inset-y-0 lg:z-40">
-        <div className="flex flex-col w-64">
-          <div className="flex flex-col h-screen flex-1 border-r border-gray-200 bg-white">
+        <div className="flex flex-col w-64 max-w-full">
+          <div className="flex flex-col h-screen flex-1 border-r border-gray-200 bg-white overflow-hidden">
             <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
               <div className="flex items-center flex-shrink-0 px-4">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <Briefcase className="h-8 w-8 text-purple-600" />
                   </div>
-                  <div className="ml-3">
-                    <p className="text-lg font-medium text-gray-900">Profitum</p>
-                    <p className="text-sm text-gray-500">Espace Expert</p>
+                  <div className="ml-3 min-w-0">
+                    <p className="text-lg font-medium text-gray-900 truncate">Profitum</p>
+                    <p className="text-sm text-gray-500 truncate">Espace Expert</p>
                   </div>
                 </div>
               </div>
-              <nav className="mt-5 flex-1 px-2 space-y-1">
+              <nav className="mt-5 flex-1 px-2 space-y-1 overflow-y-auto">
                 {navigation.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -215,7 +218,7 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
                         item.current
                           ? 'bg-purple-100 text-purple-900'
                           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      } group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md w-full text-left relative`}
+                      } group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md w-full text-left relative min-h-[44px]`}
                     >
                       <div className="flex items-center">
                         <Icon className="mr-3 h-5 w-5" />
@@ -241,13 +244,13 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
         <div className="sticky top-0 z-30 flex-shrink-0 flex h-16 bg-white shadow">
           <button
             type="button"
-            className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-purple-500 lg:hidden"
+            className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-purple-500 lg:hidden min-h-[44px] min-w-[44px]"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-6 w-6" />
           </button>
-          <div className="flex-1 px-4 flex justify-between">
-            <div className="flex-1 flex">
+          <div className="flex-1 px-2 sm:px-4 flex justify-between items-center">
+            <div className="flex-1 flex min-w-0">
               <div className="w-full flex md:ml-0">
                 <div className="relative w-full text-gray-400 focus-within:text-gray-600">
                   <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none">
@@ -256,14 +259,14 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
                 </div>
               </div>
             </div>
-            <div className="ml-4 flex items-center md:ml-6 gap-3">
+            <div className="ml-2 sm:ml-4 flex items-center md:ml-6 gap-2 sm:gap-3 flex-shrink-0">
               {/* TypeSwitcher */}
               <TypeSwitcher />
 
               {/* Notifications */}
               <button
                 type="button"
-                className="relative bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                className="relative bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <Bell className="h-6 w-6" />
                 {notificationsCount > 0 && (
@@ -274,20 +277,20 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
               </button>
 
               {/* User Menu */}
-              <div className="ml-3 relative">
+              <div className="ml-2 sm:ml-3 relative">
                 <div>
                   <button
                     type="button"
-                    className="max-w-xs bg-white flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                    className="max-w-xs bg-white flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 min-h-[44px]"
                     onClick={() => setUserMenuOpen(!userMenuOpen)}
                   >
-                    <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center">
+                    <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
                       <User className="h-5 w-5 text-white" />
                     </div>
-                    <span className="ml-3 text-sm font-medium text-gray-700">
+                    <span className="ml-2 sm:ml-3 text-sm font-medium text-gray-700 truncate hidden sm:block">
                       {user?.name || `${user?.first_name} ${user?.last_name}`}
                     </span>
-                    <ChevronDown className="ml-1 h-4 w-4 text-gray-400" />
+                    <ChevronDown className="ml-1 h-4 w-4 text-gray-400 flex-shrink-0 hidden sm:block" />
                   </button>
                 </div>
 
@@ -321,8 +324,8 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto bg-gray-50">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="py-4 sm:py-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               {children || <Outlet />}
             </div>
           </div>
