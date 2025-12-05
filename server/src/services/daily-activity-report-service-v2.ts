@@ -85,7 +85,7 @@ export class DailyActivityReportServiceV2 {
   /**
    * Générer le rapport d'activité V2 pour une date donnée
    */
-  static async generateDailyReport(date: Date = new Date()): Promise<DailyReportDataV2> {
+  static async generateDailyReport(date: Date = new Date(), adminId?: string, adminType?: string): Promise<DailyReportDataV2> {
     const dateStr = date.toISOString().split('T')[0];
     const tomorrow = new Date(date);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -94,10 +94,10 @@ export class DailyActivityReportServiceV2 {
     console.log(`📊 Génération rapport d'activité V2 pour le ${dateStr}`);
 
     // 1. Récupérer les actions non traitées
-    const pendingActions = await this.getPendingActions();
+    const pendingActions = await this.getPendingActions(adminId, adminType);
 
     // 2. Récupérer les RDV complétés sans rapport
-    const rdvWithoutReports = await this.getRDVWithoutReports();
+    const rdvWithoutReports = await this.getRDVWithoutReports(adminId, adminType);
 
     // 3. Récupérer les RDV du lendemain
     const { data: rdvTomorrow, error: rdvTomorrowError } = await supabase
@@ -146,7 +146,7 @@ export class DailyActivityReportServiceV2 {
   /**
    * Récupérer les actions non traitées du jour
    */
-  private static async getPendingActions(): Promise<PendingAction[]> {
+  private static async getPendingActions(adminId?: string, adminType?: string): Promise<PendingAction[]> {
     const actions: PendingAction[] = [];
 
     // 1. Documents à valider - GROUPÉS PAR CLIENT
@@ -199,7 +199,7 @@ export class DailyActivityReportServiceV2 {
             title: `Documents à valider - ${clientData.client_name}`,
             description: `${clientData.dossiers.length} dossier${clientData.dossiers.length > 1 ? 's' : ''} : ${dossiersNames}${moreCount}`,
             priority: 'high',
-            link: SecureLinkService.generateSimpleLink(`/admin/clients/${clientId}`),
+            link: SecureLinkService.generateSimpleLink(`/admin/clients/${clientId}`, adminId, adminType || 'admin'),
             metadata: { 
               client_id: clientId,
               dossiers_count: clientData.dossiers.length 
@@ -226,7 +226,7 @@ export class DailyActivityReportServiceV2 {
             title: `Expert ${expert.name || expert.email} souhaite rejoindre la plateforme`,
             description: `Vérifier le profil et valider la candidature`,
             priority: 'medium',
-            link: SecureLinkService.generateSimpleLink(`/admin/experts/${expert.id}`)
+            link: SecureLinkService.generateSimpleLink(`/admin/experts/${expert.id}`, adminId, adminType || 'admin')
           });
         }
       }
@@ -270,7 +270,7 @@ export class DailyActivityReportServiceV2 {
               title: `Simulation client effectuée - ${client?.email || 'Email'}`,
               description: `${productsCount} produit${productsCount > 1 ? 's' : ''} éligible${productsCount > 1 ? 's' : ''} détecté${productsCount > 1 ? 's' : ''} - Voir le client`,
               priority: 'medium',
-              link: SecureLinkService.generateSimpleLink(`/admin/clients/${client?.id || sim.client_id}`),
+              link: SecureLinkService.generateSimpleLink(`/admin/clients/${client?.id || sim.client_id}`, adminId, adminType || 'admin'),
               metadata: { productsCount }
             });
           }
@@ -320,7 +320,7 @@ export class DailyActivityReportServiceV2 {
             title: lead.title || 'Lead à traiter',
             description: `${timeDisplay} de dépassement - ${metadata.name || metadata.email || 'Contact'}`,
             priority,
-            link: SecureLinkService.generateSimpleLink(lead.metadata?.action_url || '/admin/contact'),
+            link: SecureLinkService.generateSimpleLink(lead.metadata?.action_url || '/admin/contact', adminId, adminType || 'admin'),
             metadata: { hoursElapsed, daysElapsed }
           });
         }
@@ -335,7 +335,7 @@ export class DailyActivityReportServiceV2 {
   /**
    * Récupérer les RDV complétés sans rapport (seulement ceux en retard)
    */
-  private static async getRDVWithoutReports(): Promise<RDVWithoutReport[]> {
+  private static async getRDVWithoutReports(adminId?: string, adminType?: string): Promise<RDVWithoutReport[]> {
     try {
       const now = new Date();
       // Limiter aux RDV complétés dans les 30 derniers jours
@@ -397,7 +397,7 @@ export class DailyActivityReportServiceV2 {
             scheduled_time: rdv.scheduled_time,
             Client: client,
             hasReport: hasReport,
-            reportLink: SecureLinkService.generateSimpleLink(`/admin/agenda-admin?rdvId=${rdv.id}&tab=report`)
+            reportLink: SecureLinkService.generateSimpleLink(`/admin/agenda-admin?rdvId=${rdv.id}&tab=report`, undefined, 'admin')
           };
         });
     } catch (error) {
@@ -809,7 +809,7 @@ export class DailyActivityReportServiceV2 {
       <div class="footer-text">
         <p>Rapport généré automatiquement par Profitum</p>
         <p style="margin-top: 12px;">
-          <a href="${SecureLinkService.generateSimpleLink('/admin/dashboard-optimized', adminId, adminType)}" class="footer-link">
+          <a href="${SecureLinkService.generateSimpleLink('/admin/dashboard-optimized', adminId, adminType || 'admin')}" class="footer-link">
             Accéder au dashboard →
           </a>
         </p>
@@ -866,7 +866,7 @@ export class DailyActivityReportServiceV2 {
         }
       }
 
-      const reportData = await this.generateDailyReport(date);
+      const reportData = await this.generateDailyReport(date, adminId, adminType);
       const html = this.formatReportAsHTML(reportData, adminName, adminId, adminType);
 
       const text = `

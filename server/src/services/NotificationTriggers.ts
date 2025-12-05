@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { SecureLinkService } from './secure-link-service';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -469,8 +470,8 @@ export class NotificationTriggers {
           }
 
           const subject = `🔔 ${data.title}`;
-          const html = this.generateAdminEmailTemplate(adminNotification, data);
-          const text = `${data.title}\n\n${data.message}${data.action_url ? `\n\nVoir les détails: ${process.env.FRONTEND_URL || 'https://app.profitum.fr'}${data.action_url}` : ''}`;
+          const html = this.generateAdminEmailTemplate(adminNotification, data, admin.auth_user_id);
+          const text = `${data.title}\n\n${data.message}${data.action_url ? `\n\nVoir les détails: ${SecureLinkService.generateSimpleLink(data.action_url, admin.auth_user_id, 'admin')}` : ''}`;
 
           await EmailService.sendDailyReportEmail(admin.email, subject, html, text);
           console.log(`✅ Email admin envoyé à ${admin.email}`);
@@ -505,11 +506,11 @@ export class NotificationTriggers {
    * Générer le template HTML pour l'email de notification
    */
   private static generateEmailTemplate(notification: any, data: NotificationData): string {
-    const { SecureLinkService } = require('./secure-link-service');
     // Déterminer le type d'utilisateur depuis la notification
     const userType = notification.user_type || data.user_type || 'client';
+    const userId = notification.user_id || data.user_id;
     const frontendUrl = SecureLinkService.getPlatformUrl(userType as 'admin' | 'expert' | 'client' | 'apporteur');
-    const actionUrl = data.action_url ? `${frontendUrl}${data.action_url}` : null;
+    const actionUrl = data.action_url ? SecureLinkService.generateSimpleLink(data.action_url, userId, userType) : null;
     
     const priorityColors: Record<string, string> = {
       urgent: '#dc2626',
@@ -572,10 +573,9 @@ export class NotificationTriggers {
   /**
    * Générer le template HTML pour l'email de notification admin
    */
-  private static generateAdminEmailTemplate(adminNotification: any, data: AdminNotificationData): string {
-    const { SecureLinkService } = require('./secure-link-service');
+  private static generateAdminEmailTemplate(adminNotification: any, data: AdminNotificationData, adminId?: string): string {
     const frontendUrl = SecureLinkService.getPlatformUrl('admin');
-    const actionUrl = data.action_url ? `${frontendUrl}${data.action_url}` : null;
+    const actionUrl = data.action_url ? SecureLinkService.generateSimpleLink(data.action_url, adminId, 'admin') : null;
     
     const priorityColors: Record<string, string> = {
       urgent: '#dc2626',

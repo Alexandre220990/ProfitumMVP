@@ -935,8 +935,6 @@ const EventSynthese: React.FC = () => {
           </Tabs>
         </div>
       )}
-      </div>
-    </div>
 
       {/* Modal de rapport */}
       {event && (

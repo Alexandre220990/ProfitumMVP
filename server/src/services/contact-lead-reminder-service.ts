@@ -285,7 +285,9 @@ export class ContactLeadReminderService {
     daysElapsed: number,
     hoursElapsed: number,
     metadata: any,
-    userName: string
+    userName: string,
+    adminId?: string,
+    adminType?: string
   ): { subject: string; html: string; text: string } {
     const isLead = notification.notification_type === 'lead_to_treat';
     const typeLabel = isLead ? 'Lead' : 'Demande de contact';
@@ -323,8 +325,8 @@ export class ContactLeadReminderService {
     const actionLink = SecureLinkService.generateSmartLinkHTML(
       'Voir et traiter la demande',
       actionPath,
-      undefined,
-      'admin',
+      adminId,
+      adminType || 'admin',
       'cta-button'
     );
     

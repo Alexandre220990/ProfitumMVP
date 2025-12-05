@@ -404,7 +404,9 @@ export class RDVSlaReminderService {
     hoursElapsed: number,
     clientName: string,
     expertName: string,
-    adminName: string
+    adminName: string,
+    adminId?: string,
+    adminType?: string
   ): { subject: string; html: string; text: string } {
     // Déterminer le niveau d'urgence et les couleurs
     let urgencyLevel: 'info' | 'warning' | 'critical';
@@ -447,8 +449,8 @@ export class RDVSlaReminderService {
     const actionLink = SecureLinkService.generateSmartLinkHTML(
       'Voir et traiter le RDV',
       actionPath,
-      undefined,
-      'admin',
+      adminId,
+      adminType || 'admin',
       'cta-button'
     );
     

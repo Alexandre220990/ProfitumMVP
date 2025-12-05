@@ -12,12 +12,16 @@ import { generateRedirectToken } from '../routes/redirect';
 export class SecureLinkService {
   /**
    * Obtient l'URL de la plateforme selon le type d'utilisateur
-   * Pour les admins : profitum.app/connect-admin
+   * Pour les admins : profitum.app (sans /connect-admin car les liens pointent vers les pages admin)
    * Pour les autres : app.profitum.fr
    */
   static getPlatformUrl(userType?: 'admin' | 'expert' | 'client' | 'apporteur'): string {
     if (userType === 'admin') {
-      return process.env.ADMIN_URL || process.env.FRONTEND_URL || 'https://profitum.app/connect-admin';
+      // Retourner l'URL de base sans /connect-admin car les liens pointent vers les pages admin
+      // Si ADMIN_URL contient /connect-admin, on le retire
+      const adminUrl = process.env.ADMIN_URL || process.env.FRONTEND_URL || 'https://www.profitum.app';
+      // Nettoyer l'URL pour retirer /connect-admin si présent
+      return adminUrl.replace(/\/connect-admin\/?$/, '');
     }
     return process.env.FRONTEND_URL || 'https://app.profitum.fr';
   }
@@ -88,7 +92,10 @@ export class SecureLinkService {
         userType: userType,
         timestamp: Date.now().toString()
       });
-      directUrl = `${directUrl}?${params.toString()}`;
+      
+      // Vérifier si l'URL contient déjà des paramètres de query
+      const separator = directUrl.includes('?') ? '&' : '?';
+      directUrl = `${directUrl}${separator}${params.toString()}`;
     }
     
     // Lien HTML simple - style premium avec dégradé violet

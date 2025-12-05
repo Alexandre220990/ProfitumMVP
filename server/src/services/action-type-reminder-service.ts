@@ -853,7 +853,9 @@ export class ActionTypeReminderService {
     clientName: string,
     expertName: string,
     produitNom: string,
-    adminName: string
+    adminName: string,
+    adminId?: string,
+    adminType?: string
   ): { subject: string; html: string; text: string } {
     // Déterminer le niveau d'urgence et les couleurs
     let urgencyColor: string;
@@ -894,8 +896,8 @@ export class ActionTypeReminderService {
     const actionLink = SecureLinkService.generateSmartLinkHTML(
       'Voir et traiter le dossier',
       actionPath,
-      undefined,
-      'admin',
+      adminId,
+      adminType || 'admin',
       'cta-button'
     );
     
