@@ -1,8 +1,9 @@
 # 🏗️ ARCHITECTURE MESSAGERIE SÉCURISÉE - DOCUMENTATION FINALE
 
 **Date** : 24 octobre 2025  
-**Version** : 2.0 - Architecture Defense in Depth  
-**Refactor complet** : 4 heures
+**Version** : 3.0 - Architecture Defense in Depth (Mise à jour Janvier 2025)  
+**Refactor complet** : 4 heures  
+**⚠️ MISE À JOUR** : Authentification unifiée Supabase Auth (100% des utilisateurs)
 
 ---
 
@@ -27,9 +28,9 @@
     └──────────┘   └────────────────┘
 ```
 
-**Problèmes** :
+**Problèmes (avant refactor)** :
 - ❌ Accès directs Supabase depuis frontend
-- ❌ RLS incompatible JWT custom apporteurs
+- ❌ RLS incompatible avec authentification (obsolète - maintenant résolu)
 - ❌ Erreur 401 bloque fonctionnalités
 - ❌ 1 seule couche sécurité (faible)
 
@@ -42,17 +43,18 @@
 │              FRONTEND (React)                   │
 │  ✅ 100% via API                                │
 │  ✅ Aucun accès direct Supabase                 │
-│  ✅ JWT custom dans headers                     │
+│  ✅ Supabase Auth tokens dans headers           │
 └─────────────────────┬───────────────────────────┘
                       │
-               HTTPS + JWT Auth
+               HTTPS + Supabase Auth Token
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
 │         API BACKEND (Node.js/Express)           │
 │                                                 │
 │  🔐 COUCHE SÉCURITÉ 1                           │
-│  ✅ Middleware auth vérifie JWT                 │
+│  ✅ Middleware auth vérifie Supabase Auth       │
+│  ✅ Utilise supabase.auth.getUser(token)        │
 │  ✅ Extrait authUser.database_id                │
 │  ✅ Filtre par participant_ids                  │
 │  ✅ Validation business logic                   │
@@ -95,7 +97,7 @@
 │  🛡️ Protection :                                │
 │  Si backend compromis → RLS bloque             │
 │  Si ANON_KEY leaked → RLS bloque               │
-│  Si JWT forgé → Backend rejette                │
+│  Si token Supabase forgé → Backend rejette     │
 └─────────────────────────────────────────────────┘
 ```
 

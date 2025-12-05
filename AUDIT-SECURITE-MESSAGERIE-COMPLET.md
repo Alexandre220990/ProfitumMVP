@@ -1,7 +1,9 @@
 # 🔒 AUDIT SÉCURITÉ MESSAGERIE - ANALYSE COMPLÈTE
 
 **Date** : 24 octobre 2025  
-**Objectif** : Évaluer si désactiver RLS est sécurisé
+**Dernière mise à jour** : Janvier 2025  
+**Objectif** : Évaluer la sécurité de l'architecture messagerie  
+**⚠️ MISE À JOUR** : Authentification unifiée Supabase Auth (100% des utilisateurs), RLS activé sur messagerie
 
 ---
 
@@ -39,7 +41,7 @@
 │  (Node.js)       │    │  RLS Policies ❌        │
 ├──────────────────┤    │  auth.uid() = NULL      │
 │                  │    │  → 401 Unauthorized     │
-│ ✅ Auth JWT      │    └─────────────────────────┘
+│ ✅ Auth Supabase │    └─────────────────────────┘
 │ ✅ Filtres users │
 │ ✅ supabaseAdmin │
 │                  │
@@ -108,11 +110,13 @@ const { data } = await supabase
 
 #### 3-7. Autres accès directs (lignes 454, 480, 679, 812, 927)
 
-**Problème** :
+**Problème (avant refactor)** :
 - ❌ Bypass l'API backend
 - ❌ Dépend de RLS Supabase
-- ❌ RLS échoue pour apporteurs (JWT custom)
+- ❌ RLS bloquait les accès directs (maintenant résolu)
 - ❌ Erreur 401
+
+**⚠️ Note** : Ces accès directs ont été supprimés. Tous les accès passent maintenant par l'API backend.
 
 ---
 

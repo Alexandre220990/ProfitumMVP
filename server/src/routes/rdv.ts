@@ -1386,6 +1386,207 @@ router.delete('/:id/report', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/rdv/:id/report/enrich - Enrichir le rapport avec l'IA
+ */
+router.post('/:id/report/enrich', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthenticatedUser;
+    const { id } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    // Récupérer le RDV avec toutes les relations
+    const { data: rdv, error: rdvError } = await supabase
+      .from('RDV')
+      .select(`
+        *,
+        Client:client_id (
+          id,
+          company_name,
+          first_name,
+          last_name,
+          name,
+          email,
+          phone_number
+        ),
+        Expert:expert_id (
+          id,
+          first_name,
+          last_name,
+          name,
+          company_name,
+          email
+        ),
+        ApporteurAffaires:apporteur_id (
+          id,
+          first_name,
+          last_name,
+          company_name,
+          email,
+          phone
+        ),
+        RDV_Produits (
+          produit_id,
+          ProduitEligible:produit_id (
+            id,
+            nom,
+            description,
+            categorie
+          )
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (rdvError || !rdv) {
+      return res.status(404).json({
+        success: false,
+        message: 'RDV non trouvé'
+      });
+    }
+
+    // Vérifier les permissions
+    const isParticipant =
+      rdv.client_id === user.database_id ||
+      rdv.expert_id === user.database_id ||
+      rdv.apporteur_id === user.database_id ||
+      user.type === 'admin';
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé'
+      });
+    }
+
+    // Récupérer le rapport existant
+    const { data: report, error: reportError } = await supabase
+      .from('RDV_Report')
+      .select('*')
+      .eq('rdv_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (reportError || !report) {
+      return res.status(404).json({
+        success: false,
+        message: 'Rapport non trouvé. Veuillez d\'abord créer un rapport.'
+      });
+    }
+
+    // Construire le contexte pour l'IA
+    const clientInfo = rdv.Client ? {
+      name: rdv.Client.company_name || 
+            `${rdv.Client.first_name || ''} ${rdv.Client.last_name || ''}`.trim() || 
+            rdv.Client.name ||
+            rdv.Client.email,
+      company: rdv.Client.company_name,
+      email: rdv.Client.email,
+      phone: rdv.Client.phone_number
+    } : undefined;
+
+    const expertInfo = rdv.Expert ? {
+      name: `${rdv.Expert.first_name || ''} ${rdv.Expert.last_name || ''}`.trim() || 
+             rdv.Expert.name ||
+             rdv.Expert.email,
+      company: rdv.Expert.company_name,
+      email: rdv.Expert.email
+    } : undefined;
+
+    const apporteurInfo = rdv.ApporteurAffaires ? {
+      name: rdv.ApporteurAffaires.company_name ||
+            `${rdv.ApporteurAffaires.first_name || ''} ${rdv.ApporteurAffaires.last_name || ''}`.trim() ||
+            rdv.ApporteurAffaires.email,
+      company: rdv.ApporteurAffaires.company_name,
+      email: rdv.ApporteurAffaires.email
+    } : undefined;
+
+    const produits = rdv.RDV_Produits?.map((rp: any) => ({
+      nom: rp.ProduitEligible?.nom || 'Produit',
+      description: rp.ProduitEligible?.description,
+      categorie: rp.ProduitEligible?.categorie
+    })) || [];
+
+    // Importer AIEnrichmentService
+    const { AIEnrichmentService } = await import('../services/AIEnrichmentService');
+
+    // Appeler l'IA pour enrichissement
+    const enrichmentResult = await AIEnrichmentService.enrichRDVReport({
+      original_report: report.summary,
+      rdv_info: {
+        title: rdv.title,
+        description: rdv.description,
+        scheduled_date: rdv.scheduled_date,
+        scheduled_time: rdv.scheduled_time,
+        duration_minutes: rdv.duration_minutes,
+        location: rdv.location,
+        meeting_type: rdv.meeting_type,
+        status: rdv.status
+      },
+      client_info: clientInfo,
+      expert_info: expertInfo,
+      apporteur_info: apporteurInfo,
+      produits
+    });
+
+    // Mettre à jour le rapport avec le contenu enrichi
+    // Utiliser metadata pour stocker les données enrichies
+    const updatedMetadata = {
+      ...(report.metadata || {}),
+      enriched_content: enrichmentResult.enriched_content,
+      enriched_html: enrichmentResult.enriched_html,
+      action_plan: enrichmentResult.action_plan,
+      analysis: enrichmentResult.analysis,
+      enriched_at: new Date().toISOString(),
+      enriched_by: user.database_id
+    };
+
+    const { data: updatedReport, error: updateError } = await supabase
+      .from('RDV_Report')
+      .update({
+        metadata: updatedMetadata,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', report.id)
+      .select('*')
+      .single();
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour rapport enrichi:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la sauvegarde du rapport enrichi'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        ...updatedReport,
+        enriched_content: enrichmentResult.enriched_content,
+        enriched_html: enrichmentResult.enriched_html,
+        action_plan: enrichmentResult.action_plan,
+        analysis: enrichmentResult.analysis
+      },
+      message: 'Rapport enrichi avec succès'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur route POST /rdv/:id/report/enrich:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur serveur lors de l\'enrichissement'
+    });
+  }
+});
+
+/**
  * POST /api/rdv/:id/tasks - Créer une tâche liée au RDV/dossier
  */
 router.post('/:id/tasks', async (req: Request, res: Response) => {

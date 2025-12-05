@@ -1,35 +1,35 @@
 # 🏗️ DÉCISION ARCHITECTURE FINALE - MESSAGERIE PROFITUM
 
 **Date** : 24 octobre 2025  
-**Décision** : **RLS Désactivé + Sécurité Backend Uniquement**
+**Dernière mise à jour** : Janvier 2025  
+**⚠️ OBSOLÈTE** : Cette décision a été révisée. RLS est maintenant activé sur les tables messagerie avec policies "Block all direct access".  
+**Architecture actuelle** : Defense in Depth (Backend + RLS)
 
 ---
 
 ## 🎯 DÉCISION FINALE
 
-### Architecture Retenue
+### ⚠️ ARCHITECTURE ACTUELLE (Janvier 2025)
 
-**1 couche sécurité unique** : **API Backend**
+**2 couches sécurité** : **API Backend + RLS Supabase** (Defense in Depth)
 
 ```
-Frontend → API Backend (JWT + Filtres) → Supabase (RLS OFF)
-           ↑ SÉCURITÉ ICI
+Frontend → API Backend (Supabase Auth + Filtres) → Supabase (RLS ON)
+           ↑ SÉCURITÉ COUCHE 1                    ↑ SÉCURITÉ COUCHE 2
 ```
 
-### Pourquoi RLS Désactivé ?
+### Pourquoi RLS Activé Maintenant ?
 
-**Problème technique** :
-- RLS strict `USING (false)` bloque **aussi les subscriptions Realtime**
-- `supabase.channel().on('postgres_changes')` échoue avec RLS
-- Conversations ne s'affichent pas même avec backend `service_role`
+**Solution technique** :
+- ✅ RLS activé avec policies "Block all direct access" (`USING (false)`)
+- ✅ Backend utilise `supabaseAdmin` (service_role) qui bypass RLS
+- ✅ Frontend n'accède plus directement à Supabase (100% via API)
+- ✅ Protection contre accès directs même si ANON_KEY leaked
 
-**Alternative testée** :
-- RLS avec policy permissive → Complexe pour JWT custom
-- Function helpers → Permission denied schema auth
-- JWT claims dans policies → Ne fonctionne pas en Realtime
-
-**Conclusion** :
-RLS apporte plus de **complexité que de sécurité** dans notre cas.
+**Avantages** :
+- ✅ Defense in Depth (2 couches de sécurité)
+- ✅ Protection même si backend compromis
+- ✅ Isolation complète des données
 
 ---
 
@@ -59,21 +59,21 @@ if (!conv.participant_ids.includes(userId)) {
 ```
 → Vérifie participant avant action
 
-### Protection JWT
+### Protection Supabase Auth
 
 ```typescript
-// Middleware auth vérifie TOUS les tokens
-const decoded = jwt.verify(token, JWT_SECRET);
+// Middleware auth vérifie TOUS les tokens via Supabase
+const { data: { user }, error } = await supabase.auth.getUser(token);
 authUser = {
-  database_id: decoded.database_id,
-  type: decoded.type,
-  email: decoded.email
+  database_id: userData.id, // Depuis table métier
+  type: userType, // client, expert, admin, apporteur
+  email: user.email
 };
 ```
 
 **Résultat** :
-- ❌ JWT invalide → 401
-- ❌ JWT expiré → 401
+- ❌ Token Supabase invalide → 401
+- ❌ Token expiré → 401 (Supabase gère automatiquement)
 - ❌ Requête non auth → 401
 
 ---

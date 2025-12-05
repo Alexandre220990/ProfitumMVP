@@ -6747,6 +6747,128 @@ router.patch('/contact/:id/status', async (req, res) => {
   }
 });
 
+// PUT /api/admin/notifications/mark-all-read - Marquer toutes les notifications comme lues
+router.put('/notifications/mark-all-read', async (req, res) => {
+  try {
+    const user = (req as any).user as AuthUser;
+    
+    if (!user || user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+    
+    // Récupérer l'admin_id (database_id) depuis la table Admin
+    let adminDatabaseId = user.database_id;
+    const authUserId = user.id || user.auth_user_id;
+    
+    if (!adminDatabaseId) {
+      // Si pas de database_id, récupérer depuis Admin via auth_user_id
+      if (authUserId) {
+        const { data: adminData } = await supabaseAdmin
+          .from('Admin')
+          .select('id')
+          .eq('auth_user_id', authUserId)
+          .single();
+        
+        if (adminData) {
+          adminDatabaseId = adminData.id;
+        }
+      }
+    }
+    
+    if (!adminDatabaseId || !authUserId) {
+      return res.status(500).json({
+        success: false,
+        message: 'Impossible de récupérer l\'ID admin'
+      });
+    }
+    
+    let totalMarked = 0;
+    
+    // ====================================================================
+    // 1. Marquer toutes les AdminNotification non lues comme lues
+    // ====================================================================
+    // Récupérer toutes les AdminNotification non lues pour cet admin
+    // On récupère toutes les AdminNotification et on filtre celles qui ne sont pas lues
+    const { data: allAdminNotifications, error: fetchError } = await supabaseClient
+      .from('AdminNotificationWithStatus')
+      .select('id, is_read')
+      .eq('admin_id', adminDatabaseId)
+      .neq('global_status', 'replaced');
+    
+    if (fetchError) {
+      console.error('❌ Erreur récupération AdminNotification:', fetchError);
+    } else if (allAdminNotifications && allAdminNotifications.length > 0) {
+      // Filtrer les notifications non lues
+      const unreadNotifications = allAdminNotifications.filter((n: any) => !n.is_read);
+      const notificationIds = unreadNotifications.map((n: any) => n.id);
+      
+      // Mettre à jour le statut pour chaque notification non lue
+      for (const notificationId of notificationIds) {
+        const { error: statusError } = await supabaseClient
+          .from('AdminNotificationStatus')
+          .upsert({
+            notification_id: notificationId,
+            admin_id: adminDatabaseId,
+            is_read: true,
+            read_at: new Date().toISOString(),
+            is_archived: false,
+            archived_at: null,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'notification_id,admin_id'
+          });
+        
+        if (!statusError) {
+          totalMarked++;
+        } else {
+          console.error(`❌ Erreur marquage AdminNotification ${notificationId}:`, statusError);
+        }
+      }
+    }
+    
+    // ====================================================================
+    // 2. Marquer toutes les notifications de la table notification non lues comme lues
+    // ====================================================================
+    const { error: notificationUpdateError, count: notificationCount } = await supabaseClient
+      .from('notification')
+      .update({
+        is_read: true,
+        status: 'read',
+        read_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', authUserId)
+      .eq('user_type', 'admin')
+      .neq('status', 'replaced')
+      .eq('hidden_in_list', false)
+      .eq('is_read', false);
+    
+    if (notificationUpdateError) {
+      console.error('❌ Erreur marquage notifications:', notificationUpdateError);
+    } else {
+      totalMarked += notificationCount || 0;
+    }
+    
+    console.log(`✅ ${totalMarked} notification(s) admin marquée(s) comme lue(s) pour admin ${adminDatabaseId}`);
+    
+    return res.json({
+      success: true,
+      count: totalMarked,
+      message: `${totalMarked} notification(s) marquée(s) comme lue(s)`
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur marquage toutes notifications admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du marquage des notifications'
+    });
+  }
+});
+
 // PATCH /api/admin/notifications/:id/read - Marquer notification comme lue
 router.patch('/notifications/:id/read', async (req, res) => {
   try {

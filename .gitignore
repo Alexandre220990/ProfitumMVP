@@ -68,6 +68,8 @@ htmlcov/
 
 # Fichiers privés et confidentiels
 DATABASE_KNOWLEDGE_BASE.md
+WHITE-PAPER-PROFITUM.md
+AUDIT-SECURITE-COMPLET.md
 
 # Documentation et scripts de développement privés
 AGENDA_*.md

@@ -1,9 +1,16 @@
 # 🎉 BILAN FINAL SESSION - 24 OCTOBRE 2025
 
+**⚠️ DOCUMENT HISTORIQUE - Informations obsolètes**  
+**Dernière mise à jour** : Janvier 2025  
+**Note** : Ce document décrit l'état de l'application en octobre 2025. L'architecture a évolué depuis :
+- Authentification : Maintenant 100% Supabase Auth (plus de JWT custom)
+- RLS : Activé sur tables messagerie (policies "Block all direct access")
+- Infrastructure : Railway (Backend) + Vercel (Frontend)
+
 **Durée totale** : ~8 heures  
 **Commits** : 8  
 **Fichiers modifiés/créés** : 31  
-**Status** : ✅ **PRODUCTION READY**
+**Status** : ✅ **PRODUCTION READY** (à l'époque)
 
 ---
 

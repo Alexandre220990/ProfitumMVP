@@ -1,10 +1,11 @@
 export const API_DOCUMENTATION_DOC = { id: 'api-documentation, ', title: 'Documentation Technique API, ', category: 'technical, ', description: 'Documentation complète de l\'API REST avec tous les endpoint, s, authentification et exemples', content: `
     <h1>🔌 Documentation Technique API - FinancialTracker</h1>
     
-    <p><strong>Date de mise à jour :</strong> 3 Janvier 2025<br>
-    <strong>Version :</strong> 1.0<br>
-    <strong>Base URL :</strong> http://localhost:5001/api<br>
-    <strong>Authentification :</strong> JWT via Supabase</p>
+    <p><strong>Date de mise à jour :</strong> Janvier 2025<br>
+    <strong>Version :</strong> 2.0<br>
+    <strong>Base URL Production :</strong> https://profitummvp-production.up.railway.app/api<br>
+    <strong>Base URL Dev :</strong> http://localhost:5001/api<br>
+    <strong>Authentification :</strong> Supabase Auth (100% des utilisateurs)</p>
 
     <h2>📋 Informations Générales</h2>
     
@@ -13,7 +14,8 @@ export const API_DOCUMENTATION_DOC = { id: 'api-documentation, ', title: 'Docume
       <li><strong>Framework :</strong> Node.js + Express</li>
       <li><strong>Langage :</strong> TypeScript</li>
       <li><strong>Base de données :</strong> Supabase (PostgreSQL)</li>
-      <li><strong>Authentification :</strong> Supabase Auth + JWT</li>
+      <li><strong>Authentification :</strong> Supabase Auth (unifiée pour tous les utilisateurs)</li>
+      <li><strong>Infrastructure :</strong> Railway (Backend) + Vercel (Frontend)</li>
       <li><strong>Validation :</strong> Joi + Zod</li>
       <li><strong>Documentation :</strong> Swagger/OpenAPI</li>
     </ul>
@@ -24,27 +26,32 @@ export const API_DOCUMENTATION_DOC = { id: 'api-documentation, ', title: 'Docume
       <li><strong>Format de données :</strong> JSON</li>
       <li><strong>Encodage :</strong> UTF-8</li>
       <li><strong>Versioning :</strong> Via URL (/api/v1/)</li>
-      <li><strong>Rate Limiting :</strong> 100 req/15min par IP</li>
+      <li><strong>Rate Limiting :</strong> 500 req/15min par IP (global), 50 req/15min (login)</li>
     </ul>
 
     <h2>🔐 Authentification</h2>
     
     <h3>Mécanisme d'Authentification</h3>
-    <p>L'API utilise l'authentification JWT via Supabase. Chaque requête doit inclure un token Bearer dans le header Authorization.</p>
+    <p>L'API utilise <strong>Supabase Auth</strong> pour tous les utilisateurs (clients, experts, admins, apporteurs). Chaque requête doit inclure un token Supabase dans le header Authorization.</p>
+    
+    <p><strong>⚠️ Important :</strong> Tous les utilisateurs utilisent Supabase Auth. Il n'y a plus de JWT custom.</p>
 
     <h4>Header d'Authentification</h4>
-    <pre><code>Authorization: Bearer &lt;jwt_token&gt;</code></pre>
+    <pre><code>Authorization: Bearer &lt;supabase_access_token&gt;</code></pre>
 
     <h4>Obtention du Token</h4>
-    <pre><code>POST /auth/login
-Content-Type: application/json
+    <p>Le token est obtenu via Supabase Auth côté frontend :</p>
+    <pre><code>// Frontend (React)
+const { data, error } = await supabase.auth.signInWithPassword({
+  email: 'user@example.com',
+  password: 'password123'
+});
 
-{
-  "email": "user@example.com, ", "password": "password123" }
-
-Response: { "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..., ", "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", "expires_in": 3600, "user": {
-    "id": "uuid", "email": "user@example.com", "user_type": "client|expert|admin" }
-}</code></pre>
+// Le token est automatiquement géré par Supabase
+// Utiliser data.session.access_token pour les requêtes API
+</code></pre>
+    
+    <p><strong>Backend :</strong> Le middleware vérifie le token via <code>supabase.auth.getUser(token)</code></p>
 
     <h3>Gestion des Erreurs d'Authentification</h3>
     <table>

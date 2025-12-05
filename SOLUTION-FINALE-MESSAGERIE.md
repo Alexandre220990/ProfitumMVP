@@ -1,14 +1,21 @@
 # 🚀 SOLUTION FINALE - MESSAGERIE SIMPLIFIÉE ET FONCTIONNELLE
 
+**⚠️ DOCUMENT HISTORIQUE - Informations obsolètes**  
 **Date** : 25 octobre 2025  
+**Dernière mise à jour** : Janvier 2025  
+**Note** : Ce document décrit une décision historique. L'architecture actuelle :
+- RLS : **ACTIVÉ** sur tables messagerie (policies "Block all direct access")
+- Architecture : Defense in Depth (Backend + RLS)
+- Authentification : 100% Supabase Auth
+
 **Objectif** : Système de messagerie **ultra-simplifié** qui FONCTIONNE
 
 ---
 
 ## 🎯 DIAGNOSTIC FINAL
 
-### ✅ Ce qui fonctionne déjà
-- ✅ RLS **DÉSACTIVÉ** sur toutes les tables (pas de complexité inutile)
+### ✅ Ce qui fonctionnait à l'époque (octobre 2025)
+- ⚠️ RLS **DÉSACTIVÉ** sur toutes les tables (décision historique, maintenant révisée)
 - ✅ 81 conversations créées dans la DB
 - ✅ Structure de la base de données correcte
 - ✅ Backend avec `service_role` qui fonctionne

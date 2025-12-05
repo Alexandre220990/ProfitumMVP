@@ -180,51 +180,53 @@ export default function AgendaAdmin() {
   }, [searchParams, setSearchParams]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 p-6">
-      {/* Header avec titre et onglets sur la même ligne */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mon Agenda</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Vue calendrier - Tous les rendez-vous (clients, experts, apporteurs)
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-[1920px] mx-auto">
+        {/* Header avec titre et onglets sur la même ligne */}
+        <div className="mb-4 lg:mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">Mon Agenda</h1>
+              <p className="text-sm sm:text-base lg:text-lg text-gray-600 mt-1 lg:mt-2">
+                Vue calendrier - Tous les rendez-vous (clients, experts, apporteurs)
+              </p>
+            </div>
+            
+            {/* Onglets de vue alignés à droite */}
+            <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)}>
+              <TabsList className="flex-wrap">
+                <TabsTrigger value="month" className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  Mois
+                </TabsTrigger>
+                <TabsTrigger value="week" className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  Semaine
+                </TabsTrigger>
+                <TabsTrigger value="day" className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  Jour
+                </TabsTrigger>
+                <TabsTrigger value="list" className="flex items-center gap-2">
+                  <List className="h-4 w-4" />
+                  Liste
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
-          
-          {/* Onglets de vue alignés à droite */}
-          <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)}>
-            <TabsList>
-              <TabsTrigger value="month" className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" />
-                Mois
-              </TabsTrigger>
-              <TabsTrigger value="week" className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" />
-                Semaine
-              </TabsTrigger>
-              <TabsTrigger value="day" className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" />
-                Jour
-              </TabsTrigger>
-              <TabsTrigger value="list" className="flex items-center gap-2">
-                <List className="h-4 w-4" />
-                Liste
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
-      </div>
 
-      {/* Calendrier unifié */}
-      <UnifiedCalendar
-        theme="purple"
-        showHeader={false}
-        showViewSelector={false}
-        enableGoogleSync={true}
-        enableRealTime={true}
-        defaultView={currentView}
-        key={currentView}
-      />
+        {/* Calendrier unifié */}
+        <UnifiedCalendar
+          theme="purple"
+          showHeader={false}
+          showViewSelector={false}
+          enableGoogleSync={true}
+          enableRealTime={true}
+          defaultView={currentView}
+          key={currentView}
+        />
+      </div>
     </div>
   );
 }

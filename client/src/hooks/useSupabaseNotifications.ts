@@ -438,8 +438,8 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
     let method: string = 'PUT';
 
     if (user?.type === 'admin') {
-      toast.info('Marquage global indisponible pour les administrateurs.');
-      return;
+      url = `${API_BASE}/api/admin/notifications/mark-all-read`;
+      method = 'PUT';
     } else if (user?.type === 'expert') {
       url = `${API_BASE}/api/expert/notifications/mark-all-read`;
       method = 'POST';
@@ -453,6 +453,11 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
 
       if (!response.ok) {
         throw new Error(`Erreur ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.success && result.count > 0) {
+        toast.success(`${result.count} notification(s) marquée(s) comme lue(s)`);
       }
 
       await loadNotifications();
