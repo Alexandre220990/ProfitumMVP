@@ -885,17 +885,19 @@ export function UniversalNotificationCenter({
                             <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
                           </button>
                         )}
-                        {/* Bouton pour ajouter/modifier le rapport */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenReportModal(metadata.event_id, metadata.event_title || notification.message);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-blue-100"
-                          title={metadata.has_report ? "Modifier le rapport" : "Ajouter un rapport"}
-                        >
-                          <FileTextIcon className="w-4 h-4 text-blue-600 hover:text-blue-700" />
-                        </button>
+                        {/* Bouton pour modifier le rapport (si rapport existe) - visible au survol */}
+                        {metadata.has_report && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenReportModal(metadata.event_id, metadata.event_title || notification.message);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-blue-100"
+                            title="Modifier le rapport"
+                          >
+                            <FileTextIcon className="w-4 h-4 text-blue-600 hover:text-blue-700" />
+                          </button>
+                        )}
                       </>
                     )}
                     
@@ -953,6 +955,23 @@ export function UniversalNotificationCenter({
                 </div>
               )}
             </div>
+
+            {/* Action pour les événements terminés sans rapport */}
+            {isEventNotification && eventStatus === 'completed' && metadata.event_id && !metadata.has_report && !isArchived && (
+              <div className="flex flex-wrap gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="bg-purple-600 hover:bg-purple-700 text-white text-xs h-7"
+                  onClick={() => {
+                    handleOpenReportModal(metadata.event_id, metadata.event_title || notification.message);
+                  }}
+                >
+                  <FileTextIcon className="w-3 h-3 mr-1" />
+                  Rédiger le rapport de RDV
+                </Button>
+              </div>
+            )}
 
             {/* Actions pour les événements proposés */}
             {isEventProposed && metadata.event_id && !isArchived && (
