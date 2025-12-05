@@ -6406,10 +6406,10 @@ router.get('/notifications', async (req, res) => {
     
     // Récupérer l'admin_id (database_id) depuis la table Admin
     let adminDatabaseId = authUser.database_id;
+    const authUserId = authUser.id || authUser.auth_user_id;
     
     if (!adminDatabaseId) {
       // Si pas de database_id, récupérer depuis Admin via auth_user_id
-      const authUserId = authUser.id || authUser.auth_user_id;
       if (authUserId) {
         const { data: adminData } = await supabaseAdmin
           .from('Admin')
@@ -6423,17 +6423,19 @@ router.get('/notifications', async (req, res) => {
       }
     }
     
-    if (!adminDatabaseId) {
+    if (!adminDatabaseId || !authUserId) {
       return res.status(500).json({
         success: false,
         message: 'Impossible de récupérer l\'ID admin'
       });
     }
     
-    console.log('🔍 Récupération notifications admin - admin_id:', adminDatabaseId);
+    console.log('🔍 Récupération notifications admin - admin_id:', adminDatabaseId, 'auth_user_id:', authUserId);
     
-    // Utiliser la vue AdminNotificationWithStatus pour récupérer avec statuts individuels
-    let query = supabaseClient
+    // ====================================================================
+    // 1. Récupérer depuis AdminNotificationWithStatus (table AdminNotification)
+    // ====================================================================
+    let adminNotificationQuery = supabaseClient
       .from('AdminNotificationWithStatus')
       .select('*')
       .eq('admin_id', adminDatabaseId)
@@ -6442,38 +6444,69 @@ router.get('/notifications', async (req, res) => {
     
     // Filtrer par statut individuel (user_status)
     if (status && status !== 'all') {
-      query = query.eq('user_status', status);
+      adminNotificationQuery = adminNotificationQuery.eq('user_status', status);
     }
     
     if (priority) {
-      query = query.eq('priority', priority);
+      adminNotificationQuery = adminNotificationQuery.eq('priority', priority);
     }
     
-    if (limit && Number(limit) > 0) {
-      query = query.limit(Number(limit));
+    // Ne pas limiter ici, on limitera après fusion
+    const { data: adminNotifications, error: adminError } = await adminNotificationQuery;
+    
+    if (adminError) {
+      console.error('❌ Erreur récupération AdminNotification:', adminError);
     }
     
-    const { data: notifications, error } = await query;
+    // ====================================================================
+    // 2. Récupérer depuis notification (pour ClientProduitEligible et autres)
+    // Inclure les notifications parent (is_parent = true) et les enfants non masqués
+    // ====================================================================
+    let notificationQuery = supabaseClient
+      .from('notification')
+      .select('*')
+      .eq('user_id', authUserId)
+      .eq('user_type', 'admin')
+      .neq('status', 'replaced')
+      .eq('hidden_in_list', false)
+      .order('created_at', { ascending: false });
     
-    if (error) {
-      console.error('❌ Erreur récupération notifications:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la récupération des notifications'
-      });
+    // Filtrer par statut
+    if (status && status !== 'all') {
+      if (status === 'unread') {
+        notificationQuery = notificationQuery.eq('is_read', false);
+      } else if (status === 'read') {
+        notificationQuery = notificationQuery.eq('is_read', true);
+      } else if (status === 'archived') {
+        notificationQuery = notificationQuery.eq('status', 'archived');
+      }
     }
     
-    // Normaliser pour le front-end
-    const normalizedNotifications = (notifications || []).map((notif: any) => ({
+    if (priority) {
+      notificationQuery = notificationQuery.eq('priority', priority);
+    }
+    
+    // Ne pas limiter ici, on limitera après fusion
+    const { data: notifications, error: notificationError } = await notificationQuery;
+    
+    if (notificationError) {
+      console.error('❌ Erreur récupération notifications:', notificationError);
+    }
+    
+    // ====================================================================
+    // 3. Normaliser les notifications AdminNotification
+    // ====================================================================
+    const normalizedAdminNotifications = (adminNotifications || []).map((notif: any) => ({
       id: notif.id,
       type: notif.type,
       notification_type: notif.type,
       title: notif.title,
       message: notif.message,
       priority: notif.priority,
-      metadata: notif.metadata,
+      metadata: notif.metadata || {},
       action_url: notif.action_url,
       action_label: notif.action_label,
+      action_data: notif.metadata || {},
       created_at: notif.created_at,
       updated_at: notif.updated_at,
       // Statuts individuels
@@ -6481,23 +6514,101 @@ router.get('/notifications', async (req, res) => {
       read_at: notif.read_at,
       is_archived: notif.is_archived || false,
       archived_at: notif.archived_at,
-      status: notif.user_status || 'unread', // Utiliser user_status au lieu de global_status
+      status: notif.user_status || 'unread',
+      user_type: 'admin',
+      user_id: authUserId,
+      // Support parent/enfant
+      is_parent: notif.is_parent || false,
+      parent_id: notif.parent_id || null
     }));
     
-    // Log des types de notifications pour déboguer
-    const typeStats = normalizedNotifications.reduce((acc: any, n: any) => {
+    // ====================================================================
+    // 4. Normaliser les notifications de la table notification
+    // ====================================================================
+    const normalizedNotifications = (notifications || []).map((notif: any) => ({
+      id: notif.id,
+      type: notif.notification_type,
+      notification_type: notif.notification_type,
+      title: notif.title,
+      message: notif.message,
+      priority: notif.priority,
+      metadata: notif.metadata || {},
+      action_url: notif.action_url,
+      action_label: notif.action_label,
+      action_data: notif.action_data || {},
+      created_at: notif.created_at,
+      updated_at: notif.updated_at,
+      is_read: notif.is_read || false,
+      read_at: notif.read_at,
+      is_archived: notif.status === 'archived',
+      archived_at: notif.archived_at,
+      status: notif.status || (notif.is_read ? 'read' : 'unread'),
+      user_type: notif.user_type || 'admin',
+      user_id: notif.user_id,
+      // Support parent/enfant
+      is_parent: notif.is_parent || false,
+      parent_id: notif.parent_id || null
+    }));
+    
+    // ====================================================================
+    // 5. Fusionner les deux listes et trier par date
+    // ====================================================================
+    const allNotifications = [...normalizedAdminNotifications, ...normalizedNotifications];
+    
+    // Trier par date de création (plus récentes en premier)
+    // Prioriser les notifications non lues
+    allNotifications.sort((a, b) => {
+      // D'abord par statut (non lues en premier)
+      const aUnread = a.status === 'unread' || (!a.is_read && a.status !== 'read' && a.status !== 'archived');
+      const bUnread = b.status === 'unread' || (!b.is_read && b.status !== 'read' && b.status !== 'archived');
+      
+      if (aUnread && !bUnread) return -1;
+      if (!aUnread && bUnread) return 1;
+      
+      // Ensuite par date (plus récentes en premier)
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+    
+    // ====================================================================
+    // 6. Appliquer la limite globale après tri
+    // ====================================================================
+    const limitedNotifications = limit && Number(limit) > 0 
+      ? allNotifications.slice(0, Number(limit))
+      : allNotifications;
+    
+    // ====================================================================
+    // 7. Log des types de notifications pour déboguer
+    // ====================================================================
+    const typeStats = limitedNotifications.reduce((acc: any, n: any) => {
       const type = n.notification_type || 'undefined';
       const status = n.status || 'undefined';
       const key = `${type}|${status}`;
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
-    console.log(`✅ ${normalizedNotifications.length} notifications récupérées pour admin ${adminDatabaseId}`);
+    
+    // Compter les notifications ClientProduitEligible
+    const cpeNotifications = limitedNotifications.filter((n: any) => 
+      n.notification_type === 'admin_action_required' ||
+      n.notification_type === 'documents_pending_validation_reminder' ||
+      n.notification_type === 'documents_to_validate' ||
+      n.notification_type === 'waiting_documents' ||
+      n.notification_type === 'dossier_complete'
+    );
+    
+    console.log(`✅ ${normalizedAdminNotifications.length} AdminNotification + ${normalizedNotifications.length} notification = ${limitedNotifications.length} total`);
+    console.log(`📋 ${cpeNotifications.length} notification(s) ClientProduitEligible trouvée(s)`);
     console.log('📊 Types de notifications:', typeStats);
     
     return res.json({
       success: true,
-      data: { notifications: normalizedNotifications }
+      data: { 
+        notifications: limitedNotifications,
+        total: allNotifications.length,
+        filtered: limitedNotifications.length
+      }
     });
     
   } catch (error) {
