@@ -16,7 +16,7 @@
  * Date: 27 Octobre 2025
  */
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -60,6 +60,7 @@ import { FileText as FileTextIcon } from 'lucide-react';
 import { config } from '@/config/env';
 import { getSupabaseToken } from '@/lib/auth-helpers';
 import { toast } from 'sonner';
+import { useEventReports } from '@/hooks/useEventReports';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -129,9 +130,21 @@ export function UniversalNotificationCenter({
     existingReport: null
   });
   
-  // État pour stocker les rapports des événements
-  const [eventReports, setEventReports] = useState<Record<string, any>>({});
-  const loadingReportsRef = useRef<Set<string>>(new Set());
+  // Hook optimisé pour charger les rapports avec batch et cache
+  const eventIds = useMemo(() => {
+    return notifications
+      .filter((n: any) => {
+        const metadata = n.metadata && typeof n.metadata === 'object' ? n.metadata : {};
+        const isEventCompleted = 
+          n.notification_type === 'event_completed' ||
+          metadata.event_status === 'completed';
+        return isEventCompleted && metadata.event_id;
+      })
+      .map((n: any) => n.metadata?.event_id)
+      .filter((id: string) => id);
+  }, [notifications]);
+
+  const { reports: eventReports, loadReport } = useEventReports(eventIds, true);
   
   // État pour le popup de résumé de rapport
   const [reportSummaryPopup, setReportSummaryPopup] = useState<{
@@ -162,92 +175,7 @@ export function UniversalNotificationCenter({
     notes: ''
   });
 
-  // Charger les rapports pour les événements terminés
-  useEffect(() => {
-    const loadEventReports = async () => {
-      const eventNotifications = notifications.filter((n: any) => {
-        const metadata = n.metadata && typeof n.metadata === 'object' ? n.metadata : {};
-        const isEventCompleted = 
-          n.notification_type === 'event_completed' ||
-          metadata.event_status === 'completed';
-        const eventId = metadata.event_id;
-        return isEventCompleted && eventId && 
-               !loadingReportsRef.current.has(eventId);
-      });
-
-      if (eventNotifications.length === 0) return;
-
-      const promises = eventNotifications.map(async (notification: any) => {
-        const metadata = notification.metadata || {};
-        const eventId = metadata.event_id;
-        
-        if (!eventId || loadingReportsRef.current.has(eventId)) return;
-
-        loadingReportsRef.current.add(eventId);
-
-        try {
-          const token = await getSupabaseToken();
-          const response = await fetch(`${config.API_URL}/api/rdv/${eventId}/report`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.data) {
-              setEventReports(prev => {
-                // Éviter les mises à jour inutiles si la valeur est identique
-                if (prev[eventId] === data.data) return prev;
-                return {
-                  ...prev,
-                  [eventId]: data.data
-                };
-              });
-            } else {
-              setEventReports(prev => {
-                // Éviter les mises à jour inutiles si la valeur est déjà null
-                if (prev[eventId] === null) return prev;
-                return {
-                  ...prev,
-                  [eventId]: null
-                };
-              });
-            }
-          } else {
-            setEventReports(prev => {
-              if (prev[eventId] === null) return prev;
-              return {
-                ...prev,
-                [eventId]: null
-              };
-            });
-          }
-        } catch (error) {
-          console.error('Erreur chargement rapport:', error);
-          setEventReports(prev => {
-            if (prev[eventId] === null) return prev;
-            return {
-              ...prev,
-              [eventId]: null
-            };
-          });
-        } finally {
-          loadingReportsRef.current.delete(eventId);
-        }
-      });
-
-      await Promise.all(promises);
-    };
-
-    loadEventReports();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notifications]);
-
-  // Utiliser une clé de version pour éviter les re-renders inutiles
-  const eventReportsVersion = useMemo(() => {
-    return Object.keys(eventReports).length;
-  }, [eventReports]);
+  // Les rapports sont maintenant chargés automatiquement via useEventReports
 
   const enrichedNotifications = useMemo(() => {
     const now = Date.now();
@@ -290,7 +218,7 @@ export function UniversalNotificationCenter({
         }
       };
     });
-  }, [notifications, eventReportsVersion, eventReports]);
+  }, [notifications, eventReports]);
 
   // Statistiques
   // Pour toutes les notifications: status peut être 'unread' (non lu), 'read' (lu), 'archived' (archivé)
@@ -1515,22 +1443,7 @@ export function UniversalNotificationCenter({
             // Recharger le rapport pour mettre à jour l'affichage
             const eventId = rdvReportModal.rdvId;
             if (eventId) {
-              const token = await getSupabaseToken();
-              fetch(`${config.API_URL}/api/rdv/${eventId}/report`, {
-                headers: {
-                  'Authorization': `Bearer ${token}`
-                }
-              })
-                .then(res => res.json())
-                .then(data => {
-                  if (data.success && data.data) {
-                    setEventReports(prev => ({
-                      ...prev,
-                      [eventId]: data.data
-                    }));
-                  }
-                })
-                .catch(err => console.error('Erreur rechargement rapport:', err));
+              await loadReport(eventId);
             }
             setRdvReportModal({ isOpen: false, rdvId: null, existingReport: null });
           }}

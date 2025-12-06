@@ -98,21 +98,9 @@ export class DailyActivityReportService {
     }
 
     // 2. Récupérer les notifications archivées de la journée
-    // Depuis AdminNotification
-    const { data: adminNotifications, error: adminNotifError } = await supabase
-      .from('AdminNotification')
-      .select('id, title, message, type, priority, created_at, archived_at')
-      .eq('status', 'archived')
-      .gte('archived_at', `${dateStr}T00:00:00.000Z`)
-      .lt('archived_at', `${tomorrowStr}T00:00:00.000Z`)
-      .order('archived_at', { ascending: false });
-
-    if (adminNotifError) {
-      console.error('❌ Erreur récupération AdminNotification:', adminNotifError);
-    }
-
-    // Depuis notification (pour les admins)
-    const { data: generalNotifications, error: generalNotifError } = await supabase
+    // ✅ OPTIMISATION: Utiliser uniquement la table notification (AdminNotification migrée)
+    // ✅ OPTIMISATION: Une seule requête au lieu de deux
+    const { data: notificationsArchivedRaw, error: notificationsError } = await supabase
       .from('notification')
       .select('id, title, message, notification_type, priority, created_at, archived_at')
       .eq('user_type', 'admin')
@@ -121,31 +109,20 @@ export class DailyActivityReportService {
       .lt('archived_at', `${tomorrowStr}T00:00:00.000Z`)
       .order('archived_at', { ascending: false });
 
-    if (generalNotifError) {
-      console.error('❌ Erreur récupération notification:', generalNotifError);
+    if (notificationsError) {
+      console.error('❌ Erreur récupération notifications archivées:', notificationsError);
     }
 
-    // Fusionner les notifications
-    const notificationsArchived: NotificationData[] = [
-      ...(adminNotifications || []).map((n: any) => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        type: n.type,
-        priority: n.priority || 'normal',
-        created_at: n.created_at,
-        archived_at: n.archived_at
-      })),
-      ...(generalNotifications || []).map((n: any) => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        type: n.notification_type, // Mapper notification_type vers type
-        priority: n.priority || 'normal',
-        created_at: n.created_at,
-        archived_at: n.archived_at
-      }))
-    ];
+    // Mapper les notifications
+    const notificationsArchived: NotificationData[] = (notificationsArchivedRaw || []).map((n: any) => ({
+      id: n.id,
+      title: n.title,
+      message: n.message,
+      type: n.notification_type, // Mapper notification_type vers type
+      priority: n.priority || 'normal',
+      created_at: n.created_at,
+      archived_at: n.archived_at
+    }));
 
     // 3. Récupérer les RDV du lendemain
     const { data: rdvTomorrow, error: rdvTomorrowError } = await supabase

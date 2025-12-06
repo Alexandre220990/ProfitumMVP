@@ -6,6 +6,7 @@ import { AuthUser } from '../types/auth';
 import messagesRouter from './admin/messages';
 import { normalizeDossierStatus } from '../utils/dossierStatus';
 import { ClientTimelineService } from '../services/client-timeline-service';
+import { getAdminNotificationsWithStatus, getAdminNotificationWithStatusById } from '../services/admin-notification-helper';
 
 const router = express.Router();
 
@@ -6433,88 +6434,55 @@ router.get('/notifications', async (req, res) => {
     console.log('🔍 Récupération notifications admin - admin_id:', adminDatabaseId, 'auth_user_id:', authUserId);
     
     // ====================================================================
-    // 1. Récupérer depuis AdminNotificationWithStatus (table AdminNotification)
+    // ✅ MIGRATION: Récupérer depuis notification avec statuts individuels
+    // Utilise la fonction helper qui remplace AdminNotificationWithStatus
     // ====================================================================
-    let adminNotificationQuery = supabaseClient
-      .from('AdminNotificationWithStatus')
-      .select('*')
-      .eq('admin_id', adminDatabaseId)
-      .neq('global_status', 'replaced')
-      .order('created_at', { ascending: false });
+    const statusFilter = status && typeof status === 'string' && ['all', 'read', 'unread', 'archived'].includes(status)
+      ? status as 'all' | 'read' | 'unread' | 'archived'
+      : 'all';
+    const priorityFilter = priority && typeof priority === 'string' ? priority : undefined;
     
-    // Filtrer par statut individuel (user_status)
-    if (status && status !== 'all') {
-      adminNotificationQuery = adminNotificationQuery.eq('user_status', status);
-    }
-    
-    if (priority) {
-      adminNotificationQuery = adminNotificationQuery.eq('priority', priority);
-    }
-    
-    // Ne pas limiter ici, on limitera après fusion
-    const { data: adminNotifications, error: adminError } = await adminNotificationQuery;
+    const { data: adminNotifications, error: adminError } = await getAdminNotificationsWithStatus(
+      supabaseClient,
+      {
+        adminDatabaseId,
+        authUserId,
+        status: statusFilter,
+        priority: priorityFilter,
+        limit: limit ? Number(limit) : undefined
+      }
+    );
     
     if (adminError) {
-      console.error('❌ Erreur récupération AdminNotification:', adminError);
+      console.error('❌ Erreur récupération notifications admin:', adminError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des notifications'
+      });
     }
     
     // ====================================================================
-    // 2. Récupérer depuis notification (pour ClientProduitEligible et autres)
-    // Inclure les notifications parent (is_parent = true) et les enfants non masqués
+    // Normaliser les notifications pour compatibilité avec le format attendu
     // ====================================================================
-    let notificationQuery = supabaseClient
-      .from('notification')
-      .select('*')
-      .eq('user_id', authUserId)
-      .eq('user_type', 'admin')
-      .neq('status', 'replaced')
-      .eq('hidden_in_list', false)
-      .order('created_at', { ascending: false });
-    
-    // Filtrer par statut
-    if (status && status !== 'all') {
-      if (status === 'unread') {
-        notificationQuery = notificationQuery.eq('is_read', false);
-      } else if (status === 'read') {
-        notificationQuery = notificationQuery.eq('is_read', true);
-      } else if (status === 'archived') {
-        notificationQuery = notificationQuery.eq('status', 'archived');
-      }
-    }
-    
-    if (priority) {
-      notificationQuery = notificationQuery.eq('priority', priority);
-    }
-    
-    // Ne pas limiter ici, on limitera après fusion
-    const { data: notifications, error: notificationError } = await notificationQuery;
-    
-    if (notificationError) {
-      console.error('❌ Erreur récupération notifications:', notificationError);
-    }
-    
-    // ====================================================================
-    // 3. Normaliser les notifications AdminNotification
-    // ====================================================================
-    const normalizedAdminNotifications = (adminNotifications || []).map((notif: any) => ({
+    const normalizedNotifications = (adminNotifications || []).map((notif: any) => ({
       id: notif.id,
-      type: notif.type,
-      notification_type: notif.type,
+      type: notif.type || notif.notification_type,
+      notification_type: notif.notification_type,
       title: notif.title,
       message: notif.message,
       priority: notif.priority,
       metadata: notif.metadata || {},
       action_url: notif.action_url,
       action_label: notif.action_label,
-      action_data: notif.metadata || {},
+      action_data: notif.action_data || notif.metadata || {},
       created_at: notif.created_at,
       updated_at: notif.updated_at,
-      // Statuts individuels
+      // Statuts individuels depuis AdminNotificationStatus
       is_read: notif.is_read || false,
-      read_at: notif.read_at,
+      read_at: notif.user_read_at || notif.read_at,
       is_archived: notif.is_archived || false,
-      archived_at: notif.archived_at,
-      status: notif.user_status || 'unread',
+      archived_at: notif.user_archived_at || notif.archived_at,
+      status: notif.user_status || (notif.is_read ? 'read' : 'unread'),
       user_type: 'admin',
       user_id: authUserId,
       // Support parent/enfant
@@ -6523,37 +6491,9 @@ router.get('/notifications', async (req, res) => {
     }));
     
     // ====================================================================
-    // 4. Normaliser les notifications de la table notification
+    // Trier par date (plus récentes en premier) et prioriser les non lues
     // ====================================================================
-    const normalizedNotifications = (notifications || []).map((notif: any) => ({
-      id: notif.id,
-      type: notif.notification_type,
-      notification_type: notif.notification_type,
-      title: notif.title,
-      message: notif.message,
-      priority: notif.priority,
-      metadata: notif.metadata || {},
-      action_url: notif.action_url,
-      action_label: notif.action_label,
-      action_data: notif.action_data || {},
-      created_at: notif.created_at,
-      updated_at: notif.updated_at,
-      is_read: notif.is_read || false,
-      read_at: notif.read_at,
-      is_archived: notif.status === 'archived',
-      archived_at: notif.archived_at,
-      status: notif.status || (notif.is_read ? 'read' : 'unread'),
-      user_type: notif.user_type || 'admin',
-      user_id: notif.user_id,
-      // Support parent/enfant
-      is_parent: notif.is_parent || false,
-      parent_id: notif.parent_id || null
-    }));
-    
-    // ====================================================================
-    // 5. Fusionner les deux listes et trier par date
-    // ====================================================================
-    const allNotifications = [...normalizedAdminNotifications, ...normalizedNotifications];
+    const allNotifications = normalizedNotifications;
     
     // Trier par date de création (plus récentes en premier)
     // Prioriser les notifications non lues
@@ -6598,7 +6538,7 @@ router.get('/notifications', async (req, res) => {
       n.notification_type === 'dossier_complete'
     );
     
-    console.log(`✅ ${normalizedAdminNotifications.length} AdminNotification + ${normalizedNotifications.length} notification = ${limitedNotifications.length} total`);
+    console.log(`✅ ${limitedNotifications.length} notification(s) admin récupérée(s)`);
     console.log(`📋 ${cpeNotifications.length} notification(s) ClientProduitEligible trouvée(s)`);
     console.log('📊 Types de notifications:', typeStats);
     
@@ -6700,19 +6640,20 @@ router.patch('/contact/:id/status', async (req, res) => {
       .select()
       .single();
     
-    // Mettre à jour la notification AdminNotification correspondante si elle existe
+    // ✅ MIGRATION: Mettre à jour les notifications correspondantes dans notification
     if (!error && data) {
       const { data: notifications } = await supabaseClient
-        .from('AdminNotification')
+        .from('notification')
         .select('id')
-        .eq('type', 'contact_message')
+        .eq('user_type', 'admin')
+        .eq('notification_type', 'contact_message')
         .contains('metadata', { contact_message_id: id });
       
       if (notifications && notifications.length > 0) {
         // Mettre à jour toutes les notifications de contact correspondantes
         for (const notif of notifications) {
           await supabaseClient
-            .from('AdminNotification')
+            .from('notification')
             .update({
               status: normalizedStatus,
               is_read: normalizedStatus === 'read' || normalizedStatus === 'replied', // replied est considéré comme lu
@@ -6788,29 +6729,27 @@ router.put('/notifications/mark-all-read', async (req, res) => {
     let totalMarked = 0;
     
     // ====================================================================
-    // 1. Marquer toutes les AdminNotification non lues comme lues
+    // ✅ MIGRATION: Marquer toutes les notifications admin non lues comme lues
     // ====================================================================
-    // Récupérer toutes les AdminNotification non lues pour cet admin
-    // On récupère toutes les AdminNotification et on filtre celles qui ne sont pas lues
-    const { data: allAdminNotifications, error: fetchError } = await supabaseClient
-      .from('AdminNotificationWithStatus')
-      .select('id, is_read')
-      .eq('admin_id', adminDatabaseId)
-      .neq('global_status', 'replaced');
+    // 1. Récupérer toutes les notifications admin non lues
+    const { data: unreadNotifications, error: fetchError } = await supabaseClient
+      .from('notification')
+      .select('id')
+      .eq('user_type', 'admin')
+      .eq('user_id', authUserId)
+      .neq('status', 'replaced')
+      .eq('hidden_in_list', false)
+      .eq('is_read', false);
     
     if (fetchError) {
-      console.error('❌ Erreur récupération AdminNotification:', fetchError);
-    } else if (allAdminNotifications && allAdminNotifications.length > 0) {
-      // Filtrer les notifications non lues
-      const unreadNotifications = allAdminNotifications.filter((n: any) => !n.is_read);
-      const notificationIds = unreadNotifications.map((n: any) => n.id);
-      
-      // Mettre à jour le statut pour chaque notification non lue
-      for (const notificationId of notificationIds) {
+      console.error('❌ Erreur récupération notifications non lues:', fetchError);
+    } else if (unreadNotifications && unreadNotifications.length > 0) {
+      // Mettre à jour le statut pour chaque notification non lue dans AdminNotificationStatus
+      for (const notif of unreadNotifications) {
         const { error: statusError } = await supabaseClient
           .from('AdminNotificationStatus')
           .upsert({
-            notification_id: notificationId,
+            notification_id: notif.id,
             admin_id: adminDatabaseId,
             is_read: true,
             read_at: new Date().toISOString(),
@@ -6824,7 +6763,7 @@ router.put('/notifications/mark-all-read', async (req, res) => {
         if (!statusError) {
           totalMarked++;
         } else {
-          console.error(`❌ Erreur marquage AdminNotification ${notificationId}:`, statusError);
+          console.error(`❌ Erreur marquage notification ${notif.id}:`, statusError);
         }
       }
     }
@@ -6911,11 +6850,12 @@ router.patch('/notifications/:id/read', async (req, res) => {
       });
     }
     
-    // Vérifier que la notification existe
+    // ✅ MIGRATION: Vérifier que la notification existe dans notification
     const { data: notification, error: notifError } = await supabaseClient
-      .from('AdminNotification')
+      .from('notification')
       .select('id')
       .eq('id', id)
+      .eq('user_type', 'admin')
       .maybeSingle();
     
     if (notifError || !notification) {
@@ -6950,13 +6890,20 @@ router.patch('/notifications/:id/read', async (req, res) => {
       });
     }
     
-    // Récupérer la notification complète avec statut
-    const { data: fullNotification } = await supabaseClient
-      .from('AdminNotificationWithStatus')
-      .select('*')
-      .eq('id', id)
-      .eq('admin_id', adminDatabaseId)
-      .single();
+    // ✅ MIGRATION: Récupérer la notification complète avec statut
+    const { data: fullNotification, error: fetchError } = await getAdminNotificationWithStatusById(
+      supabaseClient,
+      id,
+      adminDatabaseId
+    );
+    
+    if (fetchError || !fullNotification) {
+      console.error('❌ Erreur récupération notification:', fetchError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération de la notification'
+      });
+    }
     
     return res.json({
       success: true,
@@ -7031,12 +6978,20 @@ router.patch('/notifications/:id/unread', async (req, res) => {
       });
     }
     
-    const { data: fullNotification } = await supabaseClient
-      .from('AdminNotificationWithStatus')
-      .select('*')
-      .eq('id', id)
-      .eq('admin_id', adminDatabaseId)
-      .single();
+    // ✅ MIGRATION: Récupérer la notification complète avec statut
+    const { data: fullNotification, error: fetchError } = await getAdminNotificationWithStatusById(
+      supabaseClient,
+      id,
+      adminDatabaseId
+    );
+    
+    if (fetchError || !fullNotification) {
+      console.error('❌ Erreur récupération notification:', fetchError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération de la notification'
+      });
+    }
     
     return res.json({
       success: true,
@@ -7117,12 +7072,20 @@ router.patch('/notifications/:id/archive', async (req, res) => {
       });
     }
     
-    const { data: fullNotification } = await supabaseClient
-      .from('AdminNotificationWithStatus')
-      .select('*')
-      .eq('id', id)
-      .eq('admin_id', adminDatabaseId)
-      .single();
+    // ✅ MIGRATION: Récupérer la notification complète avec statut
+    const { data: fullNotification, error: fetchError } = await getAdminNotificationWithStatusById(
+      supabaseClient,
+      id,
+      adminDatabaseId
+    );
+    
+    if (fetchError || !fullNotification) {
+      console.error('❌ Erreur récupération notification:', fetchError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération de la notification'
+      });
+    }
     
     return res.json({
       success: true,
@@ -7206,12 +7169,20 @@ router.patch('/notifications/:id/unarchive', async (req, res) => {
       });
     }
     
-    const { data: fullNotification } = await supabaseClient
-      .from('AdminNotificationWithStatus')
-      .select('*')
-      .eq('id', id)
-      .eq('admin_id', adminDatabaseId)
-      .single();
+    // ✅ MIGRATION: Récupérer la notification complète avec statut
+    const { data: fullNotification, error: fetchError } = await getAdminNotificationWithStatusById(
+      supabaseClient,
+      id,
+      adminDatabaseId
+    );
+    
+    if (fetchError || !fullNotification) {
+      console.error('❌ Erreur récupération notification:', fetchError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération de la notification'
+      });
+    }
     
     return res.json({
       success: true,
@@ -7292,12 +7263,20 @@ router.delete('/notifications/:id', async (req, res) => {
       });
     }
     
-    const { data: fullNotification } = await supabaseClient
-      .from('AdminNotificationWithStatus')
-      .select('*')
-      .eq('id', id)
-      .eq('admin_id', adminDatabaseId)
-      .single();
+    // ✅ MIGRATION: Récupérer la notification complète avec statut
+    const { data: fullNotification, error: fetchError } = await getAdminNotificationWithStatusById(
+      supabaseClient,
+      id,
+      adminDatabaseId
+    );
+    
+    if (fetchError || !fullNotification) {
+      console.error('❌ Erreur récupération notification:', fetchError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération de la notification'
+      });
+    }
     
     return res.json({
       success: true,

@@ -665,41 +665,8 @@ export class AdminNotificationService {
           return { success: false, notification_ids: [] };
         }
 
-        // Créer une notification globale dans AdminNotification (table globale)
-        const { data: adminNotification, error: adminNotifError } = await supabase
-          .from('AdminNotification')
-          .insert({
-            type: 'contact_message',
-            title: `📧 Nouveau message de contact`,
-            message: `${data.name} (${data.email}) vous a envoyé un message${data.subject ? ` : ${data.subject}` : ''}`,
-            priority: priority,
-            status: 'unread',
-            is_read: false,
-            action_url: `/admin/contact/${data.contact_message_id}`,
-            action_label: 'Voir le message',
-            metadata: {
-              contact_message_id: data.contact_message_id,
-              name: data.name,
-              email: data.email,
-              phone: data.phone,
-              subject: data.subject,
-              message: data.message,
-              action_required: 'view_contact',
-              sla: {
-                targetHours: slaConfig.targetHours,
-                acceptableHours: slaConfig.acceptableHours,
-                criticalHours: slaConfig.criticalHours
-              }
-            },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (!adminNotifError && adminNotification) {
-          notificationIds.push(adminNotification.id);
-        }
+        // ✅ MIGRATION: Créer une notification dans notification pour chaque admin
+        // (Plus besoin de notification globale, chaque admin a sa propre notification)
 
         // Créer aussi une notification dans la table 'notification' pour chaque admin
         const title = `📧 Nouveau message de contact`;
@@ -763,17 +730,18 @@ export class AdminNotificationService {
 
           if (!userNotifError && userNotification) {
             notificationIds.push(userNotification.id);
+            
+            // 📡 Envoyer via SSE en temps réel
+            const sse = getSSEService();
+            if (sse) {
+              sse.sendNotificationToUser(adminId, userNotification);
+            }
           }
         }
 
-        // 📡 Envoyer via SSE en temps réel à tous les admins
+        // 📡 Rafraîchir KPI
         const sse = getSSEService();
         if (sse) {
-          if (adminNotification) {
-            for (const adminId of adminIds) {
-              sse.sendNotificationToUser(adminId, adminNotification);
-            }
-          }
           sse.sendKPIRefresh();
         }
       }
@@ -806,14 +774,16 @@ export class AdminNotificationService {
       // Créer une notification pour chaque admin
       for (const adminId of adminIds) {
         const { data: notification, error } = await supabase
-          .from('AdminNotification')
+          .from('notification')
           .insert({
-            admin_id: adminId,
+            user_id: adminId,
+            user_type: 'admin',
             notification_type: 'prospects_ready_for_emailing',
             title: `📧 ${count} prospect${count > 1 ? 's' : ''} prêt${count > 1 ? 's' : ''} pour emailing`,
             message: `${count} prospect${count > 1 ? 's' : ''} ${count > 1 ? 'sont' : 'est'} prêt${count > 1 ? 's' : ''} à recevoir un email`,
             priority: 'medium',
             status: 'unread',
+            is_read: false,
             action_url: '/admin/prospection?filter=ready_for_emailing',
             action_data: {
               count,
@@ -859,12 +829,13 @@ export class AdminNotificationService {
 
       const notificationIds: string[] = [];
 
-      // Créer une notification pour chaque admin
+      // ✅ MIGRATION: Créer une notification dans notification pour chaque admin
       for (const adminId of adminIds) {
         const { data: notification, error } = await supabase
-          .from('AdminNotification')
+          .from('notification')
           .insert({
-            admin_id: adminId,
+            user_id: adminId,
+            user_type: 'admin',
             notification_type: 'high_priority_prospects',
             title: `⭐ ${count} prospect${count > 1 ? 's' : ''} haute priorité`,
             message: `${count} prospect${count > 1 ? 's' : ''} avec un score de priorité ≥ ${minScore}/100`,

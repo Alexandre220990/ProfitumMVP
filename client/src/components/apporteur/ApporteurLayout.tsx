@@ -6,7 +6,7 @@ import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
 import { useFCMNotifications } from '@/hooks/useFCMNotifications';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import ApporteurAuthGuard from './ApporteurAuthGuard';
-import { NotificationSlider } from './NotificationSlider';
+import { UniversalNotificationCenter } from '@/components/notifications/UniversalNotificationCenter';
 import { Badge } from '@/components/ui/badge';
 import { TypeSwitcher } from '@/components/TypeSwitcher';
 import { 
@@ -327,11 +327,14 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
       </div>
     </div>
 
-    {/* Notification Slider */}
-    <NotificationSlider 
-      isOpen={notificationSliderOpen} 
-      onClose={() => setNotificationSliderOpen(false)} 
-    />
+    {/* Centre de notifications universel */}
+    {notificationSliderOpen && (
+      <UniversalNotificationCenter
+        mode="modal"
+        onClose={() => setNotificationSliderOpen(false)}
+        title="Notifications"
+      />
+    )}
     </ApporteurAuthGuard>
   );
 }

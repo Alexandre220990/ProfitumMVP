@@ -5,12 +5,18 @@
  * - Rapports RDV non remis
  * - RDV du lendemain
  * - Design premium différenciant
+ * 
+ * ✅ REFACTORISÉ : Utilise BaseReportService pour logique commune
+ * ✅ OPTIMISÉ : Parallélisation des requêtes (déjà implémenté)
+ * ✅ CACHE : Utilise ReportCacheService pour améliorer les performances
  */
 
 import { createClient } from '@supabase/supabase-js';
 import { EmailService } from './EmailService';
 import { SecureLinkService } from './secure-link-service';
 import { NotificationPreferencesChecker } from './notification-preferences-checker';
+import { BaseReportService, REPORT_LIMITS } from './base-report-service';
+import { ReportCacheService } from './report-cache-service';
 import crypto from 'crypto';
 
 const supabase = createClient(
@@ -84,74 +90,95 @@ interface DailyReportDataV2 {
 export class DailyActivityReportServiceV2 {
   /**
    * Générer le rapport d'activité V2 pour une date donnée
+   * ✅ OPTIMISÉ : Utilise le cache et parallélise les requêtes
    */
-  static async generateDailyReport(date: Date = new Date(), adminId?: string, adminType?: string): Promise<DailyReportDataV2> {
+  static async generateDailyReport(
+    date: Date = new Date(), 
+    adminId?: string, 
+    adminType?: string,
+    useCache: boolean = true
+  ): Promise<DailyReportDataV2> {
     const dateStr = date.toISOString().split('T')[0];
     const tomorrow = new Date(date);
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    
+    const cacheParams = { date: dateStr, type: 'daily_v2', adminId: adminId || 'all' };
+
+    // Vérifier le cache
+    if (useCache) {
+      const cached = await ReportCacheService.get<DailyReportDataV2>('daily_v2', cacheParams);
+      if (cached) {
+        console.log(`📊 Rapport d'activité V2 récupéré depuis le cache pour le ${dateStr}`);
+        return cached;
+      }
+    }
 
     console.log(`📊 Génération rapport d'activité V2 pour le ${dateStr}`);
 
-    // 1. Récupérer les actions non traitées
-    const pendingActions = await this.getPendingActions(adminId, adminType);
-
-    // 2. Récupérer les RDV complétés sans rapport
-    const rdvWithoutReports = await this.getRDVWithoutReports(adminId, adminType);
-
-    // 3. Récupérer les RDV du lendemain
-    const { data: rdvTomorrow, error: rdvTomorrowError } = await supabase
-      .from('RDV')
-      .select(`
-        id,
-        title,
-        scheduled_date,
-        scheduled_time,
-        duration_minutes,
-        status,
-        meeting_type,
-        location,
-        meeting_url,
-        Client:client_id(id, name, company_name, email),
-        Expert:expert_id(id, name, email),
-        ApporteurAffaires:apporteur_id(id, first_name, last_name, company_name)
-      `)
-      .eq('scheduled_date', tomorrowStr)
-      .order('scheduled_time', { ascending: true });
+    // ✅ PARALLÉLISATION : Exécuter les requêtes indépendantes en parallèle
+    const [
+      pendingActions,
+      rdvWithoutReports,
+      { data: rdvTomorrow, error: rdvTomorrowError }
+    ] = await Promise.all([
+      // 1. Actions non traitées
+      this.getPendingActions(adminId, adminType),
+      
+      // 2. RDV complétés sans rapport
+      this.getRDVWithoutReports(adminId, adminType),
+      
+      // 3. RDV du lendemain
+      BaseReportService.createBaseRDVQuery()
+        .eq('scheduled_date', tomorrowStr)
+        .order('scheduled_time', { ascending: true })
+    ]);
 
     if (rdvTomorrowError) {
       console.error('❌ Erreur récupération RDV du lendemain:', rdvTomorrowError);
     }
 
-    const normalizeRDV = (rdv: any): RDVData => ({
-      ...rdv,
-      Client: Array.isArray(rdv.Client) ? rdv.Client[0] : rdv.Client,
-      Expert: Array.isArray(rdv.Expert) ? rdv.Expert[0] : rdv.Expert,
-      ApporteurAffaires: Array.isArray(rdv.ApporteurAffaires) ? rdv.ApporteurAffaires[0] : rdv.ApporteurAffaires
-    });
+    // Normaliser les RDV
+    const rdvTomorrowNormalized = BaseReportService.normalizeRDVs(rdvTomorrow || []);
 
-    return {
+    const result: DailyReportDataV2 = {
       reportDate: dateStr,
       pendingActions,
       rdvWithoutReports,
-      rdvTomorrow: (rdvTomorrow || []).map(normalizeRDV),
+      rdvTomorrow: rdvTomorrowNormalized,
       stats: {
         totalPendingActions: pendingActions.length,
         totalRDVWithoutReports: rdvWithoutReports.length,
-        totalRDVTomorrow: (rdvTomorrow || []).length
+        totalRDVTomorrow: rdvTomorrowNormalized.length
       }
     };
+
+    // Mettre en cache le résultat
+    if (useCache) {
+      await ReportCacheService.set('daily_v2', cacheParams, result, REPORT_LIMITS.CACHE_TTL_SECONDS);
+    }
+
+    return result;
   }
 
   /**
    * Récupérer les actions non traitées du jour
+   * ✅ OPTIMISATION: Parallélisation des requêtes indépendantes avec Promise.all
    */
   private static async getPendingActions(adminId?: string, adminType?: string): Promise<PendingAction[]> {
     const actions: PendingAction[] = [];
 
-    // 1. Documents à valider - GROUPÉS PAR CLIENT
-    try {
-      const { data: pendingDocs } = await supabase
+    // ✅ OPTIMISATION: Exécuter les 4 requêtes en parallèle au lieu de séquentiellement
+    const today = new Date().toISOString().split('T')[0];
+    
+    const [
+      { data: pendingDocs, error: docsError },
+      { data: pendingExperts, error: expertsError },
+      { data: simulations, error: simulationsError },
+      { data: untreatedLeads, error: leadsError }
+    ] = await Promise.all([
+      // 1. Documents à valider - GROUPÉS PAR CLIENT
+      supabase
         .from('ClientProduitEligible')
         .select(`
           id,
@@ -159,8 +186,51 @@ export class DailyActivityReportServiceV2 {
           ProduitEligible:produitId(id, nom)
         `)
         .or('admin_eligibility_status.eq.pending,admin_eligibility_status.is.null')
-        .limit(20);
+        .limit(REPORT_LIMITS.MAX_PENDING_ACTIONS),
+      
+      // 2. Experts souhaitant rejoindre la plateforme
+      supabase
+        .from('Expert')
+        .select('id, name, email, approval_status')
+        .eq('approval_status', 'pending')
+        .limit(10),
+      
+      // 3. Simulations client effectuées (avec produits éligibles détectés)
+      supabase
+        .from('simulations')
+        .select(`
+          id,
+          client_id,
+          created_at,
+          status,
+          Client:client_id(id, name, company_name, email)
+        `)
+        .eq('status', 'completed')
+        .gte('created_at', `${today}T00:00:00`)
+        .lt('created_at', `${today}T23:59:59`)
+        .limit(20),
+      
+      // 4. Leads non traités avec temps de dépassement
+      supabase
+        .from('notification')
+        .select('id, title, message, created_at, metadata')
+        .eq('user_type', 'admin')
+        .in('notification_type', ['contact_message', 'lead_to_treat'])
+        .eq('is_read', false)
+        .in('status', ['unread', 'active'])
+        .order('created_at', { ascending: true })
+        .limit(REPORT_LIMITS.MAX_PENDING_CONTACTS)
+    ]);
 
+    // Traiter les erreurs
+    if (docsError) console.error('❌ Erreur récupération documents à valider:', docsError);
+    if (expertsError) console.error('❌ Erreur récupération experts en attente:', expertsError);
+    if (simulationsError) console.error('❌ Erreur récupération simulations:', simulationsError);
+    if (leadsError) console.error('❌ Erreur récupération leads non traités:', leadsError);
+
+    // 1. Traiter les documents à valider - GROUPÉS PAR CLIENT
+    // ✅ OPTIMISÉ : Utilise la méthode de groupement de BaseReportService si possible
+    try {
       if (pendingDocs) {
         // Grouper les dossiers par client
         const groupedByClient = pendingDocs.reduce((acc: any, dossier: any) => {
@@ -208,17 +278,11 @@ export class DailyActivityReportServiceV2 {
         }
       }
     } catch (error) {
-      console.error('❌ Erreur récupération documents à valider:', error);
+      console.error('❌ Erreur traitement documents à valider:', error);
     }
 
-    // 2. Experts souhaitant rejoindre la plateforme
+    // 2. Traiter les experts en attente
     try {
-      const { data: pendingExperts } = await supabase
-        .from('Expert')
-        .select('id, name, email, approval_status')
-        .eq('approval_status', 'pending')
-        .limit(10);
-
       if (pendingExperts) {
         for (const expert of pendingExperts) {
           actions.push({
@@ -231,28 +295,14 @@ export class DailyActivityReportServiceV2 {
         }
       }
     } catch (error) {
-      console.error('❌ Erreur récupération experts en attente:', error);
+      console.error('❌ Erreur traitement experts en attente:', error);
     }
 
-    // 3. Simulations client effectuées (avec produits éligibles détectés)
+    // 3. Traiter les simulations (nécessite requêtes supplémentaires pour produits éligibles)
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data: simulations } = await supabase
-        .from('simulations')
-        .select(`
-          id,
-          client_id,
-          created_at,
-          status,
-          Client:client_id(id, name, company_name, email)
-        `)
-        .eq('status', 'completed')
-        .gte('created_at', `${today}T00:00:00`)
-        .lt('created_at', `${today}T23:59:59`)
-        .limit(20);
-
       if (simulations) {
-        for (const sim of simulations) {
+        // ✅ OPTIMISATION: Paralléliser les requêtes de produits éligibles
+        const simulationPromises = simulations.map(async (sim: any) => {
           const client = Array.isArray(sim.Client) ? sim.Client[0] : sim.Client;
           
           // Récupérer les produits éligibles via ClientProduitEligible avec simulationId
@@ -265,33 +315,28 @@ export class DailyActivityReportServiceV2 {
           const productsCount = eligibleProducts?.length || 0;
 
           if (productsCount > 0) {
-            actions.push({
-              type: 'client_simulation',
+            return {
+              type: 'client_simulation' as const,
               title: `Simulation client effectuée - ${client?.email || 'Email'}`,
               description: `${productsCount} produit${productsCount > 1 ? 's' : ''} éligible${productsCount > 1 ? 's' : ''} détecté${productsCount > 1 ? 's' : ''} - Voir le client`,
-              priority: 'medium',
+              priority: 'medium' as const,
               link: SecureLinkService.generateSimpleLink(`/admin/clients/${client?.id || sim.client_id}`, adminId, adminType || 'admin'),
               metadata: { productsCount }
-            });
+            };
           }
-        }
+          return null;
+        });
+
+        const simulationActions = await Promise.all(simulationPromises);
+        const validActions = simulationActions.filter((a): a is NonNullable<typeof a> => a !== null);
+        actions.push(...validActions);
       }
     } catch (error) {
-      console.error('❌ Erreur récupération simulations:', error);
+      console.error('❌ Erreur traitement simulations:', error);
     }
 
-    // 4. Leads non traités avec temps de dépassement
+    // 4. Traiter les leads non traités
     try {
-      const { data: untreatedLeads } = await supabase
-        .from('notification')
-        .select('id, title, message, created_at, metadata')
-        .eq('user_type', 'admin')
-        .in('notification_type', ['contact_message', 'lead_to_treat'])
-        .eq('is_read', false)
-        .in('status', ['unread', 'active'])
-        .order('created_at', { ascending: true })
-        .limit(30);
-
       if (untreatedLeads) {
         const now = new Date();
         for (const lead of untreatedLeads) {

@@ -232,38 +232,75 @@ export class NotificationTriggers {
   }
 
   /**
-   * Créer une notification admin (table AdminNotification)
+   * Créer une notification admin (table notification avec user_type='admin')
+   * ✅ MIGRATION: Utilise maintenant la table notification au lieu de AdminNotification
    */
   private static async createAdminNotification(data: AdminNotificationData): Promise<boolean> {
     try {
       const metadata = this.buildMetadata(data.metadata, data.priority);
 
-      const { data: adminNotification, error } = await supabase
-        .from('AdminNotification')
-        .insert({
-          type: data.type,
-          title: data.title,
-          message: data.message,
-          priority: data.priority,
-          status: 'unread',
-          is_read: false,
-          metadata,
-          action_url: data.action_url,
-          action_label: data.action_label,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+      // Récupérer tous les admins actifs pour créer une notification pour chacun
+      const { data: admins, error: adminsError } = await supabase
+        .from('Admin')
+        .select('id, auth_user_id')
+        .eq('is_active', true);
 
-      if (error) {
-        console.error('❌ Erreur création notification admin:', error);
+      if (adminsError || !admins || admins.length === 0) {
+        console.error('❌ Erreur récupération admins:', adminsError);
         return false;
       }
 
-      console.log(`✅ Notification admin créée: ${data.type}`);
+      // Créer une notification pour chaque admin
+      const notificationPromises = admins
+        .filter(admin => admin.auth_user_id)
+        .map(async (admin) => {
+          const { data: notification, error } = await supabase
+            .from('notification')
+            .insert({
+              user_id: admin.auth_user_id,
+              user_type: 'admin',
+              title: data.title,
+              message: data.message,
+              notification_type: data.type,
+              priority: data.priority,
+              status: 'unread',
+              is_read: false,
+              metadata: {
+                ...metadata,
+                migrated_from: 'AdminNotification',
+                original_type: data.type
+              },
+              action_url: data.action_url || null,
+              action_data: {
+                action_label: data.action_label
+              },
+              created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (error) {
+            console.error(`❌ Erreur création notification admin pour ${admin.auth_user_id}:`, error);
+            return null;
+          }
+
+          return notification;
+        });
+
+      const notifications = (await Promise.all(notificationPromises)).filter(n => n !== null);
+
+      if (notifications.length === 0) {
+        console.error('❌ Aucune notification admin créée');
+        return false;
+      }
+
+      console.log(`✅ ${notifications.length} notification(s) admin créée(s): ${data.type}`);
 
       // ✅ Envoyer automatiquement email et push à tous les admins
-      await this.sendAdminNotificationChannels(adminNotification, data);
+      // Utiliser la première notification comme référence pour l'email
+      if (notifications[0]) {
+        await this.sendAdminNotificationChannels(notifications[0], data);
+      }
 
       return true;
     } catch (error) {

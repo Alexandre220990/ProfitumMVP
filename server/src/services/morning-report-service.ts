@@ -4,12 +4,18 @@
  * - Les RDV du jour
  * - Toutes les notifications non lues actuelles (hors RDV)
  * - Toutes les notifications lues hors RDV
+ * 
+ * ✅ REFACTORISÉ : Utilise BaseReportService pour logique commune
+ * ✅ OPTIMISÉ : Parallélisation des requêtes indépendantes
+ * ✅ CACHE : Utilise ReportCacheService pour améliorer les performances
  */
 
 import { createClient } from '@supabase/supabase-js';
 import { EmailService } from './EmailService';
 import { SecureLinkService } from './secure-link-service';
 import { NotificationPreferencesChecker } from './notification-preferences-checker';
+import { BaseReportService, REPORT_LIMITS, EXCLUDED_NOTIFICATION_TYPES, NOTIFICATION_PRIORITIES } from './base-report-service';
+import { ReportCacheService } from './report-cache-service';
 import crypto from 'crypto';
 
 const supabase = createClient(
@@ -133,141 +139,111 @@ interface MorningReportData {
 export class MorningReportService {
   /**
    * Générer le rapport matinal pour une date donnée
+   * ✅ OPTIMISÉ : Utilise le cache et parallélise les requêtes indépendantes
    */
-  static async generateMorningReport(date: Date = new Date()): Promise<MorningReportData> {
+  static async generateMorningReport(date: Date = new Date(), useCache: boolean = true): Promise<MorningReportData> {
     const dateStr = date.toISOString().split('T')[0];
+    const cacheParams = { date: dateStr, type: 'morning' };
+
+    // Vérifier le cache
+    if (useCache) {
+      const cached = await ReportCacheService.get<MorningReportData>('morning', cacheParams);
+      if (cached) {
+        console.log(`🌅 Rapport matinal récupéré depuis le cache pour le ${dateStr}`);
+        return cached;
+      }
+    }
 
     console.log(`🌅 Génération rapport matinal pour le ${dateStr}`);
 
-    // 1. Récupérer les RDV du jour
-    const { data: rdvToday, error: rdvTodayError } = await supabase
-      .from('RDV')
-      .select(`
-        id,
-        title,
-        scheduled_date,
-        scheduled_time,
-        duration_minutes,
-        status,
-        meeting_type,
-        location,
-        meeting_url,
-        Client:client_id(id, name, company_name, email),
-        Expert:expert_id(id, name, email),
-        ApporteurAffaires:apporteur_id(id, first_name, last_name, company_name)
-      `)
-      .eq('scheduled_date', dateStr)
-      .order('scheduled_time', { ascending: true });
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+    const now = new Date();
+
+    // ✅ PARALLÉLISATION : Exécuter toutes les requêtes indépendantes en parallèle
+    const [
+      { data: rdvToday, error: rdvTodayError },
+      { data: allNotificationsRaw, error: notificationsError },
+      overdueRDVs,
+      pendingActions,
+      pendingContactsLeads,
+      escalatedNotifications
+    ] = await Promise.all([
+      // 1. RDV du jour
+      BaseReportService.createBaseRDVQuery()
+        .eq('scheduled_date', dateStr)
+        .order('scheduled_time', { ascending: true }),
+      
+      // 2. Notifications urgentes et importantes (lues ET non lues)
+      BaseReportService.createBaseNotificationQuery('admin', {
+        is_read: [true, false],
+        status: 'active',
+        priority: [NOTIFICATION_PRIORITIES.HIGH, NOTIFICATION_PRIORITIES.URGENT]
+      })
+        .gte('created_at', twentyFourHoursAgo.toISOString())
+        .order('priority', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(REPORT_LIMITS.MAX_NOTIFICATIONS),
+      
+      // 3. RDV en retard
+      this.getOverdueRDVs(now),
+      
+      // 4. Dossiers nécessitant une action URGENTE
+      this.getPendingActions(now, true),
+      
+      // 5. Contacts/leads en attente URGENTS
+      this.getPendingContactsLeads(now, true),
+      
+      // 6. Notifications escaladées
+      this.getEscalatedNotifications()
+    ]);
 
     if (rdvTodayError) {
       console.error('❌ Erreur récupération RDV du jour:', rdvTodayError);
     }
+    if (notificationsError) {
+      console.error('❌ Erreur récupération notifications:', notificationsError);
+    }
 
-    const normalizeRDV = (rdv: any): RDVData => ({
-      ...rdv,
-      Client: Array.isArray(rdv.Client) ? rdv.Client[0] : rdv.Client,
-      Expert: Array.isArray(rdv.Expert) ? rdv.Expert[0] : rdv.Expert,
-      ApporteurAffaires: Array.isArray(rdv.ApporteurAffaires) ? rdv.ApporteurAffaires[0] : rdv.ApporteurAffaires
+    // Normaliser les RDV
+    const rdvTodayNormalized = BaseReportService.normalizeRDVs(rdvToday || []);
+
+    // Séparer et dédoublonner les notifications
+    const unreadNotificationsRaw = (allNotificationsRaw || []).filter((n: any) => !n.is_read);
+    const readNotificationsRaw = (allNotificationsRaw || []).filter((n: any) => n.is_read);
+
+    // Dédoublonner avec limite
+    const unreadNotifications = BaseReportService.deduplicateNotifications(unreadNotificationsRaw);
+    const readNotifications = BaseReportService.deduplicateNotifications(
+      readNotificationsRaw, 
+      REPORT_LIMITS.MAX_READ_NOTIFICATIONS
+    );
+
+    // Mapper les notifications
+    const mapNotification = (n: any) => ({
+      id: n.id,
+      title: n.title,
+      message: n.message,
+      notification_type: n.notification_type,
+      priority: n.priority || NOTIFICATION_PRIORITIES.NORMAL,
+      created_at: n.created_at,
+      is_read: n.is_read,
+      action_url: n.action_url || (n.action_data?.action_url || null),
+      is_parent: n.is_parent || false,
+      children_count: n.children_count || 0
     });
 
-    // 2. Récupérer les notifications urgentes et importantes du jour uniquement
-    // On filtre pour avoir seulement : priorité high/urgent + créées dans les dernières 24h
-    // ⚠️ IMPORTANT : Filtrer hidden_in_list=false pour exclure les notifications enfants masquées
-    const twentyFourHoursAgo = new Date();
-    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
-    
-    const { data: unreadNotificationsRaw, error: unreadError } = await supabase
-      .from('notification')
-      .select('id, title, message, notification_type, priority, created_at, is_read, action_url, action_data, metadata, is_parent, children_count')
-      .eq('user_type', 'admin')
-      .eq('is_read', false)
-      .eq('hidden_in_list', false)
-      .neq('notification_type', 'rdv_reminder')
-      .neq('notification_type', 'rdv_confirmed')
-      .neq('notification_type', 'rdv_cancelled')
-      .neq('status', 'replaced')
-      .in('priority', ['high', 'urgent'])
-      .gte('created_at', twentyFourHoursAgo.toISOString())
-      .order('priority', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (unreadError) {
-      console.error('❌ Erreur récupération notifications non lues:', unreadError);
-    }
-
-    // 3. Dédoublonner les notifications
-    const unreadNotifications = this.deduplicateNotifications(unreadNotificationsRaw || []);
-
-    // 4. Récupérer les notifications lues récentes (dernières 24h seulement)
-    // ⚠️ IMPORTANT : Filtrer hidden_in_list=false pour exclure les notifications enfants masquées
-    const { data: readNotificationsRaw, error: readError } = await supabase
-      .from('notification')
-      .select('id, title, message, notification_type, priority, created_at, is_read, action_url, action_data, metadata, is_parent, children_count')
-      .eq('user_type', 'admin')
-      .eq('is_read', true)
-      .eq('hidden_in_list', false)
-      .neq('notification_type', 'rdv_reminder')
-      .neq('notification_type', 'rdv_confirmed')
-      .neq('notification_type', 'rdv_cancelled')
-      .neq('status', 'replaced')
-      .gte('created_at', twentyFourHoursAgo.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    if (readError) {
-      console.error('❌ Erreur récupération notifications lues:', readError);
-    }
-
-    // 5. Dédoublonner les notifications lues
-    const readNotifications = this.deduplicateNotifications(readNotificationsRaw || []);
-
-    // 6. Récupérer les RDV en retard (24h, 48h, 120h)
-    const now = new Date();
-    const overdueRDVs = await this.getOverdueRDVs(now);
-
-    // 7. Récupérer les dossiers nécessitant une action URGENTE uniquement
-    const pendingActions = await this.getPendingActions(now, true); // true = urgent only
-
-    // 8. Récupérer les contacts/leads en attente URGENTS uniquement
-    const pendingContactsLeads = await this.getPendingContactsLeads(now, true); // true = urgent only
-
-    // 9. Récupérer les notifications escaladées
-    const escalatedNotifications = await this.getEscalatedNotifications();
-
-    return {
+    const result: MorningReportData = {
       reportDate: dateStr,
-      rdvToday: (rdvToday || []).map(normalizeRDV),
-      unreadNotifications: unreadNotifications.map((n: any) => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        notification_type: n.notification_type,
-        priority: n.priority || 'normal',
-        created_at: n.created_at,
-        is_read: n.is_read,
-        action_url: n.action_url || (n.action_data?.action_url || null),
-        is_parent: n.is_parent || false,
-        children_count: n.children_count || 0
-      })),
-      readNotifications: readNotifications.map((n: any) => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        notification_type: n.notification_type,
-        priority: n.priority || 'normal',
-        created_at: n.created_at,
-        is_read: n.is_read,
-        action_url: n.action_url || (n.action_data?.action_url || null),
-        is_parent: n.is_parent || false,
-        children_count: n.children_count || 0
-      })),
+      rdvToday: rdvTodayNormalized,
+      unreadNotifications: unreadNotifications.map(mapNotification),
+      readNotifications: readNotifications.map(mapNotification),
       overdueRDVs,
       pendingActions,
       pendingContactsLeads,
       escalatedNotifications,
       stats: {
-        totalRDVToday: (rdvToday || []).length,
+        totalRDVToday: rdvTodayNormalized.length,
         totalUnreadNotifications: unreadNotifications.length,
         totalReadNotifications: readNotifications.length,
         totalOverdueRDVs: overdueRDVs.length,
@@ -276,65 +252,18 @@ export class MorningReportService {
         totalEscalatedNotifications: escalatedNotifications.length
       }
     };
-  }
 
-  /**
-   * Dédoublonner les notifications selon des clés métier
-   */
-  private static deduplicateNotifications(notifications: any[]): any[] {
-    const seen = new Map<string, any>();
-    
-    for (const notif of notifications) {
-      // Créer une clé unique basée sur le type et le contenu métier
-      let dedupeKey: string;
-      
-      // Pour les rdv_sla_reminder : utiliser l'ID du RDV
-      if (notif.notification_type === 'rdv_sla_reminder') {
-        const rdvId = notif.metadata?.rdv_id || notif.action_data?.rdv_id;
-        dedupeKey = `rdv_sla_${rdvId}`;
-      }
-      // Pour les reminders génériques : utiliser l'original_notification_id
-      else if (notif.notification_type === 'reminder') {
-        const originalId = notif.metadata?.original_notification_id || notif.action_data?.original_notification_id;
-        dedupeKey = originalId ? `reminder_${originalId}` : `reminder_${notif.id}`;
-      }
-      // Pour les contact_message : utiliser contact_message_id
-      else if (notif.notification_type === 'contact_message') {
-        const contactMsgId = notif.metadata?.contact_message_id || notif.action_data?.contact_message_id;
-        dedupeKey = contactMsgId ? `contact_msg_${contactMsgId}` : `contact_msg_${notif.id}`;
-      }
-      // Pour les lead_to_treat : utiliser l'ID du contact
-      else if (notif.notification_type === 'lead_to_treat') {
-        const contactId = notif.metadata?.contact_id || notif.action_data?.contact_id;
-        dedupeKey = contactId ? `lead_${contactId}` : `lead_${notif.id}`;
-      }
-      // Pour les autres : utiliser notification_type + title + message (hash)
-      else {
-        dedupeKey = `${notif.notification_type}_${notif.title}_${notif.message}`.substring(0, 100);
-      }
-      
-      // Garder seulement la notification la plus récente (ou la plus prioritaire)
-      const existing = seen.get(dedupeKey);
-      if (!existing) {
-        seen.set(dedupeKey, notif);
-      } else {
-        // Garder la plus prioritaire ou la plus récente
-        const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1, normal: 1 };
-        const existingPriority = priorityOrder[existing.priority as keyof typeof priorityOrder] || 1;
-        const newPriority = priorityOrder[notif.priority as keyof typeof priorityOrder] || 1;
-        
-        if (newPriority > existingPriority || 
-            (newPriority === existingPriority && new Date(notif.created_at) > new Date(existing.created_at))) {
-          seen.set(dedupeKey, notif);
-        }
-      }
+    // Mettre en cache le résultat
+    if (useCache) {
+      await ReportCacheService.set('morning', cacheParams, result, REPORT_LIMITS.CACHE_TTL_SECONDS);
     }
-    
-    return Array.from(seen.values());
+
+    return result;
   }
 
   /**
    * Récupérer les RDV en retard (24h, 48h, 120h)
+   * ✅ OPTIMISÉ : Utilise les méthodes de base et limite le nombre
    */
   private static async getOverdueRDVs(now: Date): Promise<OverdueRDV[]> {
     try {
@@ -350,7 +279,7 @@ export class MorningReportService {
           Expert:expert_id(id, name)
         `)
         .in('status', ['proposed', 'scheduled'])
-        .limit(500);
+        .limit(REPORT_LIMITS.MAX_OVERDUE_RDVS);
 
       if (error) {
         console.error('❌ Erreur récupération RDV en retard:', error);
@@ -367,16 +296,11 @@ export class MorningReportService {
         // Vérifier si le RDV est passé
         if (scheduledDateTime > now) continue;
 
-        const hoursElapsed = (now.getTime() - scheduledDateTime.getTime()) / (1000 * 60 * 60);
+        // ✅ Utiliser la méthode de base pour calculer le seuil
+        const hoursElapsed = BaseReportService.calculateHoursOverdue(scheduledDateTime, now);
+        const threshold = BaseReportService.getOverdueThreshold(hoursElapsed);
         
-        let threshold: '24h' | '48h' | '120h' | null = null;
-        if (hoursElapsed >= 120) {
-          threshold = '120h';
-        } else if (hoursElapsed >= 48) {
-          threshold = '48h';
-        } else if (hoursElapsed >= 24) {
-          threshold = '24h';
-        }
+        if (!threshold) continue;
 
         if (threshold) {
           overdueRDVs.push({
@@ -474,6 +398,7 @@ export class MorningReportService {
 
   /**
    * Récupérer les contacts/leads en attente
+   * ✅ OPTIMISÉ : Utilise la méthode de base et limite le nombre
    */
   private static async getPendingContactsLeads(now: Date, urgentOnly: boolean = false): Promise<PendingContactLead[]> {
     try {
@@ -483,7 +408,7 @@ export class MorningReportService {
         .in('notification_type', ['contact_message', 'lead_to_treat'])
         .eq('is_read', false)
         .in('status', ['unread', 'active'])
-        .limit(500);
+        .limit(REPORT_LIMITS.MAX_PENDING_CONTACTS);
 
       if (error) {
         console.error('❌ Erreur récupération contacts/leads:', error);
@@ -534,6 +459,7 @@ export class MorningReportService {
 
   /**
    * Récupérer les notifications escaladées
+   * ✅ OPTIMISÉ : Limite le nombre de résultats
    */
   private static async getEscalatedNotifications(): Promise<EscalatedNotification[]> {
     try {
@@ -543,7 +469,7 @@ export class MorningReportService {
         .eq('user_type', 'admin')
         .eq('status', 'late')
         .not('metadata->escalation_level', 'is', null)
-        .limit(100);
+        .limit(REPORT_LIMITS.MAX_NOTIFICATIONS);
 
       if (error) {
         console.error('❌ Erreur récupération notifications escaladées:', error);

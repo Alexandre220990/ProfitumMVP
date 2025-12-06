@@ -73,37 +73,68 @@ router.post('/admin/document-validation', enhancedAuthMiddleware, async (req: Re
     }
 
     // Créer la notification pour les admins
-    const { data: notification, error: notificationError } = await supabase
-      .from('AdminNotification')
-      .insert({
-        type: 'document_validation',
-        title: `Validation d'éligibilité ${product_type}`,
-        message: `Le client ${dossier.Client?.company_name || dossier.Client?.name || 'Inconnu'} a soumis des documents pour validation de l'éligibilité ${product_type}`,
-        status: 'unread',
-        is_read: false,
-        priority: 'high',
-        metadata: {
-          client_produit_id,
-          client_id: dossier.clientId,
-          client_name: dossier.Client?.name,
-          client_email: dossier.Client?.email,
-          client_company: dossier.Client?.company_name,
-          product_type,
-          product_name: dossier.ProduitEligible?.nom,
-          step,
-          documents: documents.map((doc: any) => ({
-            id: doc.id,
-            type: doc.type,
-            filename: doc.filename
-          })),
-          submitted_at: new Date().toISOString(),
-          submitted_by: user.id
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+    // ✅ MIGRATION: Utilise maintenant la table notification au lieu de AdminNotification
+    // Récupérer tous les admins actifs
+    const { data: admins, error: adminsError } = await supabase
+      .from('Admin')
+      .select('id, auth_user_id')
+      .eq('is_active', true);
+
+    if (adminsError) {
+      console.error('❌ Erreur récupération admins:', adminsError);
+      return res.status(500).json({ success: false, message: 'Erreur récupération admins' });
+    }
+
+    // Créer une notification pour chaque admin
+    const notificationPromises = (admins || [])
+      .filter(admin => admin.auth_user_id)
+      .map(async (admin) => {
+        const { data: notification, error: notificationError } = await supabase
+          .from('notification')
+          .insert({
+            user_id: admin.auth_user_id,
+            user_type: 'admin',
+            notification_type: 'document_validation',
+            title: `Validation d'éligibilité ${product_type}`,
+            message: `Le client ${dossier.Client?.company_name || dossier.Client?.name || 'Inconnu'} a soumis des documents pour validation de l'éligibilité ${product_type}`,
+            status: 'unread',
+            is_read: false,
+            priority: 'high',
+            metadata: {
+              client_produit_id,
+              client_id: dossier.clientId,
+              client_name: dossier.Client?.name,
+              client_email: dossier.Client?.email,
+              client_company: dossier.Client?.company_name,
+              product_type,
+              product_name: dossier.ProduitEligible?.nom,
+              step,
+              documents: documents.map((doc: any) => ({
+                id: doc.id,
+                type: doc.type,
+                filename: doc.filename
+              })),
+              submitted_at: new Date().toISOString(),
+              submitted_by: user.id,
+              migrated_from: 'AdminNotification'
+            },
+            action_url: `/admin/dossiers/${client_produit_id}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (notificationError) {
+          console.error(`❌ Erreur création notification pour admin ${admin.auth_user_id}:`, notificationError);
+          return null;
+        }
+
+        return notification;
+      });
+
+    const notifications = (await Promise.all(notificationPromises)).filter(n => n !== null);
+    const notificationError = notifications.length === 0 ? new Error('Aucune notification créée') : null;
 
     if (notificationError) {
       console.error('❌ Erreur création notification:', notificationError);
@@ -127,8 +158,8 @@ router.post('/admin/document-validation', enhancedAuthMiddleware, async (req: Re
       console.error('❌ Erreur mise à jour dossier:', updateError);
     }
 
-    console.log('✅ Notification admin créée:', {
-      notification_id: notification.id,
+    console.log('✅ Notifications admin créées:', {
+      notifications_count: notifications.length,
       client_produit_id,
       product_type,
       documents_count: documents.length
@@ -136,9 +167,10 @@ router.post('/admin/document-validation', enhancedAuthMiddleware, async (req: Re
 
     return res.json({
       success: true,
-      message: 'Notification envoyée avec succès',
+      message: 'Notifications envoyées avec succès',
       data: {
-        notification_id: notification.id,
+        notifications_count: notifications.length,
+        notification_ids: notifications.map(n => n.id),
         status: 'pending_validation'
       }
     });
@@ -179,10 +211,13 @@ router.get('/admin', enhancedAuthMiddleware, async (req: Request, res: Response)
       database_id: user.database_id
     });
 
-    // Récupérer depuis AdminNotification (table globale pour tous les admins)
+    // ✅ MIGRATION: Récupérer depuis notification (AdminNotification migrée)
+    // Récupérer les notifications pour cet admin spécifique
     let adminNotificationQuery = supabase
-      .from('AdminNotification')
+      .from('notification')
       .select('*')
+      .eq('user_type', 'admin')
+      .eq('user_id', user.id) // Notifications pour cet admin spécifique
       .order('created_at', { ascending: false });
     
     if (status && status !== 'all') {
@@ -200,7 +235,7 @@ router.get('/admin', enhancedAuthMiddleware, async (req: Request, res: Response)
     const { data: adminNotifications, error: adminError } = await adminNotificationQuery;
     
     if (adminError) {
-      console.error('❌ Erreur récupération AdminNotification:', adminError);
+      console.error('❌ Erreur récupération notifications admin:', adminError);
     }
 
     // Récupérer aussi depuis notification (pour les notifications d'événement et autres)
@@ -282,7 +317,7 @@ router.get('/admin', enhancedAuthMiddleware, async (req: Request, res: Response)
       ? allNotifications.slice(0, Number(limit))
       : allNotifications;
     
-    console.log(`✅ Notifications récupérées: ${normalizedAdminNotifications.length} AdminNotification + ${normalizedEventNotifications.length} événements = ${limitedNotifications.length} total`);
+    console.log(`✅ Notifications récupérées: ${normalizedAdminNotifications.length} notification(s) admin + ${normalizedEventNotifications.length} événement(s) = ${limitedNotifications.length} total`);
 
     return res.json({
       success: true,
@@ -327,14 +362,29 @@ router.put('/admin/:id/status', enhancedAuthMiddleware, async (req: Request, res
       });
     }
 
+    // ✅ MIGRATION: Utiliser notification directement au lieu de la vue AdminNotification
+    // Récupérer d'abord la notification pour mettre à jour les métadonnées correctement
+    const { data: existingNotification } = await supabase
+      .from('notification')
+      .select('metadata')
+      .eq('id', id)
+      .eq('user_type', 'admin')
+      .single();
+
+    const updatedMetadata = {
+      ...(existingNotification?.metadata || {}),
+      ...(admin_notes ? { admin_notes } : {})
+    };
+
     const { data: notification, error } = await supabase
-      .from('AdminNotification')
+      .from('notification')
       .update({
         status,
-        admin_notes,
+        metadata: updatedMetadata,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
+      .eq('user_type', 'admin')
       .select()
       .single();
 

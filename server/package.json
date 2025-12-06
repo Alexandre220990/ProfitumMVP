@@ -13,7 +13,9 @@
     "start": "node dist/index.js",
     "start:ipv6": "ts-node src/index.ts",
     "restart": "npm stop --if-present && npm start",
-    "stop": "pkill -f 'node dist/index.js' || true"
+    "stop": "pkill -f 'node dist/index.js' || true",
+    "analyse:notifications": "ts-node scripts/analyse-tables-notifications.ts",
+    "migrate:notifications": "ts-node scripts/migrate-unified-notifications.ts"
   },
   "keywords": [],
   "author": "",

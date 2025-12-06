@@ -36,7 +36,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { useClientProducts } from '@/hooks/use-client-products';
 import { useDossierNotifications } from '@/hooks/useDossierNotifications';
-import { NotificationBanner } from '@/components/client/NotificationBanner';
+import { UniversalNotificationCenter } from '@/components/notifications/UniversalNotificationCenter';
 import { SectionTitle } from "@/components/dashboard/SectionTitle";
 import { EmptyEligibleProductsState } from "@/components/empty-eligible-products-state";
 import LoadingScreen from '@/components/LoadingScreen';
@@ -529,6 +529,7 @@ export default function DashboardClient() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [sortOption, setSortOption] = useState<SortOption>('progress_desc');
+  const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
   
   // Hook pour les produits éligibles du client
   const { 
@@ -541,10 +542,7 @@ export default function DashboardClient() {
 
   // Hook pour les notifications par dossier
   const {
-    notifications,
-    getDossierNotifications,
-    markAsRead,
-    markDossierAsRead
+    getDossierNotifications
   } = useDossierNotifications();
 
   // L'authentification est gérée par les hooks
@@ -606,20 +604,6 @@ export default function DashboardClient() {
   }, [navigate, buildProduitSlug]);
 
   // Fonction pour ouvrir le modal de sélection d'expert
-  // Handler pour les notifications
-  const handleNotificationDismiss = useCallback((notificationId: string) => {
-    markAsRead(notificationId);
-  }, [markAsRead]);
-
-  const handleNotificationNavigate = useCallback((dossierId: string) => {
-    // Trouver le produit correspondant
-    const produit = produits.find((p) => p.id === dossierId);
-    if (produit) {
-      handleProductClick(produit);
-      // Marquer toutes les notifications de ce dossier comme lues
-      markDossierAsRead(dossierId);
-    }
-  }, [produits, handleProductClick, markDossierAsRead]);
 
   const sortedProduits = useMemo(() => {
     if (!produits || produits.length === 0) {
@@ -758,12 +742,14 @@ export default function DashboardClient() {
 
   return (
     <div>
-      {/* Bandeau de notifications en temps réel */}
-      <NotificationBanner
-        notifications={notifications}
-        onDismiss={handleNotificationDismiss}
-        onNavigate={handleNotificationNavigate}
-      />
+      {/* Centre de notifications universel */}
+      {notificationCenterOpen && (
+        <UniversalNotificationCenter
+          mode="modal"
+          onClose={() => setNotificationCenterOpen(false)}
+          title="Notifications"
+        />
+      )}
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         

@@ -948,35 +948,58 @@ export class GmailService {
         ? `Un nouvel email a été reçu de ${prospectName} (${prospect.email}). Un prospect a été créé automatiquement. Consultez la séquence et répondez.`
         : `Le prospect ${prospectName} (${prospect.email}) a répondu à votre email de prospection. Consultez la séquence complète et sa réponse.`;
 
-      // ✅ Créer la notification admin avec lien vers page de synthèse de la séquence
-      const { error: notifError } = await supabase
-        .from('AdminNotification')
-        .insert({
-          type: isNewProspect ? 'prospect_new_email' : 'prospect_reply',
-          title,
-          message,
-          priority: isNewProspect ? 'urgent' : 'high',
-          status: 'unread',
-          is_read: false,
-          metadata: {
-            prospect_id: prospectId,
-            email_received_id: emailReceivedId,
-            prospect_email: prospect.email,
-            prospect_name: prospectName,
-            reply_from: replyFrom,
-            is_new_prospect: isNewProspect,
-            replied_at: new Date().toISOString()
-          },
-          // ✅ Pointer vers la page de synthèse de la séquence (conversation complète)
-          action_url: `/admin/prospection/sequence/${prospectId}`,
-          action_label: 'Voir la séquence',
-          created_at: new Date().toISOString()
+      // ✅ MIGRATION: Créer une notification dans notification pour chaque admin
+      const { data: admins, error: adminsError } = await supabase
+        .from('Admin')
+        .select('id, auth_user_id')
+        .eq('is_active', true);
+
+      if (adminsError || !admins || admins.length === 0) {
+        console.error(`❌ Erreur récupération admins pour notification prospect ${prospectId}:`, adminsError);
+        return;
+      }
+
+      // Créer une notification pour chaque admin
+      const notificationPromises = admins
+        .filter(admin => admin.auth_user_id)
+        .map(async (admin) => {
+          const { error: notifError } = await supabase
+            .from('notification')
+            .insert({
+              user_id: admin.auth_user_id,
+              user_type: 'admin',
+              notification_type: isNewProspect ? 'prospect_new_email' : 'prospect_reply',
+              title,
+              message,
+              priority: isNewProspect ? 'urgent' : 'high',
+              status: 'unread',
+              is_read: false,
+              metadata: {
+                prospect_id: prospectId,
+                email_received_id: emailReceivedId,
+                prospect_email: prospect.email,
+                prospect_name: prospectName,
+                reply_from: replyFrom,
+                is_new_prospect: isNewProspect,
+                replied_at: new Date().toISOString()
+              },
+              action_url: `/admin/prospection/sequence/${prospectId}`,
+              action_data: {
+                action_label: 'Voir la séquence'
+              },
+              created_at: new Date().toISOString()
+            });
+
+          return notifError;
         });
 
-      if (notifError) {
-        console.error(`❌ Erreur création notification admin pour prospect ${prospectId}:`, notifError);
+      const errors = await Promise.all(notificationPromises);
+      const hasError = errors.some(err => err !== null);
+
+      if (hasError) {
+        console.error(`❌ Erreur création notification admin pour prospect ${prospectId}`);
       } else {
-        console.log(`✅ Notification admin créée pour ${isNewProspect ? 'nouveau prospect' : 'réponse'}: ${prospectName}`);
+        console.log(`✅ ${admins.filter(a => a.auth_user_id).length} notification(s) admin créée(s) pour ${isNewProspect ? 'nouveau prospect' : 'réponse'}: ${prospectName}`);
       }
     } catch (error: any) {
       console.error(`❌ Erreur createAdminNotificationForReply pour ${prospectId}:`, error);

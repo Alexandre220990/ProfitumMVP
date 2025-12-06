@@ -208,23 +208,26 @@ router.get('/stream', sseRateLimiter, async (req: Request, res: Response) => {
           process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
-        // Pour les admins, vérifier aussi AdminNotification
+        // ✅ MIGRATION: Pour les admins, récupérer depuis notification
         let unreadNotifications: any[] = [];
         
-        if (userType === 'admin') {
-          // Récupérer depuis AdminNotification (table globale pour admins)
+        if (userType === 'admin' && userId) {
+          // Récupérer depuis notification (AdminNotification migrée)
           const { data: adminNotifs } = await supabase
-            .from('AdminNotification')
+            .from('notification')
             .select('*')
-            .eq('status', 'unread')
+            .eq('user_type', 'admin')
+            .eq('user_id', userId)
+            .eq('is_read', false)
+            .neq('status', 'archived')
             .order('created_at', { ascending: false })
             .limit(20);
           
           if (adminNotifs) {
             unreadNotifications = adminNotifs.map((n: any) => ({
               ...n,
-              notification_type: n.type,
-              is_read: n.is_read !== undefined ? n.is_read : n.status === 'read'
+              notification_type: n.notification_type || n.type,
+              type: n.notification_type || n.type // Compatibilité
             }));
           }
         } else {

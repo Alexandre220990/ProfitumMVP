@@ -58,10 +58,12 @@ async function testGmailReplyDetection() {
     .select('*', { count: 'exact' })
     .eq('status', 'pending');
 
+  // ✅ MIGRATION: Utiliser notification directement au lieu de AdminNotification
   const { data: adminNotifsBefore, count: totalNotifs } = await supabase
-    .from('AdminNotification')
+    .from('notification')
     .select('*', { count: 'exact' })
-    .eq('type', 'prospect_reply');
+    .eq('user_type', 'admin')
+    .eq('notification_type', 'prospect_reply');
 
   console.log(`Total prospects: ${totalProspects}`);
   console.log(`Prospects avec réponses: ${prospectsWithReplies}`);
@@ -120,10 +122,12 @@ async function testGmailReplyDetection() {
     .eq('status', 'cancelled')
     .contains('metadata', { cancelled_reason: 'prospect_replied' });
 
+  // ✅ MIGRATION: Utiliser notification directement au lieu de AdminNotification
   const { data: adminNotifsAfter, count: totalNotifsAfter } = await supabase
-    .from('AdminNotification')
+    .from('notification')
     .select('*', { count: 'exact' })
-    .eq('type', 'prospect_reply');
+    .eq('user_type', 'admin')
+    .eq('notification_type', 'prospect_reply');
 
   console.log(`Total prospects: ${prospectsAfter?.length}`);
   console.log(`Prospects avec réponses: ${prospectsWithRepliesAfter} (${prospectsWithRepliesAfter > prospectsWithReplies ? '+' + (prospectsWithRepliesAfter - prospectsWithReplies) : '0'})`);
