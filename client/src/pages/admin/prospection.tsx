@@ -2640,43 +2640,43 @@ export default function ProspectionAdmin() {
 
       {/* Statistiques */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Prospects</CardTitle>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
+          <Card className="p-3">
+            <CardHeader className="pb-1 px-0 pt-0">
+              <CardTitle className="text-xs font-medium text-gray-600">Total Prospects</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total_prospects}</div>
+            <CardContent className="px-0 pb-0">
+              <div className="text-lg font-bold">{stats.total_prospects}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Enrichis</CardTitle>
+          <Card className="p-3">
+            <CardHeader className="pb-1 px-0 pt-0">
+              <CardTitle className="text-xs font-medium text-gray-600">Enrichis</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.enriched_count}</div>
+            <CardContent className="px-0 pb-0">
+              <div className="text-lg font-bold">{stats.enriched_count}</div>
               <div className="text-xs text-gray-500">
                 {stats.total_prospects > 0 ? ((stats.enriched_count / stats.total_prospects) * 100).toFixed(1) : 0}%
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">SEQUENCES ENRICHIES</CardTitle>
+          <Card className="p-3">
+            <CardHeader className="pb-1 px-0 pt-0">
+              <CardTitle className="text-xs font-medium text-gray-600">SEQUENCES ENRICHIES</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.ai_processed_count}</div>
+            <CardContent className="px-0 pb-0">
+              <div className="text-lg font-bold">{stats.ai_processed_count}</div>
               <div className="text-xs text-gray-500">
                 {stats.total_prospects > 0 ? ((stats.ai_processed_count / stats.total_prospects) * 100).toFixed(1) : 0}%
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Emails Envoyés</CardTitle>
+          <Card className="p-3">
+            <CardHeader className="pb-1 px-0 pt-0">
+              <CardTitle className="text-xs font-medium text-gray-600">Emails Envoyés</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.emails_sent_count}</div>
+            <CardContent className="px-0 pb-0">
+              <div className="text-lg font-bold">{stats.emails_sent_count}</div>
               <div className="text-xs text-gray-500">
                 Taux réponse: {stats.reply_rate}%
               </div>
@@ -2685,114 +2685,6 @@ export default function ProspectionAdmin() {
         </div>
       )}
 
-      {/* Sélecteur de mode d'affichage */}
-      <Card className="bg-gradient-to-r from-blue-50 to-purple-50">
-        <CardContent className="py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-gray-900">Mode d'affichage</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                {viewMode === 'list' ? 'Vue liste complète' : 'Vue groupée par import'}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className={viewMode === 'list' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-              >
-                <List className="h-4 w-4 mr-2" />
-                Liste complète
-              </Button>
-              <Button
-                variant={viewMode === 'grouped' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('grouped')}
-                className={viewMode === 'grouped' ? 'bg-purple-600 hover:bg-purple-700' : ''}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Par liste d'import
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Filtres */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filtres</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Rechercher..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                className="pl-10"
-              />
-            </div>
-            <Select value={filterSource} onValueChange={(value) => { setFilterSource(value); setPage(1); }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes les sources</SelectItem>
-                <SelectItem value="google_maps">Google Maps</SelectItem>
-                <SelectItem value="import_csv">Import CSV</SelectItem>
-                <SelectItem value="linkedin">LinkedIn</SelectItem>
-                <SelectItem value="manuel">Manuel</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterEnrichment} onValueChange={(value) => { setFilterEnrichment(value); setPage(1); }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Enrichissement" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="pending">En attente</SelectItem>
-                <SelectItem value="in_progress">En cours</SelectItem>
-                <SelectItem value="completed">Complété</SelectItem>
-                <SelectItem value="failed">Échec</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterAI} onValueChange={(value) => { setFilterAI(value); setPage(1); }}>
-              <SelectTrigger>
-                <SelectValue placeholder="IA" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="pending">En attente</SelectItem>
-                <SelectItem value="in_progress">En cours</SelectItem>
-                <SelectItem value="completed">Complété</SelectItem>
-                <SelectItem value="failed">Échec</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterEmailing} onValueChange={(value) => { setFilterEmailing(value); setPage(1); }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Emailing" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="pending">En attente</SelectItem>
-                <SelectItem value="queued">En file</SelectItem>
-                <SelectItem value="sent">Envoyé</SelectItem>
-                <SelectItem value="opened">Ouvert</SelectItem>
-                <SelectItem value="clicked">Cliqué</SelectItem>
-                <SelectItem value="replied">Répondu</SelectItem>
-                <SelectItem value="bounced">Bounced</SelectItem>
-                <SelectItem value="unsubscribed">Désabonné</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Barre d'actions pour sélection */}
       {selectedProspectIds.size > 0 && (
@@ -3255,18 +3147,54 @@ export default function ProspectionAdmin() {
         // Vue Liste Normale
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Liste des Prospects ({total})</CardTitle>
-                <p className="text-sm text-gray-500 mt-1">Les prospects qui n'ont reçu aucun mail</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <CardTitle className="text-lg">Liste des Prospects ({total})</CardTitle>
+                  <span className="text-sm text-gray-500">• Les prospects qui n'ont reçu aucun mail</span>
+                </div>
+                <Button
+                  onClick={() => setShowCreateProspectModal(true)}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200 font-medium px-6 py-2.5 rounded-lg"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter un prospect
+                </Button>
               </div>
-              <Button
-                onClick={() => setShowCreateProspectModal(true)}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200 font-medium px-6 py-2.5 rounded-lg"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter un prospect
-              </Button>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Rechercher..."
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setPage(1);
+                    }}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('list')}
+                    className={viewMode === 'list' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                  >
+                    <List className="h-4 w-4 mr-2" />
+                    Liste complète
+                  </Button>
+                  <Button
+                    variant={viewMode === 'grouped' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('grouped')}
+                    className={viewMode === 'grouped' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Par liste d'import
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
