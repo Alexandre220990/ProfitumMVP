@@ -1266,19 +1266,19 @@ const AdminDashboardOptimized: React.FC = () => {
                 <table className="w-full">
                   <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-200">
                     <tr>
-                      <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                         Entreprise
                       </th>
-                      <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                         Contact
                       </th>
-                      <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                         Statut
                       </th>
-                      <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                         Inscription
                       </th>
-                      <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -1290,7 +1290,7 @@ const AdminDashboardOptimized: React.FC = () => {
                         onClick={() => navigate(`/admin/clients/${client.id}`)}
                         className="group cursor-pointer hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-200 hover:shadow-sm"
                       >
-                        <td className="px-8 py-5">
+                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">
                           <div className="flex items-center gap-3">
                             <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm shadow-md group-hover:shadow-lg transition-shadow">
                               {(client.company_name || 'E')[0].toUpperCase()}
@@ -1307,21 +1307,21 @@ const AdminDashboardOptimized: React.FC = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-8 py-5">
+                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 text-sm text-slate-900">
-                              <Mail className="h-3.5 w-3.5 text-slate-400" />
+                              <Mail className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                               <span className="truncate max-w-[200px]">{client.email}</span>
                             </div>
                             {client.phone_number && (
                               <div className="flex items-center gap-2 text-sm text-slate-600">
-                                <Phone className="h-3.5 w-3.5 text-slate-400" />
-                                <span>{client.phone_number}</span>
+                                <Phone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                                <span className="truncate">{client.phone_number}</span>
                               </div>
                             )}
                           </div>
                         </td>
-                        <td className="px-8 py-5">
+                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">
                           <Badge 
                             variant={client.statut === 'actif' ? 'default' : 'secondary'}
                             className={`text-xs font-medium px-3 py-1 ${
@@ -1333,13 +1333,13 @@ const AdminDashboardOptimized: React.FC = () => {
                             {client.statut || 'actif'}
                           </Badge>
                         </td>
-                        <td className="px-8 py-5">
+                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">
                           <div className="flex items-center gap-2 text-sm text-slate-600">
-                            <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                            <Calendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                             <span>{new Date(client.created_at).toLocaleDateString('fr-FR')}</span>
                           </div>
                         </td>
-                        <td className="px-8 py-5">
+                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">
                           <div className="flex items-center gap-2">
                             <Button
                               variant="outline"
@@ -1410,7 +1410,7 @@ const AdminDashboardOptimized: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                         <Button
                           variant="outline"
                           size="sm"
@@ -1418,7 +1418,7 @@ const AdminDashboardOptimized: React.FC = () => {
                             e.stopPropagation();
                             navigate(`/admin/messagerie-admin?user=${client.id}`);
                           }}
-                          className="flex-1 sm:flex-initial text-xs border-slate-300 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all"
+                          className="flex-1 sm:flex-initial text-xs border-slate-300 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all min-h-[44px]"
                         >
                           <Mail className="h-3.5 w-3.5 mr-1.5" />
                           Contacter
@@ -1501,22 +1501,22 @@ const AdminDashboardOptimized: React.FC = () => {
                 <table className="w-full">
                   <thead className="bg-slate-50 border-b border-slate-200">
                     <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                      <th className="px-4 sm:px-6 md:px-8 py-4 text-left text-xs sm:text-sm font-semibold text-slate-900">
                         Expert
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                      <th className="px-4 sm:px-6 md:px-8 py-4 text-left text-xs sm:text-sm font-semibold text-slate-900">
                         Contact
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                      <th className="px-4 sm:px-6 md:px-8 py-4 text-left text-xs sm:text-sm font-semibold text-slate-900">
                         Spécialisations
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                      <th className="px-4 sm:px-6 md:px-8 py-4 text-left text-xs sm:text-sm font-semibold text-slate-900">
                         Statut
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                      <th className="px-4 sm:px-6 md:px-8 py-4 text-left text-xs sm:text-sm font-semibold text-slate-900">
                         Inscription
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                      <th className="px-4 sm:px-6 md:px-8 py-4 text-left text-xs sm:text-sm font-semibold text-slate-900">
                         Actions
                       </th>
                     </tr>
@@ -1524,27 +1524,27 @@ const AdminDashboardOptimized: React.FC = () => {
                   <tbody className="divide-y divide-slate-200">
                     {filteredExperts.map((expert: any) => (
                       <tr key={expert.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 md:px-8 py-4">
                           <div>
-                            <div className="font-medium text-slate-900">
+                            <div className="font-medium text-sm sm:text-base text-slate-900">
                               {expert.name || expert.company_name}
                             </div>
                             {expert.company_name && expert.name && (
-                              <div className="text-sm text-slate-500">
+                              <div className="text-xs sm:text-sm text-slate-500">
                                 {expert.company_name}
                               </div>
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 md:px-8 py-4">
                           <div>
-                            <div className="text-sm text-slate-900">{expert.email}</div>
+                            <div className="text-xs sm:text-sm text-slate-900 truncate">{expert.email}</div>
                             {expert.location && (
-                              <div className="text-sm text-slate-500">{expert.location}</div>
+                              <div className="text-xs sm:text-sm text-slate-500 truncate">{expert.location}</div>
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 md:px-8 py-4">
                           <div className="flex flex-wrap gap-1">
                             {expert.specializations?.slice(0, 2).map((spec: string, index: number) => (
                               <Badge key={index} variant="secondary" className="text-xs">
@@ -1558,7 +1558,7 @@ const AdminDashboardOptimized: React.FC = () => {
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 md:px-8 py-4">
                           <Badge 
                             variant={
                               expert.approval_status === 'approved' ? 'default' : 
@@ -1570,15 +1570,16 @@ const AdminDashboardOptimized: React.FC = () => {
                              expert.approval_status === 'pending' ? 'En cours' : 'Rejeté'}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
+                        <td className="px-4 sm:px-6 md:px-8 py-4 text-xs sm:text-sm text-slate-600">
                           {new Date(expert.created_at).toLocaleDateString('fr-FR')}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
+                        <td className="px-4 sm:px-6 md:px-8 py-4">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                             <Button
                               variant="secondary"
                               size="sm"
                               onClick={() => window.open(`/admin/expert-details/${expert.id}`, '_blank')}
+                              className="text-xs sm:text-sm w-full sm:w-auto min-h-[44px] sm:min-h-0"
                             >
                               Voir détails
                             </Button>
@@ -1586,6 +1587,7 @@ const AdminDashboardOptimized: React.FC = () => {
                               variant="default"
                               size="sm"
                               onClick={() => window.open(`/admin/messagerie-admin?user=${expert.id}`, '_blank')}
+                              className="text-xs sm:text-sm w-full sm:w-auto min-h-[44px] sm:min-h-0"
                             >
                               Contacter
                             </Button>
@@ -1655,12 +1657,12 @@ const AdminDashboardOptimized: React.FC = () => {
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                         <Button
                           variant="secondary"
                           size="sm"
                           onClick={() => window.open(`/admin/expert-details/${expert.id}`, '_blank')}
-                          className="flex-1 sm:flex-initial text-xs"
+                          className="flex-1 sm:flex-initial text-xs min-h-[44px] sm:min-h-0"
                         >
                           Détails
                         </Button>
@@ -1668,7 +1670,7 @@ const AdminDashboardOptimized: React.FC = () => {
                           variant="default"
                           size="sm"
                           onClick={() => window.open(`/admin/messagerie-admin?user=${expert.id}`, '_blank')}
-                          className="flex-1 sm:flex-initial text-xs"
+                          className="flex-1 sm:flex-initial text-xs min-h-[44px] sm:min-h-0"
                         >
                           Contacter
                         </Button>
@@ -1826,32 +1828,32 @@ const AdminDashboardOptimized: React.FC = () => {
               {dossiers.map((dossier: ClientProduitEligible) => (
                 <div key={dossier.id} className="p-4 border rounded-lg hover:shadow-md transition-shadow bg-white">
                   {/* Header avec infos principales */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start space-x-4 flex-1">
-                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <ClipboardList className="w-6 h-6 text-white" />
+                  <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-4 mb-4">
+                    <div className="flex items-start space-x-3 sm:space-x-4 flex-1 min-w-0">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-semibold text-gray-900">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-sm sm:text-base text-gray-900 truncate">
                             {dossier.Client?.company_name || `Client #${dossier.clientId}`}
                           </h4>
                           <Badge 
                             variant={dossier.statut === 'pending' ? 'secondary' : 
                                    dossier.statut === 'eligible' || dossier.statut === 'validated' ? 'default' : 
                                    dossier.statut === 'rejected' ? 'destructive' : 'secondary'}
-                            className="ml-auto"
+                            className="ml-auto sm:ml-2 self-start sm:self-auto"
                           >
                             {dossier.statut}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600 mb-1">
+                        <p className="text-xs sm:text-sm text-gray-600 mb-1 truncate">
                           📦 {dossier.ProduitEligible?.nom || dossier.produitId}
                           {dossier.ProduitEligible?.categorie && (
                             <span className="text-gray-400 ml-2">• {dossier.ProduitEligible.categorie}</span>
                           )}
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-[10px] sm:text-xs text-gray-400">
                           🕒 Créé le {new Date(dossier.created_at).toLocaleDateString('fr-FR', { 
                             day: 'numeric', 
                             month: 'long', 
@@ -1860,16 +1862,16 @@ const AdminDashboardOptimized: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right ml-4">
+                    <div className="text-left sm:text-right ml-0 sm:ml-4 w-full sm:w-auto">
                       {dossier.montantFinal ? (
-                        <div className="bg-purple-50 px-3 py-2 rounded-lg">
+                        <div className="bg-purple-50 px-3 py-2 rounded-lg inline-block sm:block">
                           <p className="text-xs text-gray-600">Montant</p>
-                          <p className="text-lg font-bold text-purple-600">
+                          <p className="text-base sm:text-lg font-bold text-purple-600">
                             {formatCurrency(dossier.montantFinal)}
                           </p>
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-400">Non évalué</p>
+                        <p className="text-xs sm:text-sm text-gray-400">Non évalué</p>
                       )}
                     </div>
                   </div>
@@ -1969,12 +1971,12 @@ const AdminDashboardOptimized: React.FC = () => {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="secondary">
+                  <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+                    <Button size="sm" variant="secondary" className="flex-1 sm:flex-initial min-h-[44px] sm:min-h-0">
                       <Eye className="w-4 h-4 mr-1" />
                       Voir détails
                     </Button>
-                    <Button size="sm" variant="secondary">
+                    <Button size="sm" variant="secondary" className="flex-1 sm:flex-initial min-h-[44px] sm:min-h-0">
                       <Edit className="w-4 h-4 mr-1" />
                       Modifier
                     </Button>
@@ -1983,7 +1985,7 @@ const AdminDashboardOptimized: React.FC = () => {
                         <Button 
                           size="sm" 
                           variant="default" 
-                          className="bg-green-600 hover:bg-green-700 text-white"
+                          className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-initial min-h-[44px] sm:min-h-0"
                           onClick={() => handleValidateEligibility(
                             dossier.id, 
                             dossier.Client?.company_name || dossier.ProduitEligible?.nom || `Dossier ${dossier.id.substring(0, 8)}`
@@ -1995,7 +1997,7 @@ const AdminDashboardOptimized: React.FC = () => {
                         <Button 
                           size="sm" 
                           variant="destructive" 
-                          className="text-white"
+                          className="text-white flex-1 sm:flex-initial min-h-[44px] sm:min-h-0"
                           onClick={() => handleRejectEligibility(
                             dossier.id,
                             dossier.Client?.company_name || dossier.ProduitEligible?.nom || `Dossier ${dossier.id.substring(0, 8)}`
@@ -2007,13 +2009,13 @@ const AdminDashboardOptimized: React.FC = () => {
                       </>
                     )}
                     {dossier.statut === 'eligibility_validated' && (
-                      <Badge variant="default" className="bg-green-100 text-green-800">
+                      <Badge variant="default" className="bg-green-100 text-green-800 self-center sm:self-auto">
                         <CheckCircle className="w-3 h-3 mr-1" />
                         Éligibilité validée
                       </Badge>
                     )}
                     {dossier.statut === 'eligibility_rejected' && (
-                      <Badge variant="destructive">
+                      <Badge variant="destructive" className="self-center sm:self-auto">
                         <XCircle className="w-3 h-3 mr-1" />
                         Refusée
                       </Badge>
@@ -2416,8 +2418,8 @@ const AdminDashboardOptimized: React.FC = () => {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          {/* Tuiles Écosystème - Grid responsive au lieu de flex avec overflow */}
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 md:gap-3 mb-6">
+                          {/* Tuiles Écosystème - Grid responsive progressive */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3 mb-6">
                             {/* Clients */}
                             <div 
                               className={`p-2 md:p-3 rounded-lg border cursor-pointer transition-all ${
@@ -2575,17 +2577,17 @@ const AdminDashboardOptimized: React.FC = () => {
                                         
                                         return filteredClients.length > 0 ? (
                                         <div className="space-y-3">
-                                          <div className="flex justify-between items-center">
-                                            <h4 className="font-semibold text-gray-800">
+                                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                            <h4 className="text-base sm:text-lg font-semibold text-gray-800">
                                               {clientTypeFilter === 'client' ? 'Clients actifs' : clientTypeFilter === 'temporaire' ? 'Prospects simulateur' : 'Tous les clients'} ({filteredClients.length})
                                             </h4>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                                               <div className="flex gap-1">
                                                 <Button 
                                                   variant={clientTypeFilter === 'client' ? 'default' : 'outline'}
                                                   size="sm"
                                                   onClick={() => setClientTypeFilter('client')}
-                                                  className="text-xs"
+                                                  className="text-xs flex-1 sm:flex-initial min-h-[44px] sm:min-h-0"
                                                 >
                                                   Clients actifs
                                                 </Button>
@@ -2593,7 +2595,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                                   variant={clientTypeFilter === 'temporaire' ? 'default' : 'outline'}
                                                   size="sm"
                                                   onClick={() => setClientTypeFilter('temporaire')}
-                                                  className="text-xs"
+                                                  className="text-xs flex-1 sm:flex-initial min-h-[44px] sm:min-h-0"
                                                 >
                                                   Prospects simulateur
                                                 </Button>
@@ -2602,6 +2604,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                                 variant="outline" 
                                                 size="sm"
                                                 onClick={() => setActiveSection('clients')}
+                                                className="w-full sm:w-auto min-h-[44px] sm:min-h-0"
                                               >
                                                 Voir tous
                                               </Button>
@@ -2613,60 +2616,62 @@ const AdminDashboardOptimized: React.FC = () => {
                                               <div 
                                                 key={client.id} 
                                                 onClick={() => navigate(`/admin/clients/${client.id}`)}
-                                                className="group relative p-4 border border-gray-200 rounded-xl hover:border-green-400 hover:shadow-lg transition-all duration-300 bg-white hover:bg-gradient-to-br hover:from-white hover:to-green-50/40 cursor-pointer transform hover:-translate-y-0.5"
+                                                className="group relative p-3 sm:p-4 border border-gray-200 rounded-xl hover:border-green-400 hover:shadow-lg transition-all duration-300 bg-white hover:bg-gradient-to-br hover:from-white hover:to-green-50/40 cursor-pointer transform hover:-translate-y-0.5"
                                               >
-                                                <div className="flex items-start gap-4">
-                                                  {/* Avatar/Icône Entreprise - Plus grand et plus premium */}
-                                                  <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-2 ring-green-100 group-hover:ring-green-300 transition-all">
+                                                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+                                                  {/* Avatar/Icône Entreprise */}
+                                                  <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-md ring-2 ring-green-100 group-hover:ring-green-300 transition-all">
                                                     {(client.company_name || client.first_name || 'C')[0].toUpperCase()}
                                                   </div>
                                                   
                                                   {/* Informations principales */}
-                                                  <div className="flex-1 min-w-0">
-                                                    <div className="flex items-start justify-between gap-3 mb-2">
+                                                  <div className="flex-1 min-w-0 w-full">
+                                                    <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3 mb-2">
                                                       <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                                          <h5 className="font-bold text-gray-900 text-base truncate">
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1.5 flex-wrap">
+                                                          <h5 className="font-bold text-sm sm:text-base text-gray-900 truncate">
                                                             {client.company_name || `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'N/A'}
                                                           </h5>
-                                                          <Badge 
-                                                            variant={client.statut === 'active' || client.statut === 'actif' ? 'default' : 'secondary'}
-                                                            className="text-[11px] px-2 py-0.5 h-5 font-medium"
-                                                          >
-                                                            {client.statut}
-                                                          </Badge>
-                                                          {client.dossiersAValider > 0 && (
-                                                            <Badge variant="destructive" className="text-[11px] px-2 py-0.5 h-5 font-medium animate-pulse">
-                                                              ⚠️ {client.dossiersAValider}
+                                                          <div className="flex gap-2 flex-wrap">
+                                                            <Badge 
+                                                              variant={client.statut === 'active' || client.statut === 'actif' ? 'default' : 'secondary'}
+                                                              className="text-[10px] sm:text-[11px] px-2 py-0.5 h-5 font-medium"
+                                                            >
+                                                              {client.statut}
                                                             </Badge>
-                                                          )}
+                                                            {client.dossiersAValider > 0 && (
+                                                              <Badge variant="destructive" className="text-[10px] sm:text-[11px] px-2 py-0.5 h-5 font-medium animate-pulse">
+                                                                ⚠️ {client.dossiersAValider}
+                                                              </Badge>
+                                                            )}
+                                                          </div>
                                                         </div>
-                                                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                                                          <span className="flex items-center gap-1.5">
-                                                            <Mail className="w-3.5 h-3.5 text-gray-400" />
-                                                            <span className="truncate max-w-[200px]">{client.email?.length > 30 ? `${client.email.substring(0, 30)}...` : client.email}</span>
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 mb-2">
+                                                          <span className="flex items-center gap-1.5 min-w-0">
+                                                            <Mail className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                                            <span className="truncate">{client.email}</span>
                                                           </span>
                                                           {client.phone_number && (
-                                                            <span className="flex items-center gap-1.5">
-                                                              <Phone className="w-3.5 h-3.5 text-gray-400" />
-                                                              {client.phone_number}
+                                                            <span className="flex items-center gap-1.5 min-w-0">
+                                                              <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                                              <span className="truncate">{client.phone_number}</span>
                                                             </span>
                                                           )}
                                                         </div>
                                                         
                                                         {/* Informations métier */}
-                                                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-gray-500">
                                                           {client.secteurActivite ? (
-                                                            <div className="flex items-center gap-1.5">
-                                                              <Building className="w-3.5 h-3.5 text-blue-500" />
-                                                              <span className="truncate max-w-[150px]">{client.secteurActivite}</span>
+                                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                              <Building className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                                                              <span className="truncate">{client.secteurActivite}</span>
                                                             </div>
                                                           ) : (
                                                             <span className="text-gray-400 italic">Infos entreprise manquantes</span>
                                                           )}
                                                           {client.nombreEmployes && (
                                                             <div className="flex items-center gap-1.5">
-                                                              <Users className="w-3.5 h-3.5 text-purple-500" />
+                                                              <Users className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
                                                               <span>{client.nombreEmployes} emp.</span>
                                                             </div>
                                                           )}
@@ -2674,16 +2679,16 @@ const AdminDashboardOptimized: React.FC = () => {
                                                       </div>
                                                       
                                                       {/* Colonne droite - Dossiers et Date */}
-                                                      <div className="flex flex-col items-end gap-2 text-right">
+                                                      <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 sm:gap-2 text-left sm:text-right w-full sm:w-auto">
                                                         {/* Nombre de dossiers */}
-                                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                                                          <FileText className="w-4 h-4 text-green-600" />
-                                                          <span className="font-bold text-green-700 text-sm">{client.dossiersCount || 0}</span>
+                                                        <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                                                          <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 flex-shrink-0" />
+                                                          <span className="font-bold text-green-700 text-xs sm:text-sm">{client.dossiersCount || 0}</span>
                                                         </div>
                                                         
                                                         {/* Date de création */}
                                                         <div className="text-xs text-gray-500">
-                                                          <div className="font-medium text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Créé</div>
+                                                          <div className="font-medium text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wide mb-0.5 hidden sm:block">Créé</div>
                                                           <div className="font-semibold">{new Date(client.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
                                                         </div>
                                                       </div>
@@ -2692,8 +2697,8 @@ const AdminDashboardOptimized: React.FC = () => {
                                                 </div>
                                                 
                                                 {/* Indicateur de clic subtil */}
-                                                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                  <Eye className="w-4 h-4 text-green-600" />
+                                                <div className="absolute top-2 right-2 sm:top-3 sm:right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                  <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" />
                                                 </div>
                                               </div>
                                             ))}

@@ -43,6 +43,12 @@ export interface Audit extends BaseEntity {
   current_step: number;
   progress: number;
   appointment_datetime: Timestamp | null;
+  // Nouvelles colonnes pour tracking
+  client_produit_eligible_id?: UUID | null;
+  started_at?: Timestamp | null;
+  completed_at?: Timestamp | null;
+  report_available?: boolean;
+  report_url?: string | null;
 }
 
 export interface Charter extends BaseEntity {
@@ -97,6 +103,19 @@ export interface ClientProduitEligible extends BaseEntity {
   expert_assigned_at: Timestamp | null;
   produitKey: string | null;
   calcul_details: Json | null;
+  // Nouvelles colonnes pour tracking des états
+  has_documents?: boolean;
+  documents_pending_count?: number;
+  documents_validated_count?: number;
+  documents_total_count?: number;
+  audit_status?: 'pending' | 'in_progress' | 'completed' | null;
+  audit_started_at?: Timestamp | null;
+  audit_completed_at?: Timestamp | null;
+  audit_report_available?: boolean;
+  audit_id?: UUID | null;
+  admin_eligibility_status?: 'pending' | 'validated' | 'rejected' | null;
+  expert_validation_status?: 'pending' | 'validated' | 'rejected' | null;
+  expert_validated_at?: Timestamp | null;
 }
 
 export interface Document extends BaseEntity {
@@ -112,6 +131,12 @@ export interface Document extends BaseEntity {
   upload_date: Timestamp;
   status: string;
   audit_id: UUID | null;
+  // Nouvelles colonnes pour tracking
+  client_produit_eligible_id?: UUID | null;
+  validated_by_expert_id?: UUID | null;
+  validated_at?: Timestamp | null;
+  rejected_at?: Timestamp | null;
+  rejection_reason?: string | null;
 }
 
 export interface Dossier extends BaseEntity {

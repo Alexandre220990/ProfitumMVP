@@ -6012,6 +6012,392 @@ router.post('/dossiers/:id/validate-eligibility', asyncHandler(async (req, res) 
   }
 }));
 
+// ============================================================================
+// NOUVELLES ROUTES POUR LES ÉTATS DES DOSSIERS
+// ============================================================================
+
+/**
+ * GET /api/admin/dossiers/avec-documents-en-attente
+ * Liste des dossiers avec documents en attente de validation
+ */
+router.get('/dossiers/avec-documents-en-attente', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération des dossiers avec documents en attente...');
+    
+    const { data: dossiers, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client:clientId (
+          id,
+          name,
+          company_name,
+          email,
+          phone_number
+        ),
+        ProduitEligible:produitId (
+          id,
+          nom,
+          description
+        )
+      `)
+      .eq('admin_eligibility_status', 'validated')
+      .gt('documents_pending_count', 0)
+      .order('updated_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Erreur récupération dossiers avec documents en attente:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${dossiers?.length || 0} dossiers avec documents en attente`);
+
+    return res.json({
+      success: true,
+      data: dossiers || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route avec-documents-en-attente:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des dossiers'
+    });
+  }
+}));
+
+/**
+ * GET /api/admin/dossiers/sans-documents
+ * Liste des dossiers sans documents
+ */
+router.get('/dossiers/sans-documents', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération des dossiers sans documents...');
+    
+    const { data: dossiers, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client:clientId (
+          id,
+          name,
+          company_name,
+          email,
+          phone_number
+        ),
+        ProduitEligible:produitId (
+          id,
+          nom,
+          description
+        )
+      `)
+      .or('has_documents.eq.false,documents_total_count.eq.0')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Erreur récupération dossiers sans documents:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${dossiers?.length || 0} dossiers sans documents`);
+
+    return res.json({
+      success: true,
+      data: dossiers || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route sans-documents:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des dossiers'
+    });
+  }
+}));
+
+/**
+ * GET /api/admin/dossiers/en-attente-validation-expert
+ * Liste des dossiers en attente de validation expert
+ */
+router.get('/dossiers/en-attente-validation-expert', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération des dossiers en attente de validation expert...');
+    
+    const { data: dossiers, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client:clientId (
+          id,
+          name,
+          company_name,
+          email,
+          phone_number
+        ),
+        ProduitEligible:produitId (
+          id,
+          nom,
+          description
+        ),
+        Expert:expert_id (
+          id,
+          name,
+          company_name,
+          email
+        )
+      `)
+      .eq('expert_validation_status', 'pending')
+      .not('expert_id', 'is', null)
+      .eq('admin_eligibility_status', 'validated')
+      .order('updated_at', { ascending: true });
+    
+    if (error) {
+      console.error('❌ Erreur récupération dossiers en attente validation expert:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${dossiers?.length || 0} dossiers en attente de validation expert`);
+
+    return res.json({
+      success: true,
+      data: dossiers || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route en-attente-validation-expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des dossiers'
+    });
+  }
+}));
+
+/**
+ * GET /api/admin/dossiers/valides-par-expert
+ * Liste des dossiers validés ou refusés par les experts
+ */
+router.get('/dossiers/valides-par-expert', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération des dossiers validés par expert...');
+    
+    const { data: dossiers, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client:clientId (
+          id,
+          name,
+          company_name,
+          email,
+          phone_number
+        ),
+        ProduitEligible:produitId (
+          id,
+          nom,
+          description
+        ),
+        Expert:expert_id (
+          id,
+          name,
+          company_name,
+          email
+        )
+      `)
+      .in('expert_validation_status', ['validated', 'rejected'])
+      .order('expert_validated_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Erreur récupération dossiers validés par expert:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${dossiers?.length || 0} dossiers validés par expert`);
+
+    return res.json({
+      success: true,
+      data: dossiers || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route valides-par-expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des dossiers'
+    });
+  }
+}));
+
+/**
+ * GET /api/admin/documents/valides-par-expert
+ * Liste des documents validés par les experts
+ */
+router.get('/documents/valides-par-expert', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération des documents validés par expert...');
+    
+    const { data: documents, error } = await supabaseClient
+      .from('ClientProcessDocument')
+      .select(`
+        *,
+        ClientProduitEligible:client_produit_id (
+          id,
+          Client:clientId (
+            id,
+            name,
+            company_name,
+            email
+          ),
+          ProduitEligible:produitId (
+            id,
+            nom
+          )
+        ),
+        Expert:validated_by (
+          id,
+          name,
+          company_name,
+          email
+        )
+      `)
+      .eq('validation_status', 'validated')
+      .not('validated_by', 'is', null)
+      .order('validated_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Erreur récupération documents validés par expert:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${documents?.length || 0} documents validés par expert`);
+
+    return res.json({
+      success: true,
+      data: documents || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route documents/valides-par-expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des documents'
+    });
+  }
+}));
+
+/**
+ * GET /api/admin/audits/en-cours
+ * Liste des audits en cours
+ */
+router.get('/audits/en-cours', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération des audits en cours...');
+    
+    const { data: audits, error } = await supabaseClient
+      .from('Audit')
+      .select(`
+        *,
+        ClientProduitEligible:client_produit_eligible_id (
+          id,
+          Client:clientId (
+            id,
+            name,
+            company_name,
+            email
+          ),
+          ProduitEligible:produitId (
+            id,
+            nom
+          )
+        ),
+        Expert:expertId (
+          id,
+          name,
+          company_name,
+          email
+        )
+      `)
+      .eq('status', 'en_cours')
+      .not('started_at', 'is', null)
+      .order('started_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Erreur récupération audits en cours:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${audits?.length || 0} audits en cours`);
+
+    return res.json({
+      success: true,
+      data: audits || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route audits/en-cours:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des audits'
+    });
+  }
+}));
+
+/**
+ * GET /api/admin/audits/termines-avec-rapport
+ * Liste des audits terminés avec rapport disponible
+ */
+router.get('/audits/termines-avec-rapport', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération des audits terminés avec rapport...');
+    
+    const { data: audits, error } = await supabaseClient
+      .from('Audit')
+      .select(`
+        *,
+        ClientProduitEligible:client_produit_eligible_id (
+          id,
+          Client:clientId (
+            id,
+            name,
+            company_name,
+            email
+          ),
+          ProduitEligible:produitId (
+            id,
+            nom
+          )
+        ),
+        Expert:expertId (
+          id,
+          name,
+          company_name,
+          email
+        )
+      `)
+      .eq('status', 'terminé')
+      .eq('report_available', true)
+      .order('completed_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Erreur récupération audits terminés avec rapport:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${audits?.length || 0} audits terminés avec rapport`);
+
+    return res.json({
+      success: true,
+      data: audits || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route audits/termines-avec-rapport:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des audits'
+    });
+  }
+}));
+
 // PATCH /api/admin/dossiers/:id/statut - Modifier le statut d'un dossier
 router.patch('/dossiers/:id/statut', async (req, res) => {
   try {

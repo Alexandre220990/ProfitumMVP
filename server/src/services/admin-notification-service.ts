@@ -27,6 +27,154 @@ const getSSEService = () => {
 export class AdminNotificationService {
   
   /**
+   * Vérifier si une notification existe déjà pour éviter les doublons
+   */
+  private static async checkExistingNotification(data: {
+    user_id: string;
+    notification_type: string;
+    dossier_id?: string;
+    contact_message_id?: string;
+  }): Promise<{ exists: boolean; notification_id?: string }> {
+    try {
+      let query = supabase
+        .from('notification')
+        .select('id')
+        .eq('user_id', data.user_id)
+        .eq('notification_type', data.notification_type)
+        .eq('status', 'unread')
+        .limit(1);
+
+      // Vérifier par dossier_id si fourni
+      if (data.dossier_id) {
+        query = query.eq('action_data->>client_produit_id', data.dossier_id);
+      }
+
+      // Vérifier par contact_message_id si fourni
+      if (data.contact_message_id) {
+        query = query.eq('action_data->>contact_message_id', data.contact_message_id);
+      }
+
+      const { data: existing, error } = await query.single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('❌ Erreur vérification notification existante:', error);
+        return { exists: false };
+      }
+
+      return {
+        exists: !!existing,
+        notification_id: existing?.id
+      };
+    } catch (error) {
+      console.error('❌ Erreur checkExistingNotification:', error);
+      return { exists: false };
+    }
+  }
+
+  /**
+   * Créer ou mettre à jour une notification (évite les doublons)
+   */
+  private static async createOrUpdateNotification(data: {
+    user_id: string;
+    user_type: 'admin' | 'expert' | 'client' | 'apporteur';
+    title: string;
+    message: string;
+    notification_type: string;
+    priority: string;
+    action_url?: string;
+    action_data?: any;
+    metadata?: any;
+    dossier_id?: string;
+    contact_message_id?: string;
+  }): Promise<{ success: boolean; notification_id?: string; is_update?: boolean }> {
+    try {
+      // Vérifier si notification existe déjà
+      const checkResult = await this.checkExistingNotification({
+        user_id: data.user_id,
+        notification_type: data.notification_type,
+        dossier_id: data.dossier_id,
+        contact_message_id: data.contact_message_id
+      });
+
+      if (checkResult.exists && checkResult.notification_id) {
+        // Mettre à jour la notification existante
+        const { data: updated, error } = await supabase
+          .from('notification')
+          .update({
+            title: data.title,
+            message: data.message,
+            priority: data.priority,
+            action_url: data.action_url,
+            action_data: data.action_data,
+            metadata: data.metadata,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', checkResult.notification_id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('❌ Erreur mise à jour notification:', error);
+          return { success: false };
+        }
+
+        // 📡 Envoyer via SSE en temps réel
+        const sse = getSSEService();
+        if (sse && updated) {
+          sse.sendNotificationToUser(data.user_id, updated);
+        }
+
+        return {
+          success: true,
+          notification_id: updated?.id,
+          is_update: true
+        };
+      }
+
+      // Créer nouvelle notification
+      const { data: notification, error } = await supabase
+        .from('notification')
+        .insert({
+          user_id: data.user_id,
+          user_type: data.user_type,
+          title: data.title,
+          message: data.message,
+          notification_type: data.notification_type,
+          priority: data.priority,
+          is_read: false,
+          status: 'unread',
+          action_url: data.action_url,
+          action_data: data.action_data,
+          metadata: data.metadata,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Erreur création notification:', error);
+        return { success: false };
+      }
+
+      // 📡 Envoyer via SSE en temps réel
+      const sse = getSSEService();
+      if (sse && notification) {
+        sse.sendNotificationToUser(data.user_id, notification);
+      }
+
+      return {
+        success: true,
+        notification_id: notification?.id,
+        is_update: false
+      };
+    } catch (error) {
+      console.error('❌ Erreur createOrUpdateNotification:', error);
+      return { success: false };
+    }
+  }
+  
+  /**
    * Récupérer tous les IDs des admins actifs
    */
   static async getAdminIds(): Promise<string[]> {
@@ -93,65 +241,65 @@ export class AdminNotificationService {
           actionUrl = `/admin/dossiers/${data.client_produit_id}`; // Redirige vers la synthèse avec bouton "Sélectionner un expert"
         }
 
-        const { data: notification, error } = await supabase
-          .from('notification')
-          .insert({
-            user_id: adminId,
-            user_type: 'admin',
-            title: notificationInfo.title,
-            message: notificationInfo.message,
-            notification_type: notificationInfo.notificationType === 'waiting_documents' 
-              ? 'admin_action_required' 
-              : notificationInfo.notificationType === 'documents_to_validate'
-              ? 'admin_action_required'
-              : 'dossier_complete',
-            priority: notificationInfo.priority,
-            is_read: false,
-            status: 'unread',
-            action_url: actionUrl,
-            action_data: {
-              client_produit_id: data.client_produit_id,
-              client_id: data.client_id,
-              client_name: data.client_name,
-              client_email: data.client_email,
-              client_company: data.client_company,
-              product_type: data.product_type,
-              product_name: data.product_name,
-              documents: data.documents,
-              action_required: notificationInfo.notificationType === 'dossier_complete' 
-                ? 'select_expert' 
-                : 'validate_eligibility',
-              ...notificationInfo.metadata
-            },
-            metadata: {
-              client_produit_id: data.client_produit_id,
-              client_id: data.client_id,
-              client_name: data.client_name,
-              client_company: data.client_company,
-              product_type: data.product_type,
-              product_name: data.product_name,
-              ...notificationInfo.metadata
-            },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
+        const notificationType = notificationInfo.notificationType === 'waiting_documents' 
+          ? 'admin_action_required' 
+          : notificationInfo.notificationType === 'documents_to_validate'
+          ? 'admin_action_required'
+          : 'dossier_complete';
 
-        if (error) {
-          console.error('❌ Erreur création notification admin:', error);
-          continue;
+        const actionData = {
+          client_produit_id: data.client_produit_id,
+          client_id: data.client_id,
+          client_name: data.client_name,
+          client_email: data.client_email,
+          client_company: data.client_company,
+          product_type: data.product_type,
+          product_name: data.product_name,
+          documents: data.documents,
+          action_required: notificationInfo.notificationType === 'dossier_complete' 
+            ? 'select_expert' 
+            : 'validate_eligibility',
+          ...notificationInfo.metadata
+        };
+
+        const metadata = {
+          client_produit_id: data.client_produit_id,
+          client_id: data.client_id,
+          client_name: data.client_name,
+          client_company: data.client_company,
+          product_type: data.product_type,
+          product_name: data.product_name,
+          ...notificationInfo.metadata
+        };
+
+        // Utiliser createOrUpdateNotification pour éviter les doublons
+        const result = await this.createOrUpdateNotification({
+          user_id: adminId,
+          user_type: 'admin',
+          title: notificationInfo.title,
+          message: notificationInfo.message,
+          notification_type: notificationType,
+          priority: notificationInfo.priority,
+          action_url: actionUrl,
+          action_data: actionData,
+          metadata: metadata,
+          dossier_id: data.client_produit_id
+        });
+
+        if (result.success && result.notification_id) {
+          notificationIds.push(result.notification_id);
+          if (result.is_update) {
+            console.log(`🔄 Notification mise à jour pour admin ${adminId}:`, result.notification_id);
+          } else {
+            console.log(`✅ Notification créée pour admin ${adminId}:`, result.notification_id);
+          }
         }
+      }
 
-        notificationIds.push(notification.id);
-        console.log(`✅ Notification créée pour admin ${adminId}:`, notification.id);
-
-        // 📡 Envoyer via SSE en temps réel
-        const sse = getSSEService();
-        if (sse) {
-          sse.sendNotificationToUser(adminId, notification);
-          sse.sendKPIRefresh(); // Rafraîchir KPI dashboard admin
-        }
+      // 📡 Rafraîchir KPI dashboard admin
+      const sse = getSSEService();
+      if (sse) {
+        sse.sendKPIRefresh();
       }
 
       return {
@@ -260,42 +408,35 @@ export class AdminNotificationService {
       const notificationIds: string[] = [];
 
       for (const adminId of adminIds) {
-        const { data: notification, error } = await supabase
-          .from('notification')
-          .insert({
-            user_id: adminId,
-            user_type: 'admin',
-            title: `⚠️ Expert a refusé le dossier`,
-            message: `L'expert ${data.expert_name} a refusé le dossier ${data.product_type} de ${data.client_name || 'un client'}. ${data.refusal_reason || ''}`,
-            notification_type: 'admin_action_required',
-            priority: 'high',
-            is_read: false,
-            action_url: `/admin/dossiers/${data.client_produit_id}/reassign`,
-            action_data: {
-              client_produit_id: data.client_produit_id,
-              expert_id: data.expert_id,
-              expert_name: data.expert_name,
-              client_name: data.client_name,
-              product_type: data.product_type,
-              refusal_reason: data.refusal_reason,
-              action_required: 'reassign_expert'
-            },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
+        const result = await this.createOrUpdateNotification({
+          user_id: adminId,
+          user_type: 'admin',
+          title: `⚠️ Expert a refusé le dossier`,
+          message: `L'expert ${data.expert_name} a refusé le dossier ${data.product_type} de ${data.client_name || 'un client'}. ${data.refusal_reason || ''}`,
+          notification_type: 'admin_action_required',
+          priority: 'high',
+          action_url: `/admin/dossiers/${data.client_produit_id}/reassign`,
+          action_data: {
+            client_produit_id: data.client_produit_id,
+            expert_id: data.expert_id,
+            expert_name: data.expert_name,
+            client_name: data.client_name,
+            product_type: data.product_type,
+            refusal_reason: data.refusal_reason,
+            action_required: 'reassign_expert'
+          },
+          dossier_id: data.client_produit_id
+        });
 
-        if (!error && notification) {
-          notificationIds.push(notification.id);
-
-          // 📡 Envoyer via SSE en temps réel
-          const sse = getSSEService();
-          if (sse) {
-            sse.sendNotificationToUser(adminId, notification);
-            sse.sendKPIRefresh();
-          }
+        if (result.success && result.notification_id) {
+          notificationIds.push(result.notification_id);
         }
+      }
+
+      // 📡 Rafraîchir KPI dashboard admin
+      const sse = getSSEService();
+      if (sse) {
+        sse.sendKPIRefresh();
       }
 
       return {

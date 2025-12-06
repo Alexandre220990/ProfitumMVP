@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { config } from "@/config/env";
 import { getSupabaseToken } from "@/lib/auth-helpers";
 import { toast } from "sonner";
@@ -71,8 +71,10 @@ interface DossierStats { totalDossiers: number;
   montantMoyen: number 
 }
 
-export default function GestionDossiers() { const { user } = useAuth();
+export default function GestionDossiers() { 
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('dossiers');
   
   // États pour les dossiers
@@ -87,7 +89,14 @@ export default function GestionDossiers() { const { user } = useAuth();
   const [loadingProduits, setLoadingProduits] = useState(true);
   
   // Filtres et pagination pour dossiers
-  const [filters, setFilters] = useState({ search: '', status: 'all', client: 'all', produit: 'all', expert: 'all' });
+  const [filters, setFilters] = useState({ 
+    search: '', 
+    status: 'all', 
+    client: 'all', 
+    produit: 'all', 
+    expert: 'all',
+    stateFilter: searchParams.get('filter') || 'all' // Nouveau filtre pour les états
+  });
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -153,10 +162,22 @@ export default function GestionDossiers() { const { user } = useAuth();
     }
   };
 
-  useEffect(() => { if (user) {
+  // Initialiser le filtre depuis l'URL
+  useEffect(() => {
+    const filterFromUrl = searchParams.get('filter');
+    if (filterFromUrl && filterFromUrl !== filters.stateFilter) {
+      setFilters(prev => ({ ...prev, stateFilter: filterFromUrl }));
+    }
+  }, [searchParams]);
+
+  useEffect(() => { 
+    if (user) {
       if (activeTab === 'dossiers') {
         fetchDossiers();
-        fetchStats(); } else { fetchProduits(); }
+        fetchStats(); 
+      } else { 
+        fetchProduits(); 
+      }
     }
   }, [user, activeTab, filters, pagination.page, sortBy, sortOrder, sortByProduit, sortOrderProduit]);
 
@@ -344,34 +365,92 @@ export default function GestionDossiers() { const { user } = useAuth();
   };
 
   // ===== FONCTIONS POUR LES DOSSIERS =====
-  const fetchDossiers = async () => { try {
+  const fetchDossiers = async () => { 
+    try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session?.access_token) { throw new Error('Token d\'authentification manquant'); }
+      if (!session?.access_token) { 
+        throw new Error('Token d\'authentification manquant'); 
+      }
 
-      const params = new URLSearchParams({ page: pagination.page.toString(), limit: pagination.limit.toString(), sortBy, sortOrder });
+      // Routes spécifiques pour les nouveaux états
+      const stateRoutes: Record<string, string> = {
+        'avec-documents-en-attente': '/api/admin/dossiers/avec-documents-en-attente',
+        'sans-documents': '/api/admin/dossiers/sans-documents',
+        'en-attente-validation-expert': '/api/admin/dossiers/en-attente-validation-expert',
+        'valides-par-expert': '/api/admin/dossiers/valides-par-expert',
+        'documents-valides': '/api/admin/documents/valides-par-expert',
+        'audits-en-cours': '/api/admin/audits/en-cours',
+        'audits-termines': '/api/admin/audits/termines-avec-rapport'
+      };
 
-      if (filters.search) params.append('search', filters.search);
-      if (filters.status && filters.status !== 'all') params.append('status', filters.status);
-      if (filters.client && filters.client !== 'all') params.append('client', filters.client);
-      if (filters.produit && filters.produit !== 'all') params.append('produit', filters.produit);
-      if (filters.expert && filters.expert !== 'all') params.append('expert', filters.expert);
+      let response;
+      let data;
 
-      const response = await fetch(`/api/admin/dossiers?${params.toString()}`, { headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
+      // Si un filtre d'état spécifique est sélectionné, utiliser la route dédiée
+      if (filters.stateFilter && filters.stateFilter !== 'all' && stateRoutes[filters.stateFilter]) {
+        response = await fetch(`${config.API_URL}${stateRoutes[filters.stateFilter]}`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) { 
+          throw new Error('Erreur lors de la récupération des dossiers'); 
         }
-      });
 
-      if (!response.ok) { throw new Error('Erreur lors de la récupération des dossiers'); }
+        const result = await response.json();
+        data = {
+          dossiers: result.data || [],
+          pagination: {
+            total: result.data?.length || 0,
+            totalPages: 1
+          }
+        };
+      } else {
+        // Route générique avec filtres
+        const params = new URLSearchParams({ 
+          page: pagination.page.toString(), 
+          limit: pagination.limit.toString(), 
+          sortBy, 
+          sortOrder 
+        });
 
-      const data = await response.json();
+        if (filters.search) params.append('search', filters.search);
+        if (filters.status && filters.status !== 'all') params.append('status', filters.status);
+        if (filters.client && filters.client !== 'all') params.append('client', filters.client);
+        if (filters.produit && filters.produit !== 'all') params.append('produit', filters.produit);
+        if (filters.expert && filters.expert !== 'all') params.append('expert', filters.expert);
+
+        response = await fetch(`${config.API_URL}/api/admin/dossiers?${params.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) { 
+          throw new Error('Erreur lors de la récupération des dossiers'); 
+        }
+
+        data = await response.json();
+      }
+
       setDossiers(data.dossiers || []);
-      setPagination(prev => ({ ...prev, total: data.pagination.total, totalPages: data.pagination.totalPages }));
+      setPagination(prev => ({ 
+        ...prev, 
+        total: data.pagination?.total || data.dossiers?.length || 0, 
+        totalPages: data.pagination?.totalPages || 1 
+      }));
 
-    } catch (error) { console.error('Erreur chargement dossiers: ', error);
-    } finally { setLoading(false); }
+    } catch (error) { 
+      console.error('Erreur chargement dossiers: ', error);
+      toast.error('Erreur lors du chargement des dossiers');
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const fetchStats = async () => { try {
@@ -870,27 +949,72 @@ export default function GestionDossiers() { const { user } = useAuth();
               </CardHeader>
               <CardContent>
                 { /* Filtres */ }
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Rechercher..."
-                      value={ filters.search }
-                      onChange={ (e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                      className="w-full"
-                    />
+                <div className="space-y-3 mb-4 sm:mb-6">
+                  {/* Filtre d'état principal - Nouveau */}
+                  <div>
+                    <Label className="text-xs font-medium text-gray-700 mb-1.5 block">
+                      Filtrer par état
+                    </Label>
+                    <Select 
+                      value={ filters.stateFilter } 
+                      onValueChange={ (value) => {
+                        setFilters(prev => ({ ...prev, stateFilter: value }));
+                        setSearchParams(value !== 'all' ? { filter: value } : {});
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Tous les états" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les dossiers</SelectItem>
+                        <SelectItem value="avec-documents-en-attente">
+                          📄 Documents en attente
+                        </SelectItem>
+                        <SelectItem value="sans-documents">
+                          📭 Sans documents
+                        </SelectItem>
+                        <SelectItem value="en-attente-validation-expert">
+                          ⏳ En attente validation expert
+                        </SelectItem>
+                        <SelectItem value="valides-par-expert">
+                          ✅ Validés/Refusés par expert
+                        </SelectItem>
+                        <SelectItem value="documents-valides">
+                          📋 Documents validés
+                        </SelectItem>
+                        <SelectItem value="audits-en-cours">
+                          🔍 Audits en cours
+                        </SelectItem>
+                        <SelectItem value="audits-termines">
+                          📊 Audits terminés avec rapport
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select value={ filters.status } onValueChange={ (value) => setFilters(prev => ({ ...prev, status: value }))}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                      <SelectValue placeholder="Statut" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous les statuts</SelectItem>
-                      <SelectItem value="eligible">Éligible</SelectItem>
-                      <SelectItem value="non_eligible">Non éligible</SelectItem>
-                      <SelectItem value="en_cours">En cours</SelectItem>
-                      <SelectItem value="termine">Terminé</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  
+                  {/* Autres filtres en ligne */}
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Rechercher..."
+                        value={ filters.search }
+                        onChange={ (e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                        className="w-full"
+                      />
+                    </div>
+                    <Select value={ filters.status } onValueChange={ (value) => setFilters(prev => ({ ...prev, status: value }))}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Statut" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les statuts</SelectItem>
+                        <SelectItem value="eligible">Éligible</SelectItem>
+                        <SelectItem value="non_eligible">Non éligible</SelectItem>
+                        <SelectItem value="en_cours">En cours</SelectItem>
+                        <SelectItem value="termine">Terminé</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 { /* Vue Mobile - Cartes */ }
