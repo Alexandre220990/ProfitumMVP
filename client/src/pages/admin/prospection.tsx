@@ -45,6 +45,7 @@ import {
 import LoadingScreen from "@/components/LoadingScreen";
 import { cn } from "@/lib/utils";
 import ImportProspects from "./import-prospects";
+import ScheduleSequenceModal from "@/components/ScheduleSequenceModal";
 
 // Types
 interface Prospect {
@@ -211,6 +212,10 @@ export default function ProspectionAdmin() {
   const [prospectSequenceEmails, setProspectSequenceEmails] = useState<any[]>([]);
   const [isPausingSequence, setIsPausingSequence] = useState(false);
   const [isRestartingSequence, setIsRestartingSequence] = useState(false);
+
+  // États pour le modal de programmation de séquence d'email (accessible depuis tous les onglets)
+  const [showScheduleSequenceModal, setShowScheduleSequenceModal] = useState(false);
+  const [selectedProspectForSequence, setSelectedProspectForSequence] = useState<Prospect | null>(null);
 
   // États pour la création manuelle de prospect
   const [showCreateProspectModal, setShowCreateProspectModal] = useState(false);
@@ -5136,6 +5141,32 @@ Ces instructions seront la base de génération. L'IA les adaptera automatiqueme
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de programmation de séquence d'email - accessible depuis tous les onglets */}
+      {selectedProspectForSequence && (
+        <ScheduleSequenceModal
+          prospectId={selectedProspectForSequence.id}
+          prospectName={`${selectedProspectForSequence.firstname || ''} ${selectedProspectForSequence.lastname || ''}`.trim() || selectedProspectForSequence.email || 'Prospect'}
+          prospectEmail={selectedProspectForSequence.email}
+          companyName={selectedProspectForSequence.company_name}
+          siren={selectedProspectForSequence.siren}
+          nafCode={selectedProspectForSequence.naf_code}
+          nafLabel={selectedProspectForSequence.naf_label}
+          enrichmentStatus={selectedProspectForSequence.enrichment_status || 'pending'}
+          enrichmentData={selectedProspectForSequence.enrichment_data}
+          open={showScheduleSequenceModal}
+          onClose={() => {
+            setShowScheduleSequenceModal(false);
+            setSelectedProspectForSequence(null);
+          }}
+          onSuccess={() => {
+            setShowScheduleSequenceModal(false);
+            setSelectedProspectForSequence(null);
+            fetchProspects();
+            toast.success('Séquence programmée avec succès !');
+          }}
+        />
+      )}
         </>
       )}
     </div>
