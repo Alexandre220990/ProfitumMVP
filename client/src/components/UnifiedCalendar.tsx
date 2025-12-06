@@ -596,46 +596,64 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     // Exactement 5 semaines (35 jours) pour une vraie vue agenda - 7 jours par ligne
     const daysToShow = 35;
     
-    // Hauteur fixe pour chaque case - plus grande pour une vraie vue agenda (desktop uniquement)
-    const cellHeight = '180px';
-    
     return (
-      <div className="flex flex-col h-full">
-        {/* En-tête avec navigation - Design premium */}
-        <div className="flex items-center justify-between mb-6 px-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={navigatePrevious}
-            className="flex items-center gap-1 h-10 w-10 p-0 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:shadow-sm"
-          >
-            <ChevronLeft className="h-5 w-5 text-gray-700" />
-          </Button>
+      <div className="flex flex-col h-full w-full max-w-full overflow-hidden">
+        {/* En-tête avec bouton d'ajout bien visible et navigation */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 px-2 flex-shrink-0">
+          {/* Navigation mois */}
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={navigatePrevious}
+              className="flex items-center gap-1 h-10 w-10 p-0 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:shadow-sm"
+            >
+              <ChevronLeft className="h-5 w-5 text-gray-700" />
+            </Button>
+            
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">
+              {format(view.date, 'MMMM yyyy', { locale: fr })}
+            </h2>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={navigateNext}
+              className="flex items-center gap-1 h-10 w-10 p-0 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:shadow-sm"
+            >
+              <ChevronRight className="h-5 w-5 text-gray-700" />
+            </Button>
+          </div>
           
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight">
-            {format(view.date, 'MMMM yyyy', { locale: fr })}
-          </h2>
-          
+          {/* Bouton ajouter événement - Bien visible */}
           <Button
-            variant="ghost"
-            size="sm"
-            onClick={navigateNext}
-            className="flex items-center gap-1 h-10 w-10 p-0 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:shadow-sm"
+            onClick={() => {
+              setSelectedDate(new Date());
+              setSelectedEvent(null);
+              setShowEventDialog(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 h-10 px-4 sm:px-6 rounded-lg"
           >
-            <ChevronRight className="h-5 w-5 text-gray-700" />
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">Ajouter un événement</span>
           </Button>
         </div>
         
-        {/* Grille du mois - Design haute couture - 5 lignes exactement */}
-        <div className="flex flex-col border border-gray-200/80 rounded-xl overflow-hidden bg-white shadow-sm">
-          {/* En-têtes des jours de la semaine - Style premium */}
-          <div className="grid grid-cols-7 border-b border-gray-200/80 bg-gradient-to-b from-gray-50/50 to-white">
+        {/* Grille du mois - Responsive avec grille 7x5 qui s'adapte à l'écran */}
+        <div className="flex flex-col border border-gray-200/80 rounded-xl overflow-hidden bg-white shadow-sm flex-1 min-h-0 w-full max-w-full"
+             style={{ 
+               maxHeight: 'calc(100vh - 220px)',
+               height: 'calc(100vh - 220px)',
+               minHeight: '500px'
+             }}>
+          {/* En-têtes des jours de la semaine - Style léger au-dessus */}
+          <div className="grid grid-cols-7 border-b border-gray-200/60 bg-gray-50/30 flex-shrink-0">
             {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day, index) => (
               <div 
                 key={day} 
                 className={cn(
-                  "text-xs font-semibold text-gray-600 text-center py-3 tracking-wide uppercase",
-                  index > 0 && "border-l border-gray-200/60"
+                  "text-[10px] sm:text-xs font-normal text-gray-400 text-center py-2 sm:py-2.5",
+                  index > 0 && "border-l border-gray-200/40"
                 )}
               >
                 {day}
@@ -643,8 +661,11 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
             ))}
           </div>
           
-          {/* Grille des jours - 5 lignes exactement (35 jours) - Cases uniformes et parfaitement alignées */}
-          <div className="grid grid-rows-5 grid-cols-7 divide-x divide-y divide-gray-200/60">
+          {/* Grille des jours - 5 lignes exactement (35 jours) - Responsive qui s'adapte à l'écran */}
+          <div className="grid grid-rows-5 grid-cols-7 divide-x divide-y divide-gray-200/40 flex-1 min-h-0" 
+               style={{ 
+                 height: '100%'
+               }}>
             {Array.from({ length: daysToShow }, (_, i) => {
               const date = addDays(firstMondayOfMonth, i);
               const dayEvents = getEventsForDate(date);
@@ -659,25 +680,25 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                     "relative flex flex-col cursor-pointer transition-all duration-200",
                     "hover:bg-gray-50/50 hover:shadow-inner",
                     !isCurrentMonth && "bg-gray-50/30",
-                    isToday && !isSelected && "bg-gradient-to-br from-gray-50 to-white border-2 border-gray-300",
-                    isSelected && "bg-gradient-to-br from-gray-100 to-gray-50 border-2 border-gray-400 shadow-inner"
+                    isToday && !isSelected && "bg-gradient-to-br from-blue-50 to-white border-2 border-blue-300",
+                    isSelected && "bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-400 shadow-inner"
                   )}
                   style={{ 
-                    height: cellHeight,
-                    minHeight: cellHeight,
-                    maxHeight: cellHeight
+                    height: '100%',
+                    minHeight: 0,
+                    maxHeight: '100%'
                   }}
                   onClick={() => setSelectedDate(date)}
                 >
                   {/* Numéro du jour - Style élégant */}
                   <div className={cn(
-                    "text-sm font-semibold mb-2 px-2.5 pt-2.5 flex-shrink-0",
-                    isToday && "text-gray-900",
+                    "text-xs sm:text-sm font-semibold mb-1 sm:mb-2 px-1.5 sm:px-2.5 pt-1.5 sm:pt-2.5 flex-shrink-0",
+                    isToday && "text-blue-900",
                     !isCurrentMonth && "text-gray-400",
                     isCurrentMonth && !isToday && "text-gray-700"
                   )}>
                     {isToday ? (
-                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-900 text-white">
+                      <span className="inline-flex items-center justify-center w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-blue-600 text-white text-xs sm:text-sm">
                         {format(date, 'd')}
                       </span>
                     ) : (
@@ -685,9 +706,13 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                     )}
                   </div>
                   
-                  {/* Événements - Vraie vue agenda avec plus de détails */}
-                  <div className="flex-1 overflow-y-auto space-y-1.5 px-2 pb-2 min-h-0" style={{ scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 transparent' }}>
-                    {dayEvents.slice(0, 6).map((event) => {
+                  {/* Événements - Adapté à la taille d'écran */}
+                  <div className="flex-1 overflow-y-auto space-y-0.5 sm:space-y-1 px-1 sm:px-2 pb-1 sm:pb-2 min-h-0" 
+                       style={{ 
+                         scrollbarWidth: 'thin', 
+                         scrollbarColor: '#cbd5e1 transparent' 
+                       }}>
+                    {dayEvents.slice(0, 5).map((event) => {
                       const eventColor = event.color || '#6366F1';
                       const startTime = format(new Date(event.start_date), 'HH:mm');
                       const endTime = format(new Date(event.end_date), 'HH:mm');
@@ -695,15 +720,15 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                         <div
                           key={event.id}
                           className={cn(
-                            "text-[11px] px-2.5 py-1.5 rounded-md cursor-pointer flex-shrink-0",
-                            "hover:opacity-90 hover:shadow-md transition-all duration-150",
-                            "font-medium flex flex-col gap-0.5"
+                            "text-[9px] sm:text-[10px] px-1 sm:px-2 py-0.5 sm:py-1 rounded cursor-pointer flex-shrink-0",
+                            "hover:opacity-90 hover:shadow-sm transition-all duration-150",
+                            "font-medium truncate"
                           )}
                           style={{
-                            backgroundColor: `${eventColor}20`,
+                            backgroundColor: `${eventColor}25`,
                             color: eventColor,
-                            borderLeft: `3px solid ${eventColor}`,
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                            borderLeft: `2px solid ${eventColor}`,
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -711,35 +736,20 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                           }}
                           title={`${startTime} - ${endTime} | ${event.title}`}
                         >
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="w-3 h-3" />
-                            <span className="font-semibold text-[10px]">{startTime}</span>
-                            {endTime !== startTime && (
-                              <>
-                                <span className="text-[9px] opacity-70">-</span>
-                                <span className="font-semibold text-[10px]">{endTime}</span>
-                              </>
-                            )}
-                          </div>
-                          <span className="truncate font-semibold leading-tight">{event.title}</span>
-                          {event.location && (
-                            <span className="text-[9px] opacity-75 truncate flex items-center gap-1">
-                              <MapPin className="w-2.5 h-2.5" />
-                              {event.location}
-                            </span>
-                          )}
+                          <span className="font-semibold text-[8px] sm:text-[9px] mr-1">{startTime}</span>
+                          <span className="truncate">{event.title}</span>
                         </div>
                       );
                     })}
-                    {dayEvents.length > 6 && (
+                    {dayEvents.length > 5 && (
                       <div 
-                        className="text-[11px] text-gray-600 font-semibold px-2.5 py-1.5 cursor-pointer hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0 border border-gray-200"
+                        className="text-[9px] sm:text-[10px] text-gray-600 font-semibold px-1 sm:px-2 py-0.5 sm:py-1 cursor-pointer hover:text-gray-900 hover:bg-gray-100 rounded transition-colors flex-shrink-0 border border-gray-200"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedDate(date);
                         }}
                       >
-                        +{dayEvents.length - 6} autre{dayEvents.length - 6 > 1 ? 's' : ''}
+                        +{dayEvents.length - 5} autre{dayEvents.length - 5 > 1 ? 's' : ''}
                       </div>
                     )}
                   </div>
