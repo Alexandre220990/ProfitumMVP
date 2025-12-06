@@ -29,9 +29,9 @@ async function checkRefundRequests() {
         montantFinal,
         date_audit_validated_by_client,
         metadata,
-        Client(company_name, nom, prenom),
-        ProduitEligible(nom),
-        Expert(auth_user_id, name, email)
+        Client:clientId(company_name, nom, prenom),
+        ProduitEligible:produitId(nom),
+        Expert!expert_id(auth_user_id, name, email)
       `)
       .eq('statut', 'validated')
       .not('expert_id', 'is', null)

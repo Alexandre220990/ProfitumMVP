@@ -2889,7 +2889,7 @@ router.delete('/clients/:id', asyncHandler(async (req, res) => {
     await supabaseClient.from('document_request').delete().eq('client_id', id);
 
     // PRIORITÉ 3 : Dossiers et produits
-    await supabaseClient.from('Dossier').delete().eq('clientId', id);
+    // ✅ CORRECTION: La table Dossier n'existe pas, utiliser uniquement ClientProduitEligible
     await supabaseClient.from('ClientProduitEligible').delete().eq('clientId', id);
     try {
       await supabaseClient.from('ClientStatut').delete().eq('client_id', id);

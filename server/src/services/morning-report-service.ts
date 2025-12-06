@@ -332,17 +332,32 @@ export class MorningReportService {
    */
   private static async getPendingActions(now: Date, urgentOnly: boolean = false): Promise<PendingAction[]> {
     try {
-      // Récupérer les dossiers avec actionType
+      // Récupérer les dossiers actifs depuis ClientProduitEligible
       const { data: dossiers, error } = await supabase
-        .from('Dossier')
+        .from('ClientProduitEligible')
         .select(`
           id,
-          actionType,
+          statut,
           updated_at,
-          Client:client_id(id, name, company_name),
-          ProduitEligible:produit_id(nom)
+          created_at,
+          expert_id,
+          metadata,
+          Client:clientId(id, name, company_name),
+          ProduitEligible:produitId(nom)
         `)
-        .not('actionType', 'is', null)
+        .in('statut', [
+          'eligible',
+          'admin_validated',
+          'expert_assigned',
+          'expert_pending_acceptance',
+          'documents_requested',
+          'documents_completes',
+          'audit_en_cours',
+          'audit_in_progress',
+          'validation_pending',
+          'validated',
+          'en_cours'
+        ])
         .limit(500);
 
       if (error) {
@@ -353,7 +368,11 @@ export class MorningReportService {
       const pendingActions: PendingAction[] = [];
 
       for (const dossier of dossiers || []) {
-        if (!dossier.actionType || !dossier.updated_at) continue;
+        if (!dossier.updated_at) continue;
+
+        // Calculer l'actionType basé sur le statut et les métadonnées
+        const actionType = this.determineActionType(dossier);
+        if (!actionType) continue; // Ignorer si aucune action nécessaire
 
         const updatedAt = new Date(dossier.updated_at);
         const daysWaiting = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
@@ -375,7 +394,7 @@ export class MorningReportService {
 
         pendingActions.push({
           dossier_id: dossier.id,
-          actionType: dossier.actionType,
+          actionType,
           daysWaiting,
           priority,
           Client: Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client,
@@ -394,6 +413,54 @@ export class MorningReportService {
       console.error('❌ Erreur récupération dossiers avec actions:', error);
       return [];
     }
+  }
+
+  /**
+   * Déterminer l'actionType d'un dossier basé sur son statut
+   */
+  private static determineActionType(dossier: any): string | null {
+    // 1. Expert pending acceptance
+    if (dossier.statut === 'expert_pending_acceptance') {
+      return 'expert_pending_acceptance';
+    }
+
+    // 2. Documents requested
+    if (dossier.statut === 'documents_requested') {
+      return 'documents_requested';
+    }
+
+    // 3. Documents pending validation
+    if (dossier.statut === 'documents_completes' || dossier.statut === 'validation_pending') {
+      return 'documents_pending_validation';
+    }
+
+    // 4. Audit to complete
+    if (dossier.statut === 'audit_en_cours' || dossier.statut === 'audit_in_progress') {
+      return 'audit_to_complete';
+    }
+
+    // 5. Expert assigned - first review needed
+    if (dossier.statut === 'expert_assigned') {
+      const daysSinceCreation = Math.floor((new Date().getTime() - new Date(dossier.created_at).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSinceCreation <= 3) {
+        return 'first_review_needed';
+      }
+    }
+
+    // 6. Client no response (basé sur updated_at)
+    const daysSinceUpdate = Math.floor((new Date().getTime() - new Date(dossier.updated_at).getTime()) / (1000 * 60 * 60 * 24));
+    if (daysSinceUpdate >= 15) {
+      return 'client_no_response_critical';
+    } else if (daysSinceUpdate > 7) {
+      return 'relance_needed';
+    }
+
+    // 7. Autres statuts actifs
+    if (['eligible', 'admin_validated', 'en_cours'].includes(dossier.statut)) {
+      return 'other';
+    }
+
+    return null; // Pas d'action nécessaire
   }
 
   /**

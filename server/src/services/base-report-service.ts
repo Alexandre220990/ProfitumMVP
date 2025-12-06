@@ -290,7 +290,9 @@ export abstract class BaseReportService {
     // Exclure les types de notification RDV
     if (EXCLUDED_NOTIFICATION_TYPES.length > 0) {
       // ✅ CORRECTION: Utiliser la syntaxe correcte pour .not() avec tableau
-      query = query.not('notification_type', 'in', [...EXCLUDED_NOTIFICATION_TYPES]);
+      // Supabase ne supporte pas .not('field', 'in', array), il faut utiliser .not('field', 'in', '(value1,value2)')
+      const excludedTypesString = `(${EXCLUDED_NOTIFICATION_TYPES.join(',')})`;
+      query = query.not('notification_type', 'in', excludedTypesString);
     }
 
     // Appliquer les filtres additionnels
