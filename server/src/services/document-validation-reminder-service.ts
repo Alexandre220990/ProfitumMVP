@@ -195,7 +195,7 @@ export class DocumentValidationReminderService {
             : threshold === '48h'
             ? `⚠️ En attente de documents - ${produitNom}`
             : `📋 En attente de documents - ${produitNom}`;
-          reminderMessage = `Dossier ${produitNom} - Client ${clientName} - En attente de documents depuis ${days} jour${days > 1 ? 's' : ''}`;
+          reminderMessage = `Dossier ${produitNom} - Client ${clientName} - Depuis ${days} jour${days > 1 ? 's' : ''}`;
         } else if (documentStatus.pendingDocumentsCount > 0) {
           // Documents uploadés mais en attente de validation
           const days = documentStatus.daysWaitingValidation || 0;
@@ -260,7 +260,7 @@ export class DocumentValidationReminderService {
             user_id: admin.auth_user_id,
             user_type: 'admin',
             title: reminderTitle || `📋 Documents à valider - ${produitNom}`,
-            message: reminderMessage || `Dossier ${produitNom} - Client ${clientName} - En attente depuis ${daysElapsed} jour${daysElapsed > 1 ? 's' : ''}`,
+            message: reminderMessage || `Dossier ${produitNom} - Client ${clientName} - Depuis ${daysElapsed} jour${daysElapsed > 1 ? 's' : ''}`,
             notification_type: 'documents_pending_validation_reminder',
             priority: reminderPriority,
             is_read: false,

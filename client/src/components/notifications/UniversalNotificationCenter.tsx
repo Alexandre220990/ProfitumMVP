@@ -114,7 +114,7 @@ export function UniversalNotificationCenter({
   } = useSupabaseNotifications();
   
   // État local
-  const [filter, setFilter] = useState<'all' | 'unread' | 'archived' | 'late' | 'events' | 'contact_requests' | 'leads_to_treat'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'archived' | 'late' | 'events' | 'contact_requests' | 'leads_to_treat' | 'dossiers_to_treat'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showPreferences, setShowPreferences] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -189,12 +189,37 @@ export function UniversalNotificationCenter({
       const triggeredAt = metadata.triggered_at ? new Date(metadata.triggered_at) : null;
       const slaHours =
         metadata.sla_hours !== undefined ? Number(metadata.sla_hours) : null;
-      const isLate =
-        notification.status === 'late' ||
+      
+      // Calculer les heures écoulées depuis la création
+      const createdAt = notification.created_at ? new Date(notification.created_at).getTime() : null;
+      const hoursElapsed: number = createdAt ? (now - createdAt) / (1000 * 60 * 60) : 0;
+      
+      // Déterminer si la notification est en retard
+      let isLate = notification.status === 'late' ||
         (!!dueAt && dueAt.getTime() <= now && !notification.is_read);
+      
+      // Vérifier les notifications avec SLA explicite
+      if (slaHours && hoursElapsed > slaHours) {
+        isLate = true;
+      }
+      
+      // Vérifier les notifications avec rappel SLA (documents_pending_validation_reminder)
+      if (notification.notification_type === 'documents_pending_validation_reminder' ||
+          notification.action_data?.sla_reminder === true ||
+          metadata.sla_reminder === true) {
+        isLate = true;
+      }
+      
+      // Vérifier les notifications avec jours écoulés (indicateur de retard)
+      if (metadata.days_elapsed && metadata.days_elapsed > 0) {
+        isLate = true;
+      }
+      
       const hoursRemaining =
         dueAt && dueAt.getTime() > now
           ? (dueAt.getTime() - now) / (1000 * 60 * 60)
+          : slaHours && hoursElapsed < slaHours
+          ? slaHours - hoursElapsed
           : 0;
 
       // Vérifier si un rapport existe pour cet événement
@@ -214,7 +239,8 @@ export function UniversalNotificationCenter({
           triggeredAt,
           slaHours,
           isLate,
-          hoursRemaining
+          hoursRemaining,
+          hoursElapsed
         }
       };
     });
@@ -257,6 +283,36 @@ export function UniversalNotificationCenter({
     if (n.status === 'archived') return false;
     const isUnread = n.status === 'unread' || (!n.is_read && n.status !== 'read');
     return n.notification_type === 'lead_to_treat' && isUnread;
+  }).length;
+  
+  // Compteur pour les dossiers à traiter
+  const dossiersToTreatCount = enrichedNotifications.filter((n) => {
+    if (n.status === 'archived') return false;
+    // Types de notifications liés aux dossiers
+    const dossierNotificationTypes = [
+      'waiting_documents',
+      'documents_to_validate',
+      'dossier_complete',
+      'admin_action_required',
+      'documents_pending_validation_reminder',
+      'client_actions_summary',
+      'expert_client_actions_summary',
+      'client_dossier_actions_summary',
+      'dossier_status_change',
+      'dossier_urgent',
+      'dossier_pending_acceptance',
+      'dossier_sent_to_expert',
+      'dossier_refused',
+      'implementation_validated'
+    ];
+    // Vérifier si c'est une notification de dossier (par type ou par metadata)
+    const isDossierNotification = 
+      dossierNotificationTypes.includes(n.notification_type || '') ||
+      n.metadata?.client_produit_id ||
+      n.metadata?.dossier_id ||
+      n.action_data?.client_produit_id ||
+      n.action_data?.dossier_id;
+    return isDossierNotification;
   }).length;
 
   // Filtrage dynamique selon le rôle
@@ -1316,6 +1372,21 @@ export function UniversalNotificationCenter({
                     </div>
                     <Badge variant="secondary" className="ml-2">
                       {leadsToTreatUnreadCount > 0 ? leadsToTreatUnreadCount : leadsToTreatCount}
+                    </Badge>
+                  </button>
+                  <button
+                    onClick={() => setFilter('dossiers_to_treat')}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                      filter === 'dossiers_to_treat' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"
+                    )}
+                  >
+                    <div className="flex items-center">
+                      <FileText className="h-4 w-4 mr-2" />
+                      <span>Dossiers à traiter</span>
+                    </div>
+                    <Badge variant="secondary" className="ml-2">
+                      {dossiersToTreatCount}
                     </Badge>
                   </button>
                   <button

@@ -597,54 +597,51 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     const daysToShow = 42;
     
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 xl:gap-10">
-        {/* Calendrier principal */}
-        <div className="lg:col-span-2 space-y-4 lg:space-y-6">
-          <div className="flex items-center justify-between mb-4 lg:mb-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={navigatePrevious}
-              className="flex items-center gap-2"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              {getNavigationLabels().prev}
-            </Button>
-            
-            <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900">
-              {format(view.date, 'MMMM yyyy', { locale: fr })}
-            </h2>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={navigateNext}
-              className="flex items-center gap-2"
-            >
-              {getNavigationLabels().next}
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+      <div className="flex flex-col h-full">
+        {/* En-tête avec navigation */}
+        <div className="flex items-center justify-between mb-4 px-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={navigatePrevious}
+            className="flex items-center gap-1 h-9 px-3 hover:bg-gray-100"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <h2 className="text-lg font-medium text-gray-700">
+            {format(view.date, 'MMMM yyyy', { locale: fr })}
+          </h2>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={navigateNext}
+            className="flex items-center gap-1 h-9 px-3 hover:bg-gray-100"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {/* Grille du mois style Google Calendar - sans scroll, cases uniformes */}
+        <div className="flex-1 flex flex-col border border-gray-200 rounded-lg overflow-hidden bg-white">
+          {/* En-têtes des jours de la semaine */}
+          <div className="grid grid-cols-7 border-b border-gray-200 bg-white">
+            {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day, index) => (
+              <div 
+                key={day} 
+                className={cn(
+                  "text-xs font-medium text-gray-500 text-center py-2",
+                  index > 0 && "border-l border-gray-200"
+                )}
+              >
+                {day}
+              </div>
+            ))}
           </div>
           
-          {/* Grille du mois avec lundi en premier */}
-          <div className="grid grid-cols-7 gap-1 sm:gap-2 lg:gap-3 xl:gap-4">
-            {/* En-têtes des jours - masquer sur très petit écran */}
-            <div className="hidden sm:grid sm:grid-cols-7 col-span-7 gap-1 sm:gap-2 lg:gap-3 xl:gap-4">
-              {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
-                <div key={day} className="p-2 lg:p-3 xl:p-4 text-center text-xs sm:text-sm lg:text-base xl:text-lg font-semibold text-gray-600 bg-gray-50 rounded-t-lg border-b-2 border-gray-200">
-                  {day}
-                </div>
-              ))}
-            </div>
-            {/* En-têtes visibles sur mobile */}
-            <div className="grid sm:hidden grid-cols-7 col-span-7 gap-1">
-              {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(day => (
-                <div key={day} className="p-1 text-center text-xs font-medium text-gray-500">
-                  {day}
-                </div>
-              ))}
-            </div>
-            
+          {/* Grille des jours - 6 semaines avec hauteur uniforme style Google Calendar */}
+          <div className="flex-1 grid grid-rows-6 grid-cols-7 divide-x divide-y divide-gray-200" style={{ minHeight: 0 }}>
             {Array.from({ length: daysToShow }, (_, i) => {
               const date = addDays(firstMondayOfMonth, i);
               const dayEvents = getEventsForDate(date);
@@ -656,143 +653,132 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                 <div
                   key={i}
                   className={cn(
-                    "p-1 sm:p-2 lg:p-3 xl:p-4 min-h-[60px] sm:min-h-[80px] lg:min-h-[140px] xl:min-h-[160px] border border-gray-200 cursor-pointer hover:bg-gray-50 hover:shadow-sm transition-all duration-200 text-xs sm:text-sm lg:text-base",
-                    !isCurrentMonth && "bg-gray-50 text-gray-400",
-                    isToday && "bg-blue-50 border-blue-400 border-2 font-bold shadow-sm",
-                    isSelected && "bg-blue-100 border-blue-500 border-2 shadow-md"
+                    "relative flex flex-col p-1 cursor-pointer transition-colors min-h-0",
+                    "hover:bg-gray-50",
+                    !isCurrentMonth && "bg-gray-50/50",
+                    isToday && "bg-blue-50",
+                    isSelected && "bg-blue-100"
                   )}
-                  onClick={() => {
-                    // Afficher les RDV dans la barre latérale (comportement précédent)
-                    setSelectedDate(date);
-                  }}
+                  onClick={() => setSelectedDate(date)}
                 >
+                  {/* Numéro du jour */}
                   <div className={cn(
-                    "text-xs sm:text-sm lg:text-base xl:text-lg font-semibold mb-1.5 lg:mb-2",
-                    isToday && "text-blue-700",
-                    isSelected && "text-blue-800",
-                    !isCurrentMonth && "text-gray-400"
+                    "text-xs font-medium mb-0.5 px-1 flex-shrink-0",
+                    isToday && "text-blue-600 font-semibold",
+                    !isCurrentMonth && "text-gray-400",
+                    isCurrentMonth && !isToday && "text-gray-700"
                   )}>
                     {format(date, 'd')}
                   </div>
-                  {dayEvents.length > 0 && (
-                    <div className="mt-1 lg:mt-2 space-y-1 lg:space-y-1.5">
-                      {dayEvents.slice(0, 4).map((event) => (
-                        <div
-                          key={event.id}
-                          className={cn(
-                            "text-[10px] sm:text-xs lg:text-sm px-1.5 py-1 lg:py-1.5 rounded-md truncate font-medium",
-                            "hover:opacity-90 hover:shadow-sm transition-all cursor-pointer",
-                            event.color ? `bg-[${event.color}]/20 text-[${event.color}]` : "bg-blue-100 text-blue-700"
-                          )}
-                          style={{
-                            backgroundColor: event.color ? `${event.color}20` : '#DBEAFE',
-                            color: event.color || '#1D4ED8',
-                            borderLeft: `3px solid ${event.color || '#1D4ED8'}`
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewEvent(event);
-                          }}
-                        >
-                          <span className="font-semibold">{format(new Date(event.start_date), 'HH:mm')}</span> {event.title}
-                        </div>
-                      ))}
-                      {dayEvents.length > 4 && (
-                        <div className="text-[10px] sm:text-xs lg:text-sm text-gray-600 font-semibold px-1.5 py-1 bg-gray-100 rounded-md">
-                          +{dayEvents.length - 4} autre{dayEvents.length - 4 > 1 ? 's' : ''}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  
+                  {/* Événements - style Google Calendar compact */}
+                  <div className="flex-1 overflow-hidden space-y-0.5 min-h-0">
+                    {dayEvents.slice(0, 3).map((event) => (
+                      <div
+                        key={event.id}
+                        className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-sm truncate cursor-pointer flex-shrink-0",
+                          "hover:opacity-80 transition-opacity"
+                        )}
+                        style={{
+                          backgroundColor: event.color ? `${event.color}15` : '#E3F2FD',
+                          color: event.color || '#1976D2',
+                          borderLeft: `2px solid ${event.color || '#1976D2'}`
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewEvent(event);
+                        }}
+                        title={event.title}
+                      >
+                        <span className="font-medium">{format(new Date(event.start_date), 'HH:mm')}</span> {event.title}
+                      </div>
+                    ))}
+                    {dayEvents.length > 3 && (
+                      <div 
+                        className="text-[10px] text-gray-600 font-medium px-1.5 py-0.5 cursor-pointer hover:text-gray-800 flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDate(date);
+                        }}
+                      >
+                        +{dayEvents.length - 3} autre{dayEvents.length - 3 > 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
         
-        {/* Panneau latéral des événements */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-4 lg:top-6 xl:top-8">
-            {selectedDate ? (
-              <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 lg:p-6 xl:p-8 shadow-lg">
-                <div className="mb-4 lg:mb-6">
-                  <h3 className="font-bold text-gray-900 text-base sm:text-lg lg:text-xl xl:text-2xl mb-3 lg:mb-4">
-                    {format(selectedDate, 'EEEE dd MMMM yyyy', { locale: fr })}
-                  </h3>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      // Ouvrir le formulaire avec la date préremplie à 09:00
-                      const dateWithTime = new Date(selectedDate);
-                      dateWithTime.setHours(9, 0, 0, 0);
-                      setSelectedDate(dateWithTime);
-                      setSelectedEvent(null);
-                      setShowEventDialog(true);
-                    }}
-                    className="flex items-center gap-2 w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+        {/* Panneau latéral des événements - optionnel, peut être masqué sur mobile */}
+        {selectedDate && (
+          <div className="mt-4 lg:mt-6 border border-gray-200 rounded-lg bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900 text-sm">
+                {format(selectedDate, 'EEEE dd MMMM yyyy', { locale: fr })}
+              </h3>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedDate(null)}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <Button
+              size="sm"
+              onClick={() => {
+                const dateWithTime = new Date(selectedDate);
+                dateWithTime.setHours(9, 0, 0, 0);
+                setSelectedDate(dateWithTime);
+                setSelectedEvent(null);
+                setShowEventDialog(true);
+              }}
+              className="w-full mb-3 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nouvel événement
+            </Button>
+            
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {getEventsForDate(selectedDate).length === 0 ? (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  <p>Aucun événement prévu</p>
+                </div>
+              ) : (
+                getEventsForDate(selectedDate).map(event => (
+                  <div
+                    key={event.id}
+                    className="p-2 bg-gray-50 border border-gray-200 rounded cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleViewEvent(event)}
                   >
-                    <Plus className="w-4 h-4" />
-                    Nouvel événement
-                  </Button>
-                </div>
-                
-                <div className="space-y-3 lg:space-y-4">
-                  {getEventsForDate(selectedDate).length === 0 ? (
-                    <div className="text-center py-8 lg:py-12 text-gray-500">
-                      <CalendarIcon className="mx-auto h-10 w-10 lg:h-12 lg:w-12 text-gray-400 mb-3" />
-                      <p className="text-sm lg:text-base font-medium">Aucun événement prévu</p>
-                      <p className="text-xs lg:text-sm text-gray-400 mt-2">Cliquez sur "Nouvel événement" pour commencer</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div 
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{
+                          backgroundColor: event.color || '#3B82F6'
+                        }}
+                      ></div>
+                      <span className="font-medium text-gray-900 text-sm truncate">
+                        {event.title}
+                      </span>
                     </div>
-                  ) : (
-                    getEventsForDate(selectedDate).map(event => (
-                      <div
-                        key={event.id}
-                        className="p-3 lg:p-4 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 hover:shadow-md hover:border-gray-300 transition-all duration-200"
-                        onClick={() => handleViewEvent(event)}
-                      >
-                        <div className="flex items-center justify-between mb-2 lg:mb-3">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <div 
-                              className={cn("w-3 h-3 rounded-full flex-shrink-0", EVENT_TYPES[event.type as keyof typeof EVENT_TYPES]?.color || 'bg-blue-500')}
-                              style={{
-                                backgroundColor: event.color || '#3B82F6'
-                              }}
-                            ></div>
-                            <span className="font-semibold text-gray-900 text-sm lg:text-base truncate">
-                              {event.title}
-                            </span>
-                          </div>
-                          <Badge className="text-xs lg:text-sm flex-shrink-0 ml-2">
-                            {EVENT_TYPES[event.type as keyof typeof EVENT_TYPES]?.label || event.type}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs lg:text-sm text-gray-600 font-medium">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>
-                            {format(new Date(event.start_date), 'HH:mm', { locale: fr })} - {format(new Date(event.end_date), 'HH:mm', { locale: fr })}
-                          </span>
-                        </div>
-                        {event.description && (
-                          <p className="text-xs lg:text-sm text-gray-600 mt-2 line-clamp-2 leading-relaxed">
-                            {event.description}
-                          </p>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-6 lg:p-8 text-center shadow-sm">
-                <CalendarIcon className="mx-auto h-12 w-12 lg:h-16 lg:w-16 text-gray-400 mb-4" />
-                <h3 className="font-semibold text-gray-900 mb-2 text-base lg:text-lg">Sélectionnez une date</h3>
-                <p className="text-sm lg:text-base text-gray-500">
-                  Cliquez sur un jour dans le calendrier pour voir les événements
-                </p>
-              </div>
-            )}
+                    <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                      <Clock className="w-3 h-3" />
+                      <span>
+                        {format(new Date(event.start_date), 'HH:mm', { locale: fr })} - {format(new Date(event.end_date), 'HH:mm', { locale: fr })}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -1261,8 +1247,14 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       )}
 
       {/* Contenu de la vue */}
-      <div className="bg-white rounded-lg border">
-        <div className="p-4">
+      <div className={cn(
+        "bg-white rounded-lg border",
+        view.type === 'month' && "flex flex-col min-h-[600px] max-h-[calc(100vh-250px)]"
+      )}>
+        <div className={cn(
+          "p-4",
+          view.type === 'month' && "flex-1 flex flex-col min-h-0"
+        )}>
           {view.type === 'month' && renderMonthView()}
           {view.type === 'week' && renderWeekView()}
           {view.type === 'day' && renderDayView()}

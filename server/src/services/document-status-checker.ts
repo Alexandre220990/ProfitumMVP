@@ -151,7 +151,7 @@ export class DocumentStatusChecker {
       return {
         notificationType: 'waiting_documents',
         title: `📋 En attente de documents - ${status.productName}`,
-        message: `Dossier ${status.productName} - Client ${status.clientName} - En attente de documents depuis ${days} jour${days > 1 ? 's' : ''}`,
+        message: `Dossier ${status.productName} - Client ${status.clientName} - Depuis ${days} jour${days > 1 ? 's' : ''}`,
         priority: days >= 5 ? 'high' : days >= 2 ? 'medium' : 'normal',
         metadata: {
           client_produit_id: clientProduitId,
@@ -184,7 +184,7 @@ export class DocumentStatusChecker {
       return {
         notificationType: 'documents_to_validate',
         title: `📋 Documents à valider - ${status.productName}`,
-        message: `Client ${status.clientName} - ${status.pendingDocumentsCount} document${status.pendingDocumentsCount > 1 ? 's' : ''} en attente de validation admin`,
+        message: `Dossier ${status.productName} - Client ${status.clientName} - ${status.pendingDocumentsCount} document${status.pendingDocumentsCount > 1 ? 's' : ''} en attente depuis ${days} jour${days > 1 ? 's' : ''}`,
         priority: days >= 5 ? 'urgent' : days >= 2 ? 'high' : 'medium',
         metadata: {
           client_produit_id: clientProduitId,
