@@ -593,11 +593,11 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     const firstDayOfMonth = startOfMonth(view.date);
     const firstMondayOfMonth = startOfWeek(firstDayOfMonth, { weekStartsOn: 1 });
     
-    // Calculer le nombre de jours à afficher (6 semaines = 42 jours)
-    const daysToShow = 42;
+    // Exactement 5 semaines (35 jours) pour une vraie vue agenda - 7 jours par ligne
+    const daysToShow = 35;
     
-    // Hauteur fixe pour chaque case (desktop uniquement)
-    const cellHeight = '140px';
+    // Hauteur fixe pour chaque case - plus grande pour une vraie vue agenda (desktop uniquement)
+    const cellHeight = '180px';
     
     return (
       <div className="flex flex-col h-full">
@@ -626,7 +626,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
           </Button>
         </div>
         
-        {/* Grille du mois - Design haute couture */}
+        {/* Grille du mois - Design haute couture - 5 lignes exactement */}
         <div className="flex flex-col border border-gray-200/80 rounded-xl overflow-hidden bg-white shadow-sm">
           {/* En-têtes des jours de la semaine - Style premium */}
           <div className="grid grid-cols-7 border-b border-gray-200/80 bg-gradient-to-b from-gray-50/50 to-white">
@@ -643,8 +643,8 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
             ))}
           </div>
           
-          {/* Grille des jours - Cases uniformes et parfaitement alignées */}
-          <div className="grid grid-rows-6 grid-cols-7 divide-x divide-y divide-gray-200/60">
+          {/* Grille des jours - 5 lignes exactement (35 jours) - Cases uniformes et parfaitement alignées */}
+          <div className="grid grid-rows-5 grid-cols-7 divide-x divide-y divide-gray-200/60">
             {Array.from({ length: daysToShow }, (_, i) => {
               const date = addDays(firstMondayOfMonth, i);
               const dayEvents = getEventsForDate(date);
@@ -671,7 +671,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                 >
                   {/* Numéro du jour - Style élégant */}
                   <div className={cn(
-                    "text-sm font-semibold mb-1.5 px-2.5 pt-2 flex-shrink-0",
+                    "text-sm font-semibold mb-2 px-2.5 pt-2.5 flex-shrink-0",
                     isToday && "text-gray-900",
                     !isCurrentMonth && "text-gray-400",
                     isCurrentMonth && !isToday && "text-gray-700"
@@ -685,44 +685,61 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                     )}
                   </div>
                   
-                  {/* Événements - Design soigné et compact */}
-                  <div className="flex-1 overflow-hidden space-y-1 px-1.5 pb-1.5 min-h-0">
-                    {dayEvents.slice(0, 4).map((event) => {
+                  {/* Événements - Vraie vue agenda avec plus de détails */}
+                  <div className="flex-1 overflow-y-auto space-y-1.5 px-2 pb-2 min-h-0" style={{ scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 transparent' }}>
+                    {dayEvents.slice(0, 6).map((event) => {
                       const eventColor = event.color || '#6366F1';
+                      const startTime = format(new Date(event.start_date), 'HH:mm');
+                      const endTime = format(new Date(event.end_date), 'HH:mm');
                       return (
                         <div
                           key={event.id}
                           className={cn(
-                            "text-[10px] px-2 py-1 rounded-md truncate cursor-pointer flex-shrink-0",
-                            "hover:opacity-90 hover:shadow-sm transition-all duration-150",
-                            "font-medium"
+                            "text-[11px] px-2.5 py-1.5 rounded-md cursor-pointer flex-shrink-0",
+                            "hover:opacity-90 hover:shadow-md transition-all duration-150",
+                            "font-medium flex flex-col gap-0.5"
                           )}
                           style={{
-                            backgroundColor: `${eventColor}15`,
+                            backgroundColor: `${eventColor}20`,
                             color: eventColor,
                             borderLeft: `3px solid ${eventColor}`,
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleViewEvent(event);
                           }}
-                          title={`${format(new Date(event.start_date), 'HH:mm')} - ${event.title}`}
+                          title={`${startTime} - ${endTime} | ${event.title}`}
                         >
-                          <span className="font-semibold">{format(new Date(event.start_date), 'HH:mm')}</span>
-                          <span className="ml-1">{event.title}</span>
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-3 h-3" />
+                            <span className="font-semibold text-[10px]">{startTime}</span>
+                            {endTime !== startTime && (
+                              <>
+                                <span className="text-[9px] opacity-70">-</span>
+                                <span className="font-semibold text-[10px]">{endTime}</span>
+                              </>
+                            )}
+                          </div>
+                          <span className="truncate font-semibold leading-tight">{event.title}</span>
+                          {event.location && (
+                            <span className="text-[9px] opacity-75 truncate flex items-center gap-1">
+                              <MapPin className="w-2.5 h-2.5" />
+                              {event.location}
+                            </span>
+                          )}
                         </div>
                       );
                     })}
-                    {dayEvents.length > 4 && (
+                    {dayEvents.length > 6 && (
                       <div 
-                        className="text-[10px] text-gray-600 font-semibold px-2 py-1 cursor-pointer hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0"
+                        className="text-[11px] text-gray-600 font-semibold px-2.5 py-1.5 cursor-pointer hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0 border border-gray-200"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedDate(date);
                         }}
                       >
-                        +{dayEvents.length - 4} autre{dayEvents.length - 4 > 1 ? 's' : ''}
+                        +{dayEvents.length - 6} autre{dayEvents.length - 6 > 1 ? 's' : ''}
                       </div>
                     )}
                   </div>

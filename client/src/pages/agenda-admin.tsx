@@ -180,7 +180,7 @@ export default function AgendaAdmin() {
   }, [searchParams, setSearchParams]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-white p-4 sm:p-6 lg:p-8">
       <div className="max-w-[1920px] mx-auto">
         {/* Header avec titre et onglets sur la même ligne */}
         <div className="mb-4 lg:mb-6">
