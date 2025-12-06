@@ -1311,7 +1311,7 @@ const AdminDashboardOptimized: React.FC = () => {
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 text-sm text-slate-900">
                               <Mail className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                              <span className="truncate max-w-[200px]">{client.email}</span>
+                              <span className="truncate min-w-0">{client.email}</span>
                             </div>
                             {client.phone_number && (
                               <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -2036,7 +2036,7 @@ const AdminDashboardOptimized: React.FC = () => {
   
   const AdminFooter = () => (
     <footer className="bg-white border-t border-gray-100 mt-12">
-      <div className="max-w-7xl mx-auto px-6 py-5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
         {/* Ligne principale compacte */}
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 lg:gap-8">
           {/* Logo et description */}
@@ -4483,7 +4483,7 @@ const AdminDashboardOptimized: React.FC = () => {
 
       {/* Modal Prévisualisation Documents Pré-éligibilité */}
       <Dialog open={documentsModalOpen} onOpenChange={setDocumentsModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[90vw] md:max-w-2xl lg:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl">
               Documents Pré-éligibilité - {selectedDossierForDocuments?.ProduitEligible?.nom || 'Produit'}
@@ -4658,7 +4658,7 @@ const AdminDashboardOptimized: React.FC = () => {
 
       {/* Modal Ajout Produit */}
       <Dialog open={showAddProduitModal} onOpenChange={setShowAddProduitModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[90vw] md:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Ajouter un nouveau produit</DialogTitle>
           </DialogHeader>
@@ -4879,7 +4879,7 @@ const AdminDashboardOptimized: React.FC = () => {
 
       {/* Modal Édition Produit */}
       <Dialog open={showEditProduitModal} onOpenChange={setShowEditProduitModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[90vw] md:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Modifier le produit</DialogTitle>
           </DialogHeader>
@@ -5093,7 +5093,7 @@ const AdminDashboardOptimized: React.FC = () => {
 
       {/* Modal Suppression Produit */}
       <Dialog open={showDeleteProduitModal} onOpenChange={setShowDeleteProduitModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[90vw] md:max-w-md">
           <DialogHeader>
             <DialogTitle>Supprimer le produit</DialogTitle>
           </DialogHeader>

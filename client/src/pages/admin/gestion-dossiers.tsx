@@ -1034,7 +1034,7 @@ export default function GestionDossiers() {
                             <div className="font-semibold text-sm truncate">
                               { dossier.Client?.company_name || 'N/A' }
                             </div>
-                            <div className="text-xs text-gray-500 break-all">
+                            <div className="text-xs text-gray-500 truncate">
                               { dossier.Client?.email }
                             </div>
                           </div>
@@ -1048,7 +1048,7 @@ export default function GestionDossiers() {
                             <span className="font-medium">Produit:</span>{' '}
                             <span className="text-gray-700">{ dossier.ProduitEligible?.nom }</span>
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-500 line-clamp-2">
                             { dossier.ProduitEligible?.description }
                           </div>
                         </div>
@@ -1156,13 +1156,13 @@ export default function GestionDossiers() {
                           <TableCell>
                             <div>
                               <div className="font-medium">{ dossier.Client?.company_name || 'N/A' }</div>
-                              <div className="text-sm text-gray-500 break-all">{ dossier.Client?.email }</div>
+                              <div className="text-sm text-gray-500 truncate min-w-0">{ dossier.Client?.email }</div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div>
                               <div className="font-medium">{ dossier.ProduitEligible?.nom }</div>
-                              <div className="text-sm text-gray-500">{ dossier.ProduitEligible?.description }</div>
+                              <div className="text-sm text-gray-500 line-clamp-2">{ dossier.ProduitEligible?.description }</div>
                             </div>
                           </TableCell>
                           <TableCell>{ getStatusBadge(dossier.validation_state) }</TableCell>
@@ -1173,7 +1173,7 @@ export default function GestionDossiers() {
                             { dossier.Expert ? (
                               <div>
                                 <div className="font-medium">{dossier.Expert.company_name }</div>
-                                <div className="text-sm text-gray-500 break-all">{ dossier.Expert.email }</div>
+                                <div className="text-sm text-gray-500 truncate min-w-0">{ dossier.Expert.email }</div>
                               </div>
                             ) : (
                               <span className="text-gray-400">Non assigné</span>
