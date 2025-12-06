@@ -97,6 +97,52 @@ export function NotificationDropdown({ unreadCount, onCountChange }: Notificatio
     }
   };
 
+  // Fonction pour corriger les messages de notification avec les métadonnées
+  const getCorrectedNotificationMessage = (notification: Notification): string => {
+    const metadata = notification.metadata || {};
+    const actionData = notification.action_data || {};
+    
+    // Récupérer les noms depuis les métadonnées
+    const clientName = metadata.client_name || actionData.client_name || actionData.client_company;
+    const productName = metadata.product_name || metadata.produit_nom || actionData.product_name;
+    
+    // Si le message contient "Dossier Dossier" ou "Client Client", le corriger
+    let message = notification.message || '';
+    
+    if (message.includes('Dossier Dossier') && productName && productName !== 'Dossier') {
+      message = message.replace(/Dossier Dossier/g, productName);
+    }
+    
+    if (message.includes('Client Client') && clientName && clientName !== 'Client') {
+      message = message.replace(/Client Client/g, clientName);
+    }
+    
+    // Corriger aussi les cas où on a juste "Dossier" ou "Client" répétés
+    if (message.includes('Dossier - Client') && productName && clientName) {
+      message = message.replace(/Dossier - Client/g, `${productName} - ${clientName}`);
+    }
+    
+    return message;
+  };
+
+  // Fonction pour corriger les titres de notification avec les métadonnées
+  const getCorrectedNotificationTitle = (notification: Notification): string => {
+    const metadata = notification.metadata || {};
+    const actionData = notification.action_data || {};
+    
+    // Récupérer le nom du produit depuis les métadonnées
+    const productName = metadata.product_name || metadata.produit_nom || actionData.product_name;
+    
+    // Si le titre contient "Dossier" répété, le corriger
+    let title = notification.title || '';
+    
+    if (title.includes('Dossier Dossier') && productName && productName !== 'Dossier') {
+      title = title.replace(/Dossier Dossier/g, productName);
+    }
+    
+    return title;
+  };
+
   const markAsRead = async (notificationId: string) => {
     try {
       const token = await getSupabaseToken();
@@ -258,12 +304,12 @@ export function NotificationDropdown({ unreadCount, onCountChange }: Notificatio
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1 flex-wrap">
                                 <p className="text-sm font-semibold text-gray-900 truncate">
-                                  {notification.title}
+                                  {getCorrectedNotificationTitle(notification)}
                                 </p>
                                 {getPriorityBadge(notification.priority)}
                               </div>
                               <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
-                                {notification.message}
+                                {getCorrectedNotificationMessage(notification)}
                               </p>
                             </div>
 

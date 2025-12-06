@@ -55,12 +55,12 @@ export class DocumentValidationReminderService {
         .from('ClientProduitEligible')
         .select(`
           id,
+          clientId,
+          produitId,
           created_at,
           updated_at,
           admin_eligibility_status,
-          metadata,
-          Client:clientId(id, name, company_name),
-          ProduitEligible:produitId(id, nom, type_produit)
+          metadata
         `)
         .or('admin_eligibility_status.eq.pending,admin_eligibility_status.is.null')
         .limit(500);
@@ -80,14 +80,36 @@ export class DocumentValidationReminderService {
       const adminsToAggregate = new Set<string>();
 
       for (const dossier of dossiers) {
+        // Récupérer les informations du client séparément
+        let clientData: { id: string; name?: string; company_name?: string } | undefined;
+        if (dossier.clientId) {
+          const { data: client } = await supabase
+            .from('Client')
+            .select('id, name, company_name')
+            .eq('id', dossier.clientId)
+            .single();
+          if (client) {
+            clientData = client;
+          }
+        }
+
+        // Récupérer les informations du produit séparément
+        let produitData: { id: string; nom?: string; type_produit?: string } | undefined;
+        if (dossier.produitId) {
+          const { data: produit } = await supabase
+            .from('ProduitEligible')
+            .select('id, nom, type_produit')
+            .eq('id', dossier.produitId)
+            .single();
+          if (produit) {
+            produitData = produit;
+          }
+        }
+
         const transformedDossier: DossierPending = {
           ...dossier,
-          Client: Array.isArray(dossier.Client) && dossier.Client.length > 0 
-            ? dossier.Client[0] 
-            : undefined,
-          ProduitEligible: Array.isArray(dossier.ProduitEligible) && dossier.ProduitEligible.length > 0 
-            ? dossier.ProduitEligible[0] 
-            : undefined,
+          Client: clientData,
+          ProduitEligible: produitData,
         };
         
         const shouldRemind = this.shouldSendReminder(transformedDossier, now);
@@ -177,8 +199,22 @@ export class DocumentValidationReminderService {
         reminderPriority = 'high';
       }
       
-      const clientName = dossier.Client?.company_name || dossier.Client?.name || 'Client';
-      const produitNom = dossier.ProduitEligible?.nom || 'Dossier';
+      // Utiliser les noms du dossier ou récupérer depuis DocumentStatusChecker
+      let clientName = dossier.Client?.company_name || dossier.Client?.name || 'Client';
+      let produitNom = dossier.ProduitEligible?.nom || 'Dossier';
+      
+      // Si les noms ne sont pas disponibles, utiliser DocumentStatusChecker
+      if (clientName === 'Client' || produitNom === 'Dossier') {
+        const documentStatus = await DocumentStatusChecker.checkDocumentStatus(dossier.id);
+        if (documentStatus) {
+          if (clientName === 'Client') {
+            clientName = documentStatus.clientName;
+          }
+          if (produitNom === 'Dossier') {
+            produitNom = documentStatus.productName;
+          }
+        }
+      }
 
       // Vérifier l'état réel des documents pour générer le bon message
       const documentStatus = await DocumentStatusChecker.checkDocumentStatus(dossier.id);

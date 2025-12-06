@@ -597,63 +597,66 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     const daysToShow = 35;
     
     return (
-      <div className="flex flex-col h-full w-full max-w-full overflow-hidden">
-        {/* En-tête avec bouton d'ajout bien visible et navigation */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 px-2 flex-shrink-0">
-          {/* Navigation mois */}
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={navigatePrevious}
-              className="flex items-center gap-1 h-10 w-10 p-0 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:shadow-sm"
-            >
-              <ChevronLeft className="h-5 w-5 text-gray-700" />
-            </Button>
+      <div className="flex flex-col h-full w-full overflow-hidden bg-gray-50/30 p-4 sm:p-6">
+        {/* Header moderne et épuré */}
+        <div className="mb-6 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            {/* Navigation et titre */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={navigatePrevious}
+                className="h-9 w-9 p-0 rounded-md border-gray-300 hover:bg-gray-100 hover:border-gray-400 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4 text-gray-700" />
+              </Button>
+              
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+                {format(view.date, 'MMMM yyyy', { locale: fr })}
+              </h2>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={navigateNext}
+                className="h-9 w-9 p-0 rounded-md border-gray-300 hover:bg-gray-100 hover:border-gray-400 transition-colors"
+              >
+                <ChevronRight className="h-4 w-4 text-gray-700" />
+              </Button>
+            </div>
             
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">
-              {format(view.date, 'MMMM yyyy', { locale: fr })}
-            </h2>
-            
+            {/* Bouton ajouter événement - Proéminent */}
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={navigateNext}
-              className="flex items-center gap-1 h-10 w-10 p-0 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:shadow-sm"
+              onClick={() => {
+                setSelectedDate(new Date());
+                setSelectedEvent(null);
+                setShowEventDialog(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 h-11 px-5 rounded-lg text-sm sm:text-base"
             >
-              <ChevronRight className="h-5 w-5 text-gray-700" />
+              <Plus className="w-5 h-5" />
+              <span>Ajouter un événement</span>
             </Button>
           </div>
-          
-          {/* Bouton ajouter événement - Bien visible */}
-          <Button
-            onClick={() => {
-              setSelectedDate(new Date());
-              setSelectedEvent(null);
-              setShowEventDialog(true);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 h-10 px-4 sm:px-6 rounded-lg"
-          >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-sm sm:text-base">Ajouter un événement</span>
-          </Button>
         </div>
         
-        {/* Grille du mois - Responsive avec grille 7x5 qui s'adapte à l'écran */}
-        <div className="flex flex-col border border-gray-200/80 rounded-xl overflow-hidden bg-white shadow-sm flex-1 min-h-0 w-full max-w-full"
+        {/* Grille calendrier moderne */}
+        <div className="flex-1 min-h-0 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden flex flex-col"
              style={{ 
-               maxHeight: 'calc(100vh - 220px)',
-               height: 'calc(100vh - 220px)',
-               minHeight: '500px'
+               maxHeight: 'calc(100vh - 280px)',
+               minHeight: '600px'
              }}>
-          {/* En-têtes des jours de la semaine - Style léger au-dessus */}
-          <div className="grid grid-cols-7 border-b border-gray-200/60 bg-gray-50/30 flex-shrink-0">
+          {/* En-têtes des jours - Style minimaliste et élégant */}
+          <div className="grid grid-cols-7 bg-gradient-to-b from-gray-50 to-white border-b-2 border-gray-200">
             {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day, index) => (
               <div 
                 key={day} 
                 className={cn(
-                  "text-[10px] sm:text-xs font-normal text-gray-400 text-center py-2 sm:py-2.5",
-                  index > 0 && "border-l border-gray-200/40"
+                  "text-center py-3 px-2",
+                  "text-xs font-semibold text-gray-500 uppercase tracking-wider",
+                  index === 5 && "text-blue-600", // Samedi
+                  index === 6 && "text-red-600"   // Dimanche
                 )}
               >
                 {day}
@@ -661,96 +664,87 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
             ))}
           </div>
           
-          {/* Grille des jours - 5 lignes exactement (35 jours) - Responsive qui s'adapte à l'écran */}
-          <div className="grid grid-rows-5 grid-cols-7 divide-x divide-y divide-gray-200/40 flex-1 min-h-0" 
-               style={{ 
-                 height: '100%'
-               }}>
+          {/* Grille des jours - 7 colonnes × 5 lignes */}
+          <div className="grid grid-cols-7 grid-rows-5 flex-1 divide-x divide-y divide-gray-200" 
+               style={{ height: '100%' }}>
             {Array.from({ length: daysToShow }, (_, i) => {
               const date = addDays(firstMondayOfMonth, i);
               const dayEvents = getEventsForDate(date);
               const isCurrentMonth = date.getMonth() === view.date.getMonth();
               const isToday = isSameDay(date, new Date());
               const isSelected = selectedDate && isSameDay(date, selectedDate);
+              const dayOfWeek = date.getDay(); // 0 = Dimanche, 6 = Samedi
               
               return (
                 <div
                   key={i}
                   className={cn(
-                    "relative flex flex-col cursor-pointer transition-all duration-200",
-                    "hover:bg-gray-50/50 hover:shadow-inner",
-                    !isCurrentMonth && "bg-gray-50/30",
-                    isToday && !isSelected && "bg-gradient-to-br from-blue-50 to-white border-2 border-blue-300",
-                    isSelected && "bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-400 shadow-inner"
+                    "relative flex flex-col min-h-0 bg-white transition-all duration-200",
+                    "hover:bg-blue-50/30 hover:z-10",
+                    !isCurrentMonth && "bg-gray-50/50",
+                    isToday && !isSelected && "bg-blue-50 border-l-4 border-l-blue-500",
+                    isSelected && "bg-blue-100 border-l-4 border-l-blue-600 shadow-inner",
+                    (dayOfWeek === 0 || dayOfWeek === 6) && !isToday && !isSelected && "bg-gray-50/30"
                   )}
-                  style={{ 
-                    height: '100%',
-                    minHeight: 0,
-                    maxHeight: '100%'
-                  }}
+                  style={{ height: '100%' }}
                   onClick={() => setSelectedDate(date)}
                 >
-                  {/* Numéro du jour - Style élégant */}
+                  {/* Numéro du jour */}
                   <div className={cn(
-                    "text-xs sm:text-sm font-semibold mb-1 sm:mb-2 px-1.5 sm:px-2.5 pt-1.5 sm:pt-2.5 flex-shrink-0",
-                    isToday && "text-blue-900",
-                    !isCurrentMonth && "text-gray-400",
-                    isCurrentMonth && !isToday && "text-gray-700"
+                    "flex items-center justify-start px-2 pt-2 pb-1 flex-shrink-0",
+                    isToday && "font-bold"
                   )}>
-                    {isToday ? (
-                      <span className="inline-flex items-center justify-center w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-blue-600 text-white text-xs sm:text-sm">
-                        {format(date, 'd')}
-                      </span>
-                    ) : (
-                      format(date, 'd')
-                    )}
+                    <span className={cn(
+                      "text-sm font-semibold",
+                      isToday && "inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white",
+                      !isCurrentMonth && "text-gray-400",
+                      isCurrentMonth && !isToday && "text-gray-700"
+                    )}>
+                      {format(date, 'd')}
+                    </span>
                   </div>
                   
-                  {/* Événements - Adapté à la taille d'écran */}
-                  <div className="flex-1 overflow-y-auto space-y-0.5 sm:space-y-1 px-1 sm:px-2 pb-1 sm:pb-2 min-h-0" 
+                  {/* Liste des événements */}
+                  <div className="flex-1 overflow-y-auto px-1.5 pb-1.5 min-h-0 space-y-1"
                        style={{ 
-                         scrollbarWidth: 'thin', 
-                         scrollbarColor: '#cbd5e1 transparent' 
+                         scrollbarWidth: 'thin',
+                         scrollbarColor: '#94a3b8 transparent'
                        }}>
-                    {dayEvents.slice(0, 5).map((event) => {
-                      const eventColor = event.color || '#6366F1';
+                    {dayEvents.slice(0, 4).map((event) => {
+                      const eventColor = event.color || '#3B82F6';
                       const startTime = format(new Date(event.start_date), 'HH:mm');
-                      const endTime = format(new Date(event.end_date), 'HH:mm');
+                      
                       return (
                         <div
                           key={event.id}
-                          className={cn(
-                            "text-[9px] sm:text-[10px] px-1 sm:px-2 py-0.5 sm:py-1 rounded cursor-pointer flex-shrink-0",
-                            "hover:opacity-90 hover:shadow-sm transition-all duration-150",
-                            "font-medium truncate"
-                          )}
+                          className="group relative cursor-pointer rounded-md px-2 py-1 text-[10px] font-medium transition-all duration-150 hover:shadow-md hover:scale-[1.02] flex items-center gap-1.5 flex-shrink-0"
                           style={{
-                            backgroundColor: `${eventColor}25`,
-                            color: eventColor,
-                            borderLeft: `2px solid ${eventColor}`,
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                            backgroundColor: `${eventColor}15`,
+                            borderLeft: `3px solid ${eventColor}`,
+                            color: eventColor
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleViewEvent(event);
                           }}
-                          title={`${startTime} - ${endTime} | ${event.title}`}
+                          title={`${startTime} - ${event.title}`}
                         >
-                          <span className="font-semibold text-[8px] sm:text-[9px] mr-1">{startTime}</span>
-                          <span className="truncate">{event.title}</span>
+                          <Clock className="w-3 h-3 flex-shrink-0 opacity-80" />
+                          <span className="font-semibold text-[9px] opacity-90">{startTime}</span>
+                          <span className="truncate flex-1 font-medium">{event.title}</span>
                         </div>
                       );
                     })}
-                    {dayEvents.length > 5 && (
-                      <div 
-                        className="text-[9px] sm:text-[10px] text-gray-600 font-semibold px-1 sm:px-2 py-0.5 sm:py-1 cursor-pointer hover:text-gray-900 hover:bg-gray-100 rounded transition-colors flex-shrink-0 border border-gray-200"
+                    {dayEvents.length > 4 && (
+                      <button
+                        className="w-full text-[10px] font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded px-2 py-1 transition-colors flex-shrink-0 border border-gray-200"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedDate(date);
                         }}
                       >
-                        +{dayEvents.length - 5} autre{dayEvents.length - 5 > 1 ? 's' : ''}
-                      </div>
+                        +{dayEvents.length - 4} autre{dayEvents.length - 4 > 1 ? 's' : ''}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -759,13 +753,18 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
           </div>
         </div>
         
-        {/* Panneau latéral des événements - Design premium */}
+        {/* Panneau latéral des événements - Optionnel, seulement si date sélectionnée */}
         {selectedDate && (
-          <div className="mt-6 border border-gray-200/80 rounded-xl bg-white p-5 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900 text-base tracking-tight">
-                {format(selectedDate, 'EEEE dd MMMM yyyy', { locale: fr })}
-              </h3>
+          <div className="mt-6 border-2 border-gray-200 rounded-2xl bg-white p-6 shadow-xl flex-shrink-0">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  {format(selectedDate, 'EEEE', { locale: fr })}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {format(selectedDate, 'dd MMMM yyyy', { locale: fr })}
+                </p>
+              </div>
               <Button
                 size="sm"
                 variant="ghost"
@@ -777,7 +776,6 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
             </div>
             
             <Button
-              size="sm"
               onClick={() => {
                 const dateWithTime = new Date(selectedDate);
                 dateWithTime.setHours(9, 0, 0, 0);
@@ -785,41 +783,52 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                 setSelectedEvent(null);
                 setShowEventDialog(true);
               }}
-              className="w-full mb-4 bg-gray-900 hover:bg-gray-800 text-white h-10 rounded-lg font-medium shadow-sm transition-all duration-200"
+              className="w-full mb-4 bg-blue-600 hover:bg-blue-700 text-white h-11 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200"
             >
               <Plus className="w-4 h-4 mr-2" />
               Nouvel événement
             </Button>
             
-            <div className="space-y-2 max-h-80 overflow-y-auto">
+            <div className="space-y-3 max-h-96 overflow-y-auto">
               {getEventsForDate(selectedDate).length === 0 ? (
-                <div className="text-center py-8 text-gray-500 text-sm">
-                  <CalendarIcon className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                  <p>Aucun événement prévu</p>
+                <div className="text-center py-12 text-gray-500">
+                  <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <p className="text-sm font-medium">Aucun événement prévu</p>
+                  <p className="text-xs text-gray-400 mt-1">Cliquez sur "Nouvel événement" pour en ajouter un</p>
                 </div>
               ) : (
                 getEventsForDate(selectedDate).map(event => (
                   <div
                     key={event.id}
-                    className="p-3 bg-gray-50/50 border border-gray-200/60 rounded-lg cursor-pointer hover:bg-gray-100/50 hover:border-gray-300 transition-all duration-200"
+                    className="p-4 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200 group"
                     onClick={() => handleViewEvent(event)}
                   >
-                    <div className="flex items-center gap-2.5 mb-1.5">
+                    <div className="flex items-start gap-3">
                       <div 
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm"
+                        className="w-3 h-3 rounded-full flex-shrink-0 mt-1 shadow-sm"
                         style={{
-                          backgroundColor: event.color || '#6366F1'
+                          backgroundColor: event.color || '#3B82F6'
                         }}
-                      ></div>
-                      <span className="font-semibold text-gray-900 text-sm truncate">
-                        {event.title}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>
-                        {format(new Date(event.start_date), 'HH:mm', { locale: fr })} - {format(new Date(event.end_date), 'HH:mm', { locale: fr })}
-                      </span>
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-gray-900 text-sm mb-2 group-hover:text-blue-600 transition-colors">
+                          {event.title}
+                        </h4>
+                        <div className="flex items-center gap-4 text-xs text-gray-600">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>
+                              {format(new Date(event.start_date), 'HH:mm', { locale: fr })} - {format(new Date(event.end_date), 'HH:mm', { locale: fr })}
+                            </span>
+                          </div>
+                          {event.location && (
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="w-3.5 h-3.5" />
+                              <span className="truncate">{event.location}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))

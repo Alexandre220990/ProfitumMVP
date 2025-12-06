@@ -97,6 +97,52 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
     }
   };
 
+  // Fonction pour corriger les messages de notification avec les métadonnées
+  const getCorrectedNotificationMessage = (notification: any): string => {
+    const metadata = notification.metadata || {};
+    const actionData = notification.action_data || {};
+    
+    // Récupérer les noms depuis les métadonnées
+    const clientName = metadata.client_name || actionData.client_name || actionData.client_company;
+    const productName = metadata.product_name || metadata.produit_nom || actionData.product_name;
+    
+    // Si le message contient "Dossier Dossier" ou "Client Client", le corriger
+    let message = notification.message || '';
+    
+    if (message.includes('Dossier Dossier') && productName && productName !== 'Dossier') {
+      message = message.replace(/Dossier Dossier/g, productName);
+    }
+    
+    if (message.includes('Client Client') && clientName && clientName !== 'Client') {
+      message = message.replace(/Client Client/g, clientName);
+    }
+    
+    // Corriger aussi les cas où on a juste "Dossier" ou "Client" répétés
+    if (message.includes('Dossier - Client') && productName && clientName) {
+      message = message.replace(/Dossier - Client/g, `${productName} - ${clientName}`);
+    }
+    
+    return message;
+  };
+
+  // Fonction pour corriger les titres de notification avec les métadonnées
+  const getCorrectedNotificationTitle = (notification: any): string => {
+    const metadata = notification.metadata || {};
+    const actionData = notification.action_data || {};
+    
+    // Récupérer le nom du produit depuis les métadonnées
+    const productName = metadata.product_name || metadata.produit_nom || actionData.product_name;
+    
+    // Si le titre contient "Dossier" répété, le corriger
+    let title = notification.title || '';
+    
+    if (title.includes('Dossier Dossier') && productName && productName !== 'Dossier') {
+      title = title.replace(/Dossier Dossier/g, productName);
+    }
+    
+    return title;
+  };
+
   const handleNavigation = (path: string) => {
     navigate(path);
     setMobileMenuOpen(false);
@@ -371,10 +417,10 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">
-                          {notification.title}
+                          {getCorrectedNotificationTitle(notification)}
                         </p>
                         <p className="mt-1 text-xs text-gray-600 line-clamp-2">
-                          {notification.message}
+                          {getCorrectedNotificationMessage(notification)}
                         </p>
                         <p className="mt-1 sm:mt-2 text-[10px] sm:text-xs text-gray-400">
                           {formatNotificationDate(notification.created_at)}

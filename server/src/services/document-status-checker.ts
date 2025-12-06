@@ -38,16 +38,7 @@ export class DocumentStatusChecker {
           admin_eligibility_status,
           expert_validation_status,
           created_at,
-          updated_at,
-          Client:clientId (
-            id,
-            company_name,
-            name
-          ),
-          ProduitEligible:produitId (
-            id,
-            nom
-          )
+          updated_at
         `)
         .eq('id', clientProduitId)
         .single();
@@ -57,10 +48,37 @@ export class DocumentStatusChecker {
         return null;
       }
 
-      const client = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
-      const produit = Array.isArray(dossier.ProduitEligible) ? dossier.ProduitEligible[0] : dossier.ProduitEligible;
-      const clientName = client?.company_name || client?.name || 'Client';
-      const productName = produit?.nom || 'Dossier';
+      // Récupérer les informations du client séparément
+      let clientName = 'Client';
+      if (dossier.clientId) {
+        const { data: client, error: clientError } = await supabase
+          .from('Client')
+          .select('id, company_name, name')
+          .eq('id', dossier.clientId)
+          .single();
+        
+        if (!clientError && client) {
+          clientName = client.company_name || client.name || 'Client';
+        } else {
+          console.warn('⚠️ Impossible de récupérer le client:', clientError);
+        }
+      }
+
+      // Récupérer les informations du produit séparément
+      let productName = 'Dossier';
+      if (dossier.produitId) {
+        const { data: produit, error: produitError } = await supabase
+          .from('ProduitEligible')
+          .select('id, nom')
+          .eq('id', dossier.produitId)
+          .single();
+        
+        if (!produitError && produit) {
+          productName = produit.nom || 'Dossier';
+        } else {
+          console.warn('⚠️ Impossible de récupérer le produit:', produitError);
+        }
+      }
 
       // Récupérer tous les documents du dossier
       const { data: documents, error: docsError } = await supabase
