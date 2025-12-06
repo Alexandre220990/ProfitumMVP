@@ -640,6 +640,41 @@ router.put('/mark-all-read', asyncHandler(async (req, res) => {
   }
 }));
 
+// PUT /api/notifications/archive-all-read - Archiver toutes les notifications lues
+router.put('/archive-all-read', asyncHandler(async (req, res) => {
+  try {
+    const userId = (req as any).user.id;
+
+    const { error, count } = await supabaseClient
+      .from('notification')
+      .update({
+        status: 'archived',
+        archived_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .eq('status', 'read')
+      .neq('status', 'archived');
+
+    if (error) throw error;
+
+    console.log(`✅ ${count || 0} notifications lues archivées pour user ${userId}`);
+
+    return res.json({
+      success: true,
+      count: count || 0,
+      message: `${count || 0} notification(s) archivée(s)`
+    });
+
+  } catch (error) {
+    console.error('Erreur archivage toutes lues:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'archivage'
+    });
+  }
+}));
+
 // DELETE /api/notifications/delete-all-read - Supprimer toutes les lues
 router.delete('/delete-all-read', asyncHandler(async (req, res) => {
   try {

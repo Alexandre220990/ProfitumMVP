@@ -110,7 +110,7 @@ export function UniversalNotificationCenter({
     unarchiveNotification,
     deleteNotification,
     markAllAsRead,
-    deleteAllRead,
+    archiveAllRead,
   } = useSupabaseNotifications();
   
   // État local
@@ -285,9 +285,19 @@ export function UniversalNotificationCenter({
     return n.notification_type === 'lead_to_treat' && isUnread;
   }).length;
   
+  // Fonction helper pour identifier les événements
+  const isEventNotification = (n: any): boolean => {
+    return !!(
+      n.metadata?.event_id ||
+      ['event_upcoming', 'event_in_progress', 'event_completed', 'event_proposed', 'event_invitation'].includes(n.notification_type || '')
+    );
+  };
+
   // Compteur pour les dossiers à traiter
   const dossiersToTreatCount = enrichedNotifications.filter((n) => {
     if (n.status === 'archived') return false;
+    // Exclure les événements (terminés ou non)
+    if (isEventNotification(n)) return false;
     // Types de notifications liés aux dossiers
     const dossierNotificationTypes = [
       'waiting_documents',
@@ -357,6 +367,35 @@ export function UniversalNotificationCenter({
         // Filtrer uniquement les notifications de leads à traiter
         matchesFilter = notification.notification_type === 'lead_to_treat' && 
                        notification.status !== 'archived';
+      } else if (filter === 'dossiers_to_treat') {
+        // Filtrer uniquement les notifications de dossiers à traiter (exclure les événements)
+        if (isEventNotification(notification)) {
+          matchesFilter = false;
+        } else {
+          const dossierNotificationTypes = [
+            'waiting_documents',
+            'documents_to_validate',
+            'dossier_complete',
+            'admin_action_required',
+            'documents_pending_validation_reminder',
+            'client_actions_summary',
+            'expert_client_actions_summary',
+            'client_dossier_actions_summary',
+            'dossier_status_change',
+            'dossier_urgent',
+            'dossier_pending_acceptance',
+            'dossier_sent_to_expert',
+            'dossier_refused',
+            'implementation_validated'
+          ];
+          const isDossierNotification = 
+            dossierNotificationTypes.includes(notification.notification_type || '') ||
+            notification.metadata?.client_produit_id ||
+            notification.metadata?.dossier_id ||
+            notification.action_data?.client_produit_id ||
+            notification.action_data?.dossier_id;
+          matchesFilter = isDossierNotification && notification.status !== 'archived';
+        }
       } else if (filter === 'all') {
         matchesFilter = notification.status !== 'archived';
       }
@@ -1422,12 +1461,12 @@ export function UniversalNotificationCenter({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={deleteAllRead}
-                    className="w-full justify-start text-red-600 hover:text-red-700"
+                    onClick={archiveAllRead}
+                    className="w-full justify-start"
                     disabled={!enrichedNotifications.some(n => n.status === 'read')}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Supprimer tout lu
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archiver notifications lues
                   </Button>
                 </div>
               </div>

@@ -6808,6 +6808,127 @@ router.put('/notifications/mark-all-read', async (req, res) => {
   }
 });
 
+// PUT /api/admin/notifications/archive-all-read - Archiver toutes les notifications lues
+router.put('/notifications/archive-all-read', async (req, res) => {
+  try {
+    const user = (req as any).user as AuthUser;
+    
+    if (!user || user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+    
+    // Récupérer l'admin_id (database_id) depuis la table Admin
+    let adminDatabaseId = user.database_id;
+    const authUserId = user.id || user.auth_user_id;
+    
+    if (!adminDatabaseId) {
+      // Si pas de database_id, récupérer depuis Admin via auth_user_id
+      if (authUserId) {
+        const { data: adminData } = await supabaseAdmin
+          .from('Admin')
+          .select('id')
+          .eq('auth_user_id', authUserId)
+          .single();
+        
+        if (adminData) {
+          adminDatabaseId = adminData.id;
+        }
+      }
+    }
+    
+    if (!adminDatabaseId || !authUserId) {
+      return res.status(500).json({
+        success: false,
+        message: 'Impossible de récupérer l\'ID admin'
+      });
+    }
+    
+    let totalArchived = 0;
+    
+    // ====================================================================
+    // ✅ MIGRATION: Archiver toutes les notifications admin lues
+    // ====================================================================
+    // 1. Récupérer toutes les notifications admin lues non archivées
+    const { data: readNotifications, error: fetchError } = await supabaseClient
+      .from('notification')
+      .select('id')
+      .eq('user_type', 'admin')
+      .eq('user_id', authUserId)
+      .neq('status', 'replaced')
+      .eq('hidden_in_list', false)
+      .eq('is_read', true)
+      .neq('status', 'archived');
+    
+    if (fetchError) {
+      console.error('❌ Erreur récupération notifications lues:', fetchError);
+    } else if (readNotifications && readNotifications.length > 0) {
+      // Archiver chaque notification lue dans AdminNotificationStatus
+      for (const notif of readNotifications) {
+        const { error: statusError } = await supabaseClient
+          .from('AdminNotificationStatus')
+          .upsert({
+            notification_id: notif.id,
+            admin_id: adminDatabaseId,
+            is_read: true,
+            read_at: new Date().toISOString(),
+            is_archived: true,
+            archived_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'notification_id,admin_id'
+          });
+        
+        if (!statusError) {
+          totalArchived++;
+        } else {
+          console.error(`❌ Erreur archivage notification ${notif.id}:`, statusError);
+        }
+      }
+    }
+    
+    // ====================================================================
+    // 2. Archiver toutes les notifications de la table notification lues
+    // ====================================================================
+    const { error: notificationUpdateError, count: notificationCount } = await supabaseClient
+      .from('notification')
+      .update({
+        status: 'archived',
+        archived_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', authUserId)
+      .eq('user_type', 'admin')
+      .neq('status', 'replaced')
+      .eq('hidden_in_list', false)
+      .eq('is_read', true)
+      .neq('status', 'archived');
+    
+    if (notificationUpdateError) {
+      console.error('❌ Erreur archivage notifications:', notificationUpdateError);
+    } else {
+      totalArchived += notificationCount || 0;
+    }
+    
+    console.log(`✅ ${totalArchived} notification(s) admin archivée(s) pour admin ${adminDatabaseId}`);
+    
+    return res.json({
+      success: true,
+      count: totalArchived,
+      message: `${totalArchived} notification(s) archivée(s)`
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur archivage toutes notifications admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'archivage des notifications'
+    });
+  }
+});
+
 // PATCH /api/admin/notifications/:id/read - Marquer notification comme lue
 router.patch('/notifications/:id/read', async (req, res) => {
   try {

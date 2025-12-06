@@ -473,6 +473,55 @@ router.post('/mark-all-read', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/expert/notifications/archive-all-read - Archiver toutes les notifications lues
+router.post('/archive-all-read', async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user as AuthUser | undefined;
+    const expertIds = resolveExpertNotificationIds(authUser);
+
+    if (!authUser || expertIds.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    // Archiver toutes les notifications lues
+    const { error: updateError, count } = await supabase
+      .from('notification')
+      .update({
+        status: 'archived',
+        archived_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .in('user_id', expertIds)
+      .eq('user_type', 'expert')
+      .eq('is_read', true)
+      .neq('status', 'archived');
+
+    if (updateError) {
+      console.error('❌ Erreur archivage toutes notifications:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'archivage des notifications'
+      });
+    }
+
+    return res.json({
+      success: true,
+      count: count || 0,
+      message: `${count || 0} notification(s) archivée(s)`
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur archivage toutes notifications:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
+    });
+  }
+});
+
 // DELETE /api/expert/notifications/:id - Supprimer une notification
 router.delete('/:id', async (req: Request, res: Response) => {
   try {

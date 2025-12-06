@@ -40,6 +40,7 @@ interface UseSupabaseNotificationsReturn {
   unarchiveNotification: (notificationId: string) => Promise<void>;
   deleteNotification: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  archiveAllRead: () => Promise<void>;
   deleteAllRead: () => Promise<void>;
 }
 
@@ -467,6 +468,48 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
     }
   }, [user?.type, loadNotifications]);
 
+  const archiveAllRead = useCallback(async () => {
+    const token = await getSupabaseToken() || '';
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+
+    let url: string | null = null;
+    let method: string = 'PUT';
+
+    if (user?.type === 'admin') {
+      url = `${API_BASE}/api/admin/notifications/archive-all-read`;
+      method = 'PUT';
+    } else if (user?.type === 'expert') {
+      url = `${API_BASE}/api/expert/notifications/archive-all-read`;
+      method = 'POST';
+    } else {
+      url = `${API_BASE}/api/notifications/archive-all-read`;
+      method = 'PUT';
+    }
+
+    try {
+      const response = await fetch(url, { method, headers });
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.success && result.count > 0) {
+        toast.success(`${result.count} notification(s) archivée(s)`);
+      } else if (result.count === 0) {
+        toast.info('Aucune notification lue à archiver.');
+      }
+
+      await loadNotifications();
+    } catch (err) {
+      console.error('Erreur archiveAllRead:', err);
+      toast.error('Impossible d\'archiver les notifications lues.');
+    }
+  }, [user?.type, loadNotifications]);
+
   const deleteAllRead = useCallback(async () => {
     const token = await getSupabaseToken() || '';
     const headers: Record<string, string> = {
@@ -594,6 +637,7 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
     unarchiveNotification,
     deleteNotification,
     markAllAsRead,
+    archiveAllRead,
     deleteAllRead,
   };
 }
